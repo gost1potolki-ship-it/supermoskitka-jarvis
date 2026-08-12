@@ -1,4 +1,4 @@
-import { DEFAULT_PRICES } from './embedded-default-prices.js';
+import { DEFAULT_PRICES, type LegacyPriceCatalog } from './embedded-default-prices.js';
 import { ProductType, type ArchivedOrder, type OrderState, type PaymentMethod } from './types.js';
 import { roundToTens } from './calculations.js';
 
@@ -47,7 +47,7 @@ export interface CalculatedOrderTotals {
 
 export function calculateOrderTotals(
   order: OrderWithOptionalMeasurementPaidCash,
-  prices: typeof DEFAULT_PRICES
+  prices: LegacyPriceCatalog
 ): CalculatedOrderTotals {
   const safeItems = Array.isArray(order?.items) ? order.items : [];
   const itemsBasePrice = safeItems.reduce((sum, item) => sum + item.price, 0);
@@ -160,7 +160,7 @@ export interface ManagerWorkTotalResult {
 /** Итог для отправки в работу: сначала полная сумма (нал/QR), затем −1000 ₽ если замер уже оплачен наличными. */
 export function calculateManagerWorkTotal(
   order: OrderWithOptionalMeasurementPaidCash,
-  prices: typeof DEFAULT_PRICES,
+  prices: LegacyPriceCatalog,
   isMeasurementPaidCash: boolean
 ): ManagerWorkTotalResult {
   const safeItems = Array.isArray(order?.items) ? order.items : [];

@@ -1,15 +1,11 @@
-import type { LegacyPriceCatalog } from './legacy/embedded-default-prices.js';
-import type {
-  ColorType,
-  MeshType,
-  MountType,
-  CornerType,
-  HandleType,
-  PlisseOpening,
-  PlisseThreshold,
-} from './legacy/types.js';
+/**
+ * Public Jarvis calculation contract.
+ * Must not import product UI unions from legacy/*.
+ */
 
-export const CALCULATION_ENGINE_VERSION = 'supermoskitka-calculation-v1';
+import type { LegacyPriceCatalog } from './legacy/embedded-default-prices.js';
+
+export const CALCULATION_ENGINE_VERSION = 'supermoskitka-calculation-v1.1';
 
 export type CalculationCustomerType = 'retail' | 'dealer' | 'corporate';
 
@@ -17,36 +13,106 @@ export type CalculationProductType = 'FRAME' | 'WING' | 'DOOR' | 'PLISSE_NET';
 
 export type CalculationStatus = 'calculated' | 'needs_input' | 'unsupported';
 
+export type CalculationMeshType = 'STANDARD' | 'ANTIMOSHKA' | 'ANTICAT' | 'ANTIDUST';
+
+export type CalculationFrameFastening = 'Z_METAL' | 'PLUNGER';
+
+export type CalculationCornerType = 'PLASTIC' | 'ALUMINUM';
+
+export type CalculationHandleType = 'PLASTIC' | 'METAL';
+
+export type CalculationPlisseOpening = 'SIDE' | 'COUNTER' | 'UP';
+
+export type CalculationPlisseThreshold = 'STANDARD' | 'LOW' | 'REINFORCED';
+
+export type CalculationColor =
+  | { kind: 'WHITE' }
+  | { kind: 'BROWN_8017' }
+  | { kind: 'GRAY_7016' }
+  | {
+      kind: 'CUSTOM_RAL';
+      ral: string;
+      finish?: 'STANDARD' | 'MATTE' | 'GLOSS' | 'MUAR';
+    };
+
 export type PriceCatalog = LegacyPriceCatalog;
+
+export interface CurrentCalculationBusinessRules {
+  assemblyLabor: {
+    frame: {
+      standard: number;
+      antimoshka: number;
+      anticat: number;
+      antidust: number;
+      plunger: number;
+    };
+    wing: number;
+    door: number;
+  };
+  regionalDeliveryPerKm: number;
+  /** When false, engine uses catalog prices as-is (historical PARITY mode). */
+  applyLaborOverrides: boolean;
+  applyRegionalDeliveryOverride: boolean;
+}
 
 export interface PriceCatalogSnapshot {
   version: string;
   prices: PriceCatalog;
+  businessRulesVersion: string;
+  businessRules: CurrentCalculationBusinessRules;
 }
 
 export interface PriceCatalogProvider {
   getPriceCatalog(): Promise<PriceCatalogSnapshot>;
 }
 
-export interface CalculationItemInput {
+interface BaseCalculationItem {
   itemId: string;
-  productType: CalculationProductType;
   widthMm?: number;
   heightMm?: number;
   quantity?: number;
-  color?: ColorType;
-  meshType?: MeshType;
-  frameProfile?: '25' | '32';
-  doorProfile?: '32' | '42';
-  fastening?: MountType;
-  cornerType?: CornerType;
-  handleType?: HandleType;
-  openingType?: PlisseOpening;
-  thresholdType?: PlisseThreshold;
-  handlesCount?: number;
-  hingesCount?: number;
-  hasLatch?: boolean;
 }
+
+export interface FrameCalculationItem extends BaseCalculationItem {
+  productType: 'FRAME';
+  meshType?: CalculationMeshType;
+  color?: CalculationColor;
+  frameProfile?: '25' | '32';
+  fastening?: CalculationFrameFastening;
+  cornerType?: CalculationCornerType;
+  handleType?: CalculationHandleType;
+}
+
+export interface WingCalculationItem extends BaseCalculationItem {
+  productType: 'WING';
+  meshType?: CalculationMeshType;
+  color?: CalculationColor;
+  /** Fixed business fastening for Крыло; adapter maps to legacy mount. */
+  fastening?: 'WING_FLAGS';
+}
+
+export interface DoorCalculationItem extends BaseCalculationItem {
+  productType: 'DOOR';
+  meshType?: CalculationMeshType;
+  color?: CalculationColor;
+  doorProfile?: '32' | '42';
+  hingesCount?: 2 | 3;
+}
+
+export interface PlisseNetCalculationItem extends BaseCalculationItem {
+  productType: 'PLISSE_NET';
+  meshType?: CalculationMeshType;
+  color?: CalculationColor;
+  openingType?: CalculationPlisseOpening;
+  thresholdType?: CalculationPlisseThreshold;
+  handlesCount?: number;
+}
+
+export type CalculationItemInput =
+  | FrameCalculationItem
+  | WingCalculationItem
+  | DoorCalculationItem
+  | PlisseNetCalculationItem;
 
 export interface DeliveryInput {
   type: 'city' | 'out' | 'pickup';
@@ -98,7 +164,7 @@ export interface CalculationOutcome {
   missingFields: string[];
   calculationVersion: string;
   priceVersion: string;
-  /** Present only when status === 'calculated' — order-level breakdown without internal costs. */
+  businessRulesVersion: string;
   orderBreakdown?: {
     itemsBasePrice: number;
     measurementFee: number;

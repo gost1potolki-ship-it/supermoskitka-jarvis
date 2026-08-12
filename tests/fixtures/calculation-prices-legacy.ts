@@ -6,7 +6,7 @@
  * Source commit: 66465b172c105dc259c2772e1c872b2e10e521c9
  */
 
-export const PARITY_PRICE_CATALOG = {
+export const LEGACY_PARITY_PRICE_CATALOG = {
   "price_settings": {
     "global_markups": {
       "standard_markup": 1.9,
@@ -288,4 +288,4 @@ export const PARITY_PRICE_CATALOG = {
   }
 } as const;
 
-export type ParityPriceCatalog = typeof PARITY_PRICE_CATALOG;
+export type LegacyParityPriceCatalog = typeof LEGACY_PARITY_PRICE_CATALOG;

@@ -6,7 +6,9 @@ export class StaticPriceCatalogProvider implements PriceCatalogProvider {
   async getPriceCatalog(): Promise<PriceCatalogSnapshot> {
     return {
       version: this.snapshot.version,
-      prices: this.snapshot.prices,
+      prices: structuredClone(this.snapshot.prices),
+      businessRulesVersion: this.snapshot.businessRulesVersion,
+      businessRules: structuredClone(this.snapshot.businessRules),
     };
   }
 }

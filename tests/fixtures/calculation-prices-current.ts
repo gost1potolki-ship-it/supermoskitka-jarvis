@@ -1,15 +1,12 @@
 /**
- * Embedded DEFAULT_PRICES snapshot from calc_v2.
- * Used only because legacy orderTotals.ts references DEFAULT_PRICES
- * for the measurement_fee Math.max floor.
+ * TEST / CURRENT BUSINESS SNAPSHOT BASE
+ * NOT PRODUCTION PRICE SOURCE
  *
- * NOT Jarvis production price source of truth.
- * Live prices must come through PriceCatalogProvider.
- *
+ * Source: D:\\calc_v2\\constants.ts → PRICES
  * Source commit: 66465b172c105dc259c2772e1c872b2e10e521c9
  */
 
-export const DEFAULT_PRICES = {
+export const CURRENT_PRICE_CATALOG = {
   "price_settings": {
     "global_markups": {
       "standard_markup": 1.9,
@@ -291,17 +288,4 @@ export const DEFAULT_PRICES = {
   }
 } as const;
 
-/** Mutable catalog with widened numeric fields (overrides allowed at runtime). */
-type DeepMutable<T> = T extends string
-  ? string
-  : T extends number
-    ? number
-    : T extends boolean
-      ? boolean
-      : T extends readonly (infer U)[]
-        ? DeepMutable<U>[]
-        : T extends object
-          ? { -readonly [K in keyof T]: DeepMutable<T[K]> }
-          : T;
-
-export type LegacyPriceCatalog = DeepMutable<typeof DEFAULT_PRICES>;
+export type CurrentPriceCatalog = typeof CURRENT_PRICE_CATALOG;
