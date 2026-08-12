@@ -1,0 +1,38 @@
+rules:
+  - id: SM-WARRANTY-001
+    title: Сроки
+    category: warranty
+    status: approved
+    activeVersion: 1
+    tags:
+      - warranty
+    versions:
+      - version: 1
+        condition: вопрос о гарантийных сроках
+        instruction: |-
+          Базовая гарантия на изделие — 12 месяцев.
+          Базовая гарантия на монтаж — 24 месяца.
+        source: &a1
+          type: owner
+          reference: business-audit-2026
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-WARRANTY-002
+    title: Решение по гарантии
+    category: warranty
+    status: approved
+    activeVersion: 1
+    tags:
+      - warranty
+      - director
+    versions:
+      - version: 1
+        condition: обращение клиента по гарантии
+        instruction: >-
+          Факт обращения клиента сам по себе не означает автоматического признания случая
+          гарантийным.
+
+          Причина фиксируется мастером, решение о гарантийности принимает директор.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z

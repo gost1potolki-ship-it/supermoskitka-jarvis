@@ -1,0 +1,76 @@
+rules:
+  - id: SM-MEASURE-001
+    title: Самозамер рамочной по световому проёму
+    category: measurement
+    status: approved
+    activeVersion: 1
+    tags:
+      - self-measure
+      - frame
+    versions:
+      - version: 1
+        condition: размер обычной рамочной сетки снят по световому проёму / по чёрной резинке
+        instruction: >-
+          Если размер обычной рамочной сетки снят по световому проёму / по чёрной резинке, для
+          стандартного случая прибавлять примерно 40 мм к ширине и 40 мм к высоте для получения
+          габарита изделия.
+
+          Стоимость считать по габариту изделия.
+        source: &a1
+          type: owner
+          reference: business-audit-2026
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-MEASURE-002
+    title: Штоки / Крыло
+    category: measurement
+    status: approved
+    activeVersion: 1
+    tags:
+      - self-measure
+      - krylo
+      - shtoki
+    versions:
+      - version: 1
+        condition: замер для штоков или «Крыла»
+        instruction: Для штоков и «Крыла» размер изделия по световому проёму обычно уменьшается примерно на
+          2–3 мм, если технические условия стандартные.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-MEASURE-003
+    title: Замерщик задаёт финальные размеры
+    category: measurement
+    status: approved
+    activeVersion: 1
+    tags:
+      - production
+      - measurer
+    versions:
+      - version: 1
+        condition: финальные производственные размеры
+        instruction: |-
+          Финальные производственные размеры определяет замерщик.
+          Производство не должно самостоятельно корректировать размеры изделия.
+          Если есть сомнение — производство связывается с замерщиком.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-MEASURE-004
+    title: Предварительный расчёт не заменяет замер
+    category: measurement
+    status: approved
+    activeVersion: 1
+    tags:
+      - estimate
+    versions:
+      - version: 1
+        condition: предварительный расчёт по панораме или средним размерам
+        instruction: >-
+          Панорамы, средние размеры и предварительные параметры используются только для
+          предварительного расчёта.
+
+          Технические параметры производства подтверждаются после фактического замера.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z

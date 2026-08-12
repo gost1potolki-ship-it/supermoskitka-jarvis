@@ -1,0 +1,65 @@
+rules:
+  - id: SM-PAY-001
+    title: Городская доставка
+    category: delivery-payment
+    status: approved
+    activeVersion: 1
+    tags:
+      - delivery
+    versions:
+      - version: 1
+        condition: доставка по городу
+        instruction: Базовая доставка по городу — 1 000 ₽, если нет отдельно согласованного исключения.
+        source: &a1
+          type: owner
+          reference: business-audit-2026
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PAY-002
+    title: Доставка по области
+    category: delivery-payment
+    status: approved
+    activeVersion: 1
+    tags:
+      - delivery
+      - region
+    versions:
+      - version: 1
+        condition: региональная доставка
+        instruction: Для региональной доставки базовый расчёт — расстояние в одну сторону от базы до клиента
+          × 60 ₽/км, если нет отдельного коммерческого условия.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PAY-003
+    title: Самовывоз
+    category: delivery-payment
+    status: approved
+    activeVersion: 1
+    tags:
+      - pickup
+    versions:
+      - version: 1
+        condition: самовывоз с производства
+        instruction: |-
+          Точка самовывоза производства: наб. реки Волковки, 19.
+          Конкретное доступное время самовывоза подтверждать по актуальному графику.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PAY-004
+    title: Остаток оплаты
+    category: delivery-payment
+    status: approved
+    activeVersion: 1
+    tags:
+      - payment
+    versions:
+      - version: 1
+        condition: расчёт остатка к оплате
+        instruction: |-
+          Остаток к оплате = полная стоимость заказа − уже внесённый аванс/депозит.
+          Факт установки и факт оплаты являются отдельными состояниями.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z

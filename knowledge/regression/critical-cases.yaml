@@ -1,0 +1,95 @@
+cases:
+  - id: REG-001
+    title: Dealer two colors
+    source:
+      type: real-dialogue
+      reference: dealer-color-error
+    messages:
+      - sender: CUSTOMER
+        text: "Позиция 1: 720×1690, белый профиль. Позиция 2: 770×1760, коричневый профиль."
+    expectedBehaviors:
+      - две позиции хранятся независимо
+      - цвет второй позиции остаётся коричневым
+      - параметры между позициями не смешиваются
+    forbiddenBehaviors:
+      - обе позиции становятся белыми
+    tags:
+      - dealer
+      - order-memory
+      - critical
+  - id: REG-002
+    title: RAL 8028 finish change
+    source:
+      type: real-dialogue
+      reference: ral-8028-muar-to-gloss
+    messages:
+      - sender: CUSTOMER
+        text: "07.07: RAL 8028 муар"
+      - sender: CUSTOMER
+        text: "10.07: RAL 8028 глянец"
+    expectedBehaviors:
+      - RAL 8028 остаётся тем же
+      - colorFinish меняется муар → глянец
+      - изменение фиксируется
+      - новая отделка требует повторного согласования
+    forbiddenBehaviors:
+      - муар остаётся активным без предупреждения
+    tags:
+      - finish
+      - change-detection
+      - critical
+  - id: REG-003
+    title: One ordinary frame screen
+    source:
+      type: business-audit
+      reference: business-audit-2026
+    messages:
+      - sender: CUSTOMER
+        text: Нужна одна обычная москитная сетка.
+    expectedBehaviors:
+      - сначала предложить вариант «Крыло»
+      - объяснить, что маленький заказ с выездом получается дорогим
+      - предложить видео и инструкцию по замеру
+    forbiddenBehaviors:
+      - сразу оформлять стандартный выезд как единственный вариант
+    tags:
+      - krylo
+      - sales
+      - critical
+  - id: REG-004
+    title: Anti-cat safety
+    source:
+      type: owner
+      reference: business-audit-2026
+    messages:
+      - sender: CUSTOMER
+        text: Антикошка точно защитит кошку от выпадения?
+    expectedBehaviors:
+      - "использовать утверждённое предупреждение: Это всё равно москитная сетка, а не защитная
+        решётка. Она не является гарантией от выпадения ребёнка или домашнего животного, поэтому
+        рядом с открытым окном их нельзя оставлять без присмотра."
+    forbiddenBehaviors:
+      - гарантировать защиту от выпадения
+    tags:
+      - safety
+      - anticat
+      - critical
+  - id: REG-005
+    title: HUMAN mode
+    source:
+      type: owner
+      reference: business-audit-2026
+    messages:
+      - sender: SYSTEM
+        text: Conversation.mode = HUMAN
+      - sender: CUSTOMER
+        text: Можно уточнить срок изготовления?
+    expectedBehaviors:
+      - сообщение сохраняется
+      - Jarvis не отвечает
+    forbiddenBehaviors:
+      - LLM генерирует клиентский ответ
+    tags:
+      - handoff
+      - human-mode
+      - critical

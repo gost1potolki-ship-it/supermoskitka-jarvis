@@ -1,0 +1,354 @@
+rules:
+  - id: SM-PROD-001
+    title: "Рамочная сетка: базовый ориентир"
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - frame
+      - estimate
+    versions:
+      - version: 1
+        condition: предварительный расчёт обычной рамочной сетки без фактического замера
+        instruction: >-
+          Для предварительного расчёта обычной рамочной сетки без фактического замера использовать
+          внутренний ориентир около 800×1600 мм.
+
+          Клиенту этот внутренний типоразмер не раскрывать.
+
+          Если клиент спрашивает, как посчитана предварительная цена, отвечать: «по среднему размеру
+          окон по Вашему дому».
+        source: &a1
+          type: owner
+          reference: business-audit-2026
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-002
+    title: Крыло
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - krylo
+    versions:
+      - version: 1
+        condition: речь о сетке «Крыло»
+        instruction: |-
+          «Крыло» — внутривставная сетка, устанавливаемая в световой проём.
+          Типичный сценарий: самостоятельный замер, самовывоз, самостоятельная установка.
+          Крепление — поворотные флажки.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-003
+    title: Рулонные сетки
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - rollup
+      - plisse
+    versions:
+      - version: 1
+        condition: клиент спрашивает про рулонные сетки
+        instruction: |-
+          Рулонные сетки временно не изготавливаются.
+          Не обещать клиенту точную дату возобновления.
+          В качестве альтернативы предлагать ПЛИССЕ, когда это уместно.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-004
+    title: "ПЛИССЕ: термин"
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - plisse
+      - terminology
+    versions:
+      - version: 1
+        condition: упоминается ПЛИССЕ или похожие термины
+        instruction: |-
+          Правильный термин — «ПЛИССЕ».
+          Не использовать ошибочные варианты «ПРС» или «ПЛС».
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-005
+    title: "ПЛИССЕ: базовая конструкция"
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - plisse
+    versions:
+      - version: 1
+        condition: описание или подбор ПЛИССЕ
+        instruction: >-
+          ПЛИССЕ — система с алюминиевой рамой/направляющими и подвижной створкой, в которой сетка
+          складывается гармошкой.
+
+          Стандартный монтаж — накладной.
+
+          Для стандартного полотна отдавать предпочтение варианту Standard, если нет специальных
+          требований клиента.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-006
+    title: "ПЛИССЕ: направление"
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - plisse
+      - opening
+    versions:
+      - version: 1
+        condition: выбор направления открывания ПЛИССЕ
+        instruction: |-
+          Одностороннее открывание обычно применять примерно до ширины 1,5 м.
+          Для более широких конструкций чаще использовать встречное открывание.
+          ПЛИССЕ может открываться вверх, но этот вариант не продвигать без необходимости.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-007
+    title: Дверная сетка
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - door
+    versions:
+      - version: 1
+        condition: дверная москитная сетка
+        instruction: >-
+          Дверная москитная сетка комплектуется ручками с двух сторон, петлями, защёлкой и
+          обязательными импостами.
+
+          Шпингалет не использовать и не предлагать.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-010
+    title: Standard
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - mesh
+      - standard
+    versions:
+      - version: 1
+        condition: полотно Standard
+        instruction: Стандартное полотно имеет ориентировочную ячейку около 1,2–1,4 мм.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-011
+    title: Антимошка
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - mesh
+      - antimoshka
+    versions:
+      - version: 1
+        condition: полотно Антимошка / MicroMesh
+        instruction: >-
+          Антимошка / MicroMesh имеет более мелкую ячейку примерно 0,7–0,8 мм и предназначена в том
+          числе для защиты от мелкой мошки.
+
+          Не обещать свойства, которые не подтверждены.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-012
+    title: Антикошка
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - mesh
+      - anticat
+    versions:
+      - version: 1
+        condition: полотно Антикошка / Pet Screen
+        instruction: |-
+          Антикошка / Pet Screen — усиленное полотно.
+          Для рамочной Антикошки использовать усиленное крепление согласно техническим правилам.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-013
+    title: Антипыль / Poltex
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - mesh
+      - poltex
+    versions:
+      - version: 1
+        condition: полотно Poltex / Антипыль
+        instruction: >-
+          Poltex — фильтрующее полотно для пыльцы, пыли и других мелких загрязнений, но оно заметно
+          снижает воздухообмен.
+
+          Не называть точный процент фильтрации без подтверждающего документа.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-014
+    title: MaxVision / UltraView
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - mesh
+      - maxvision
+    versions:
+      - version: 1
+        condition: полотно MaxVision / UltraView
+        instruction: |-
+          Полотно с более тонкой и менее заметной нитью.
+          Не давать неподтверждённых обещаний по эффективности или светопропусканию.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-020
+    title: Z-крепления
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - fastening
+      - z
+    versions:
+      - version: 1
+        condition: выбор крепления для обычной рамочной сетки
+        instruction: >-
+          Металлические Z-крепления — стандартный и предпочтительный вариант для обычной рамочной
+          сетки.
+
+          Пластиковые Z-крепления не использовать.
+
+          Для Z-крепления обычно требуется около 25–30 мм свободной внешней части оконной рамы.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-021
+    title: Штоки
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - fastening
+      - shtoki
+    versions:
+      - version: 1
+        condition: установка на штоки
+        instruction: |-
+          Штоки использовать, когда установка на Z-крепления невозможна или технически не подходит.
+          Сетка устанавливается в световой проём с уплотнением.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-022
+    title: Холодное алюминиевое остекление
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - fastening
+      - cold-aluminium
+    versions:
+      - version: 1
+        condition: холодное алюминиевое остекление
+        instruction: |-
+          Для холодного алюминиевого остекления использовать металлические Z-крепления.
+          Не предлагать «Крыло» или штоки без отдельной технической проверки.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-023
+    title: Импост
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - frame
+      - impost
+    versions:
+      - version: 1
+        condition: рамочная сетка и необходимость импоста
+        instruction: >-
+          Для рамочной сетки при высоте около 1 м и более обычно требуется импост.
+
+          При высоте примерно свыше 1,8 м предпочтительно использовать два импоста, если конструкция
+          этого требует.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-030
+    title: Базовые цвета
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - color
+    versions:
+      - version: 1
+        condition: выбор цвета профиля
+        instruction: |-
+          Базовые цвета профиля:
+          белый,
+          коричневый RAL 8017,
+          серый RAL 7016.
+          Другие цвета — индивидуальная порошковая окраска по RAL.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-031
+    title: Физический RAL веер
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - color
+      - ral
+    versions:
+      - version: 1
+        condition: подбор индивидуального цвета
+        instruction: >-
+          Панорама и фотография могут использоваться только для предварительной оценки цвета.
+
+          При фактическом подборе индивидуального цвета приоритет имеет физический RAL-веер на
+          объекте.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-032
+    title: Изменение отделки нельзя терять
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - color
+      - change-detection
+    versions:
+      - version: 1
+        condition: клиент меняет ранее согласованный цвет, RAL или тип отделки
+        instruction: >-
+          Если клиент меняет ранее согласованный цвет, RAL или тип отделки (например, «муар» →
+          «глянец»), старое значение нельзя тихо оставлять активным.
+
+          Изменение должно быть зафиксировано и потребовать повторного согласования.
+        source:
+          type: real-dialogue
+          reference: ral-8028-muar-to-gloss
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z

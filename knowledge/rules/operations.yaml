@@ -1,0 +1,67 @@
+rules:
+  - id: SM-OPS-001
+    title: Производство не угадывает
+    category: operations
+    status: approved
+    activeVersion: 1
+    tags:
+      - production
+    versions:
+      - version: 1
+        condition: сомнение в размере, цвете, креплении или другом техническом параметре
+        instruction: >-
+          При сомнении в размере, цвете, креплении или другом техническом параметре производство не
+          должно угадывать значение.
+
+          Нужно уточнить параметр у ответственного замерщика.
+        source: &a1
+          type: owner
+          reference: business-audit-2026
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-OPS-010
+    title: Human handoff
+    category: operations
+    status: approved
+    activeVersion: 1
+    tags:
+      - handoff
+    versions:
+      - version: 1
+        condition: Conversation.mode = HUMAN
+        instruction: Если диалог переведён в режим HUMAN, Jarvis не отвечает клиенту до явного возврата
+          диалога в режим AI.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-OPS-011
+    title: CRM V1 только чтение
+    category: operations
+    status: approved
+    activeVersion: 1
+    tags:
+      - crm
+      - read-only
+    versions:
+      - version: 1
+        condition: работа Jarvis с CRM на V1
+        instruction: На Jarvis V1 агент может читать данные CRM для анализа и сверки, но не должен
+          самостоятельно изменять CRM.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-OPS-012
+    title: Критические изменения заказа
+    category: operations
+    status: approved
+    activeVersion: 1
+    tags:
+      - order-change
+    versions:
+      - version: 1
+        condition: критическое изменение параметров заказа после предыдущего согласования
+        instruction: Критические изменения параметров заказа после предыдущего согласования должны
+          фиксироваться как изменение, а не тихо перезаписывать историю.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z

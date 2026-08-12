@@ -1,0 +1,38 @@
+rules:
+  - id: SM-INSTALL-001
+    title: Смешанный заказ
+    category: installation
+    status: approved
+    activeVersion: 1
+    tags:
+      - installation
+      - mixed-order
+    versions:
+      - version: 1
+        condition: разные изделия одного заказа готовы в разные дни
+        instruction: >-
+          Если разные изделия одного заказа готовы в разные дни, заказ считается готовым к монтажу
+          только после готовности всех позиций.
+
+          Не планировать несколько отдельных монтажных поездок без отдельного решения.
+        source: &a1
+          type: owner
+          reference: business-audit-2026
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-INSTALL-002
+    title: Ошибка замера
+    category: installation
+    status: approved
+    activeVersion: 1
+    tags:
+      - installation
+      - measurer
+    versions:
+      - version: 1
+        condition: изделие нельзя установить из-за ошибочного замера
+        instruction: Если изделие нельзя установить из-за ошибочного замера, техническая ответственность
+          лежит на замерщике согласно действующему бизнес-процессу.
+        source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
