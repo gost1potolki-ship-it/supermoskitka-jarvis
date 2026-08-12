@@ -15,16 +15,20 @@ export interface FactVersion<T> extends FactSource {
 /**
  * A fact with an explicit current value and prior versions.
  * `history` holds previous values only (oldest → newest). Current is not duplicated there.
+ * `lastSeenSource` tracks the most recent message that confirmed the current value
+ * (including repeats that did not change the value).
  */
 export interface Fact<T> {
   current: FactVersion<T>;
   history: readonly FactVersion<T>[];
+  lastSeenSource: FactSource;
 }
 
 export function createFact<T>(value: T, source: FactSource): Fact<T> {
   return {
     current: { value, ...source },
     history: [],
+    lastSeenSource: source,
   };
 }
 

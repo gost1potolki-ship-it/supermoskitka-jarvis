@@ -8,8 +8,13 @@ export interface CreateOrderMemoryInput {
 }
 
 export function createOrderMemory(input: CreateOrderMemoryInput): OrderMemory {
+  const itemIds = input.itemIds ?? [];
+  if (new Set(itemIds).size !== itemIds.length) {
+    throw new Error('Duplicate order item IDs');
+  }
+
   const now = input.now ?? new Date().toISOString();
-  const items: OrderItem[] = (input.itemIds ?? []).map((id) => createEmptyOrderItem(id));
+  const items: OrderItem[] = itemIds.map((id) => createEmptyOrderItem(id));
 
   return {
     orderId: input.orderId,

@@ -60,7 +60,19 @@ export function applyOrderItemFact<K extends OrderItemFactField>(
   }
 
   if (valuesEqual(existing.current.value, input.value)) {
-    return { memory, change: null };
+    const updatedFact: Fact<OrderItemFactValue[K]> = {
+      ...existing,
+      lastSeenSource: input.source,
+    };
+    const updatedItem: OrderItem = {
+      ...item,
+      [input.field]: updatedFact,
+    };
+
+    return {
+      memory: withUpdatedItem(memory, updatedItem, now),
+      change: null,
+    };
   }
 
   const previous = existing.current;
@@ -70,6 +82,7 @@ export function applyOrderItemFact<K extends OrderItemFactField>(
       ...input.source,
     },
     history: [...existing.history, previous],
+    lastSeenSource: input.source,
   };
 
   const change: OrderChange = {

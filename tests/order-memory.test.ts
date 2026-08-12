@@ -66,6 +66,11 @@ describe('order memory', () => {
       sourceChannel: 'whatsapp',
       sourceTimestamp: '2026-07-07T10:00:00.000Z',
     });
+    expect(fact?.lastSeenSource).toEqual({
+      sourceMessageId: 'msg-1',
+      sourceChannel: 'whatsapp',
+      sourceTimestamp: '2026-07-07T10:00:00.000Z',
+    });
     expect(result.change).toBeNull();
   });
 
@@ -89,31 +94,47 @@ describe('order memory', () => {
     expect(result.change).toBeNull();
   });
 
-  it('ignores repeated identical value and does not pollute history', () => {
+  it('updates lastSeenSource on repeated identical value without OrderChange or history', () => {
     let memory = createOrderMemory({
       orderId: 'order-1',
       conversationId: 'conv-1',
       itemIds: ['item-1'],
     });
 
+    const firstSource = source('msg-1', '2026-07-07T10:00:00.000Z');
     memory = applyOrderItemFact(memory, {
       orderItemId: 'item-1',
       field: 'ral',
       value: '8028',
-      source: source('msg-1', '2026-07-07T10:00:00.000Z'),
+      source: firstSource,
     }).memory;
 
+    const secondSource = source('msg-2', '2026-07-10T10:00:00.000Z');
     const result = applyOrderItemFact(memory, {
       orderItemId: 'item-1',
       field: 'ral',
       value: '8028',
-      source: source('msg-2', '2026-07-10T10:00:00.000Z'),
+      source: secondSource,
     });
 
     expect(result.change).toBeNull();
     expect(result.memory.changes).toEqual([]);
     expect(result.memory.items[0]?.ral?.history).toEqual([]);
-    expect(result.memory.items[0]?.ral?.current.sourceMessageId).toBe('msg-1');
+    expect(result.memory.items[0]?.ral?.current).toEqual({
+      value: '8028',
+      ...firstSource,
+    });
+    expect(result.memory.items[0]?.ral?.lastSeenSource).toEqual(secondSource);
+  });
+
+  it('rejects duplicate itemIds on createOrderMemory', () => {
+    expect(() =>
+      createOrderMemory({
+        orderId: 'order-1',
+        conversationId: 'conv-1',
+        itemIds: ['item-1', 'item-1'],
+      }),
+    ).toThrow('Duplicate order item IDs');
   });
 
   it('changes a value, keeps history, and creates OrderChange', () => {
@@ -155,6 +176,11 @@ describe('order memory', () => {
         sourceTimestamp: '2026-07-07T10:00:00.000Z',
       },
     ]);
+    expect(result.memory.items[0]?.profileColor?.lastSeenSource).toEqual({
+      sourceMessageId: 'msg-2',
+      sourceChannel: 'telegram',
+      sourceTimestamp: '2026-07-10T12:00:00.000Z',
+    });
   });
 });
 
@@ -273,6 +299,7 @@ describe('order change — муар → глянец with stable RAL', () => {
     expect(getFactValue(memory.items[0]?.ral)).toBe('8028');
     expect(memory.items[0]?.ral?.history).toEqual([]);
     expect(memory.items[0]?.ral?.current.sourceMessageId).toBe('msg-1');
+    expect(memory.items[0]?.ral?.lastSeenSource.sourceMessageId).toBe('msg-2');
 
     expect(getFactValue(memory.items[0]?.colorFinish)).toBe('глянец');
     expect(memory.items[0]?.colorFinish?.history).toEqual([
@@ -284,6 +311,7 @@ describe('order change — муар → глянец with stable RAL', () => {
       },
     ]);
     expect(memory.items[0]?.colorFinish?.current.sourceMessageId).toBe('msg-2');
+    expect(memory.items[0]?.colorFinish?.lastSeenSource.sourceMessageId).toBe('msg-2');
 
     expect(memory.changes).toHaveLength(1);
     expect(memory.changes[0]?.field).toBe('colorFinish');

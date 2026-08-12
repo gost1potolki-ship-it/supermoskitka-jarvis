@@ -1,0 +1,736 @@
+From 48a503a63e11cd93a64e6488aef3d6b87e6b9a26 Mon Sep 17 00:00:00 2001
+From: Stanislav <info@moskitka-elion.ru>
+Date: Wed, 12 Aug 2026 20:39:35 +0300
+Subject: [PATCH] feat: add conversation and order memory domain
+
+Co-authored-by: Cursor <cursoragent@cursor.com>
+---
+ src/domain/.gitkeep                      |   0
+ src/domain/channel.ts                    |  11 +
+ src/domain/conversation.ts               |  12 +
+ src/domain/customer.ts                   |   6 +
+ src/domain/fact.ts                       |  33 +++
+ src/domain/index.ts                      |  22 ++
+ src/domain/order-change.ts               |  10 +
+ src/domain/order-item.ts                 |  45 ++++
+ src/domain/order-memory.ts               |  15 ++
+ src/jarvis/.gitkeep                      |   0
+ src/jarvis/memory/apply-fact.ts          |  96 ++++++++
+ src/jarvis/memory/create-order-memory.ts |  38 +++
+ src/jarvis/memory/index.ts               |   6 +
+ tests/conversation.test.ts               |  24 ++
+ tests/order-memory.test.ts               | 292 +++++++++++++++++++++++
+ 15 files changed, 610 insertions(+)
+ delete mode 100644 src/domain/.gitkeep
+ create mode 100644 src/domain/channel.ts
+ create mode 100644 src/domain/conversation.ts
+ create mode 100644 src/domain/customer.ts
+ create mode 100644 src/domain/fact.ts
+ create mode 100644 src/domain/index.ts
+ create mode 100644 src/domain/order-change.ts
+ create mode 100644 src/domain/order-item.ts
+ create mode 100644 src/domain/order-memory.ts
+ delete mode 100644 src/jarvis/.gitkeep
+ create mode 100644 src/jarvis/memory/apply-fact.ts
+ create mode 100644 src/jarvis/memory/create-order-memory.ts
+ create mode 100644 src/jarvis/memory/index.ts
+ create mode 100644 tests/conversation.test.ts
+ create mode 100644 tests/order-memory.test.ts
+
+diff --git a/src/domain/.gitkeep b/src/domain/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/domain/channel.ts b/src/domain/channel.ts
+new file mode 100644
+index 0000000..2aa146b
+--- /dev/null
++++ b/src/domain/channel.ts
+@@ -0,0 +1,11 @@
++export const CHANNELS = [
++  'telegram',
++  'website',
++  'whatsapp',
++  'avito',
++  'max',
++  'email',
++  'unknown',
++] as const;
++
++export type Channel = (typeof CHANNELS)[number];
+diff --git a/src/domain/conversation.ts b/src/domain/conversation.ts
+new file mode 100644
+index 0000000..c6a6023
+--- /dev/null
++++ b/src/domain/conversation.ts
+@@ -0,0 +1,12 @@
++import type { Channel } from './channel.js';
++
++export type ConversationMode = 'AI' | 'HUMAN';
++
++export interface Conversation {
++  conversationId: string;
++  channel: Channel;
++  customerId: string;
++  mode: ConversationMode;
++  createdAt: string;
++  updatedAt: string;
++}
+diff --git a/src/domain/customer.ts b/src/domain/customer.ts
+new file mode 100644
+index 0000000..05c2959
+--- /dev/null
++++ b/src/domain/customer.ts
+@@ -0,0 +1,6 @@
++export interface Customer {
++  customerId: string;
++  displayName?: string;
++  phone?: string;
++  email?: string;
++}
+diff --git a/src/domain/fact.ts b/src/domain/fact.ts
+new file mode 100644
+index 0000000..6e8cc16
+--- /dev/null
++++ b/src/domain/fact.ts
+@@ -0,0 +1,33 @@
++import type { Channel } from './channel.js';
++
++/** Provenance of a recorded fact value. */
++export interface FactSource {
++  sourceMessageId: string;
++  sourceChannel: Channel;
++  sourceTimestamp: string;
++}
++
++/** One recorded value together with its source. */
++export interface FactVersion<T> extends FactSource {
++  value: T;
++}
++
++/**
++ * A fact with an explicit current value and prior versions.
++ * `history` holds previous values only (oldest → newest). Current is not duplicated there.
++ */
++export interface Fact<T> {
++  current: FactVersion<T>;
++  history: readonly FactVersion<T>[];
++}
++
++export function createFact<T>(value: T, source: FactSource): Fact<T> {
++  return {
++    current: { value, ...source },
++    history: [],
++  };
++}
++
++export function getFactValue<T>(fact: Fact<T> | undefined): T | undefined {
++  return fact?.current.value;
++}
+diff --git a/src/domain/index.ts b/src/domain/index.ts
+new file mode 100644
+index 0000000..d60d45e
+--- /dev/null
++++ b/src/domain/index.ts
+@@ -0,0 +1,22 @@
++export type { Channel } from './channel.js';
++export { CHANNELS } from './channel.js';
++
++export type { Conversation, ConversationMode } from './conversation.js';
++
++export type { Customer } from './customer.js';
++
++export type { Fact, FactSource, FactVersion } from './fact.js';
++export { createFact, getFactValue } from './fact.js';
++
++export type { OrderChange, OrderChangeType } from './order-change.js';
++
++export type {
++  OrderItem,
++  OrderItemFactField,
++  OrderItemFactValue,
++  OrderItemFacts,
++} from './order-item.js';
++export { ORDER_ITEM_FACT_FIELDS, createEmptyOrderItem } from './order-item.js';
++
++export type { OrderMemory } from './order-memory.js';
++export { getOrderItem } from './order-memory.js';
+diff --git a/src/domain/order-change.ts b/src/domain/order-change.ts
+new file mode 100644
+index 0000000..2e0fa5d
+--- /dev/null
++++ b/src/domain/order-change.ts
+@@ -0,0 +1,10 @@
++export type OrderChangeType = 'FIELD_CHANGED';
++
++export interface OrderChange {
++  type: OrderChangeType;
++  orderItemId: string;
++  field: string;
++  oldValue: unknown;
++  newValue: unknown;
++  sourceMessageId: string;
++}
+diff --git a/src/domain/order-item.ts b/src/domain/order-item.ts
+new file mode 100644
+index 0000000..d939d2b
+--- /dev/null
++++ b/src/domain/order-item.ts
+@@ -0,0 +1,45 @@
++import type { Fact } from './fact.js';
++
++export const ORDER_ITEM_FACT_FIELDS = [
++  'productType',
++  'quantity',
++  'widthMm',
++  'heightMm',
++  'meshType',
++  'profileType',
++  'profileColor',
++  'ral',
++  'colorFinish',
++  'fastening',
++  'openingType',
++  'comment',
++] as const;
++
++export type OrderItemFactField = (typeof ORDER_ITEM_FACT_FIELDS)[number];
++
++export type OrderItemFactValue = {
++  productType: string;
++  quantity: number;
++  widthMm: number;
++  heightMm: number;
++  meshType: string;
++  profileType: string;
++  profileColor: string;
++  ral: string;
++  colorFinish: string;
++  fastening: string;
++  openingType: string;
++  comment: string;
++};
++
++export type OrderItemFacts = {
++  [K in OrderItemFactField]?: Fact<OrderItemFactValue[K]>;
++};
++
++export interface OrderItem extends OrderItemFacts {
++  id: string;
++}
++
++export function createEmptyOrderItem(id: string): OrderItem {
++  return { id };
++}
+diff --git a/src/domain/order-memory.ts b/src/domain/order-memory.ts
+new file mode 100644
+index 0000000..979b9e4
+--- /dev/null
++++ b/src/domain/order-memory.ts
+@@ -0,0 +1,15 @@
++import type { OrderChange } from './order-change.js';
++import type { OrderItem } from './order-item.js';
++
++export interface OrderMemory {
++  orderId: string;
++  conversationId: string;
++  items: OrderItem[];
++  changes: OrderChange[];
++  createdAt: string;
++  updatedAt: string;
++}
++
++export function getOrderItem(memory: OrderMemory, orderItemId: string): OrderItem | undefined {
++  return memory.items.find((item) => item.id === orderItemId);
++}
+diff --git a/src/jarvis/.gitkeep b/src/jarvis/.gitkeep
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/jarvis/memory/apply-fact.ts b/src/jarvis/memory/apply-fact.ts
+new file mode 100644
+index 0000000..8253cab
+--- /dev/null
++++ b/src/jarvis/memory/apply-fact.ts
+@@ -0,0 +1,96 @@
++import {
++  createFact,
++  getOrderItem,
++  type Fact,
++  type FactSource,
++  type OrderChange,
++  type OrderItem,
++  type OrderItemFactField,
++  type OrderItemFactValue,
++  type OrderMemory,
++} from '../../domain/index.js';
++
++export interface ApplyFactInput<K extends OrderItemFactField> {
++  orderItemId: string;
++  field: K;
++  value: OrderItemFactValue[K];
++  source: FactSource;
++  now?: string;
++}
++
++export interface ApplyFactResult {
++  memory: OrderMemory;
++  change: OrderChange | null;
++}
++
++function valuesEqual(a: unknown, b: unknown): boolean {
++  return Object.is(a, b);
++}
++
++function withUpdatedItem(memory: OrderMemory, item: OrderItem, now: string): OrderMemory {
++  return {
++    ...memory,
++    items: memory.items.map((existing) => (existing.id === item.id ? item : existing)),
++    updatedAt: now,
++  };
++}
++
++export function applyOrderItemFact<K extends OrderItemFactField>(
++  memory: OrderMemory,
++  input: ApplyFactInput<K>,
++): ApplyFactResult {
++  const item = getOrderItem(memory, input.orderItemId);
++  if (!item) {
++    throw new Error(`Order item not found: ${input.orderItemId}`);
++  }
++
++  const now = input.now ?? input.source.sourceTimestamp;
++  const existing = item[input.field] as Fact<OrderItemFactValue[K]> | undefined;
++
++  if (!existing) {
++    const updatedItem: OrderItem = {
++      ...item,
++      [input.field]: createFact(input.value, input.source),
++    };
++
++    return {
++      memory: withUpdatedItem(memory, updatedItem, now),
++      change: null,
++    };
++  }
++
++  if (valuesEqual(existing.current.value, input.value)) {
++    return { memory, change: null };
++  }
++
++  const previous = existing.current;
++  const updatedFact: Fact<OrderItemFactValue[K]> = {
++    current: {
++      value: input.value,
++      ...input.source,
++    },
++    history: [...existing.history, previous],
++  };
++
++  const change: OrderChange = {
++    type: 'FIELD_CHANGED',
++    orderItemId: input.orderItemId,
++    field: input.field,
++    oldValue: previous.value,
++    newValue: input.value,
++    sourceMessageId: input.source.sourceMessageId,
++  };
++
++  const updatedItem: OrderItem = {
++    ...item,
++    [input.field]: updatedFact,
++  };
++
++  return {
++    memory: {
++      ...withUpdatedItem(memory, updatedItem, now),
++      changes: [...memory.changes, change],
++    },
++    change,
++  };
++}
+diff --git a/src/jarvis/memory/create-order-memory.ts b/src/jarvis/memory/create-order-memory.ts
+new file mode 100644
+index 0000000..2224e93
+--- /dev/null
++++ b/src/jarvis/memory/create-order-memory.ts
+@@ -0,0 +1,38 @@
++import { createEmptyOrderItem, type OrderItem, type OrderMemory } from '../../domain/index.js';
++
++export interface CreateOrderMemoryInput {
++  orderId: string;
++  conversationId: string;
++  itemIds?: string[];
++  now?: string;
++}
++
++export function createOrderMemory(input: CreateOrderMemoryInput): OrderMemory {
++  const now = input.now ?? new Date().toISOString();
++  const items: OrderItem[] = (input.itemIds ?? []).map((id) => createEmptyOrderItem(id));
++
++  return {
++    orderId: input.orderId,
++    conversationId: input.conversationId,
++    items,
++    changes: [],
++    createdAt: now,
++    updatedAt: now,
++  };
++}
++
++export function addOrderItem(
++  memory: OrderMemory,
++  orderItemId: string,
++  now: string = new Date().toISOString(),
++): OrderMemory {
++  if (memory.items.some((item) => item.id === orderItemId)) {
++    throw new Error(`Order item already exists: ${orderItemId}`);
++  }
++
++  return {
++    ...memory,
++    items: [...memory.items, createEmptyOrderItem(orderItemId)],
++    updatedAt: now,
++  };
++}
+diff --git a/src/jarvis/memory/index.ts b/src/jarvis/memory/index.ts
+new file mode 100644
+index 0000000..e175447
+--- /dev/null
++++ b/src/jarvis/memory/index.ts
+@@ -0,0 +1,6 @@
++export { applyOrderItemFact, type ApplyFactInput, type ApplyFactResult } from './apply-fact.js';
++export {
++  addOrderItem,
++  createOrderMemory,
++  type CreateOrderMemoryInput,
++} from './create-order-memory.js';
+diff --git a/tests/conversation.test.ts b/tests/conversation.test.ts
+new file mode 100644
+index 0000000..703022e
+--- /dev/null
++++ b/tests/conversation.test.ts
+@@ -0,0 +1,24 @@
++import type { Conversation, Customer } from '../src/domain/index.js';
++import { describe, expect, it } from 'vitest';
++
++describe('conversation and customer models', () => {
++  it('supports AI/HUMAN mode and channel typing', () => {
++    const conversation: Conversation = {
++      conversationId: 'conv-1',
++      channel: 'telegram',
++      customerId: 'customer-1',
++      mode: 'AI',
++      createdAt: '2026-07-07T10:00:00.000Z',
++      updatedAt: '2026-07-07T10:00:00.000Z',
++    };
++
++    const customer: Customer = {
++      customerId: 'customer-1',
++      displayName: 'Dealer North',
++    };
++
++    expect(conversation.mode).toBe('AI');
++    expect(conversation.channel).toBe('telegram');
++    expect(customer.customerId).toBe(conversation.customerId);
++  });
++});
+diff --git a/tests/order-memory.test.ts b/tests/order-memory.test.ts
+new file mode 100644
+index 0000000..48ee0a6
+--- /dev/null
++++ b/tests/order-memory.test.ts
+@@ -0,0 +1,292 @@
++import { getFactValue } from '../src/domain/index.js';
++import {
++  addOrderItem,
++  applyOrderItemFact,
++  createOrderMemory,
++} from '../src/jarvis/memory/index.js';
++import { describe, expect, it } from 'vitest';
++
++function source(
++  messageId: string,
++  timestamp: string,
++  channel: 'telegram' | 'website' | 'whatsapp' | 'avito' | 'max' | 'email' | 'unknown' = 'telegram',
++) {
++  return {
++    sourceMessageId: messageId,
++    sourceChannel: channel,
++    sourceTimestamp: timestamp,
++  };
++}
++
++describe('order memory', () => {
++  it('creates empty order memory', () => {
++    const memory = createOrderMemory({
++      orderId: 'order-1',
++      conversationId: 'conv-1',
++      now: '2026-07-07T10:00:00.000Z',
++    });
++
++    expect(memory.orderId).toBe('order-1');
++    expect(memory.conversationId).toBe('conv-1');
++    expect(memory.items).toEqual([]);
++    expect(memory.changes).toEqual([]);
++    expect(memory.createdAt).toBe('2026-07-07T10:00:00.000Z');
++  });
++
++  it('supports several items in one order', () => {
++    let memory = createOrderMemory({
++      orderId: 'order-1',
++      conversationId: 'conv-1',
++      itemIds: ['item-1'],
++    });
++    memory = addOrderItem(memory, 'item-2');
++
++    expect(memory.items.map((item) => item.id)).toEqual(['item-1', 'item-2']);
++  });
++
++  it('stores fact source metadata', () => {
++    let memory = createOrderMemory({
++      orderId: 'order-1',
++      conversationId: 'conv-1',
++      itemIds: ['item-1'],
++    });
++
++    const result = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'profileColor',
++      value: 'white',
++      source: source('msg-1', '2026-07-07T10:00:00.000Z', 'whatsapp'),
++    });
++    memory = result.memory;
++
++    const fact = memory.items[0]?.profileColor;
++    expect(fact?.current).toEqual({
++      value: 'white',
++      sourceMessageId: 'msg-1',
++      sourceChannel: 'whatsapp',
++      sourceTimestamp: '2026-07-07T10:00:00.000Z',
++    });
++    expect(result.change).toBeNull();
++  });
++
++  it('adds a previously unknown value without OrderChange', () => {
++    let memory = createOrderMemory({
++      orderId: 'order-1',
++      conversationId: 'conv-1',
++      itemIds: ['item-1'],
++    });
++
++    const result = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'widthMm',
++      value: 720,
++      source: source('msg-1', '2026-07-07T10:00:00.000Z'),
++    });
++    memory = result.memory;
++
++    expect(getFactValue(memory.items[0]?.widthMm)).toBe(720);
++    expect(memory.changes).toEqual([]);
++    expect(result.change).toBeNull();
++  });
++
++  it('ignores repeated identical value and does not pollute history', () => {
++    let memory = createOrderMemory({
++      orderId: 'order-1',
++      conversationId: 'conv-1',
++      itemIds: ['item-1'],
++    });
++
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'ral',
++      value: '8028',
++      source: source('msg-1', '2026-07-07T10:00:00.000Z'),
++    }).memory;
++
++    const result = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'ral',
++      value: '8028',
++      source: source('msg-2', '2026-07-10T10:00:00.000Z'),
++    });
++
++    expect(result.change).toBeNull();
++    expect(result.memory.changes).toEqual([]);
++    expect(result.memory.items[0]?.ral?.history).toEqual([]);
++    expect(result.memory.items[0]?.ral?.current.sourceMessageId).toBe('msg-1');
++  });
++
++  it('changes a value, keeps history, and creates OrderChange', () => {
++    let memory = createOrderMemory({
++      orderId: 'order-1',
++      conversationId: 'conv-1',
++      itemIds: ['item-1'],
++    });
++
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'profileColor',
++      value: 'white',
++      source: source('msg-1', '2026-07-07T10:00:00.000Z'),
++    }).memory;
++
++    const result = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'profileColor',
++      value: 'brown',
++      source: source('msg-2', '2026-07-10T12:00:00.000Z'),
++    });
++
++    expect(result.change).toEqual({
++      type: 'FIELD_CHANGED',
++      orderItemId: 'item-1',
++      field: 'profileColor',
++      oldValue: 'white',
++      newValue: 'brown',
++      sourceMessageId: 'msg-2',
++    });
++    expect(result.memory.changes).toHaveLength(1);
++    expect(getFactValue(result.memory.items[0]?.profileColor)).toBe('brown');
++    expect(result.memory.items[0]?.profileColor?.history).toEqual([
++      {
++        value: 'white',
++        sourceMessageId: 'msg-1',
++        sourceChannel: 'telegram',
++        sourceTimestamp: '2026-07-07T10:00:00.000Z',
++      },
++    ]);
++  });
++});
++
++describe('dealer order — two meshes must not mix', () => {
++  it('keeps sizes and profile colors isolated per item', () => {
++    let memory = createOrderMemory({
++      orderId: 'dealer-order-1',
++      conversationId: 'conv-dealer',
++      itemIds: ['item-1', 'item-2'],
++    });
++
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'widthMm',
++      value: 720,
++      source: source('msg-a1', '2026-07-07T09:00:00.000Z'),
++    }).memory;
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'heightMm',
++      value: 1690,
++      source: source('msg-a2', '2026-07-07T09:00:00.000Z'),
++    }).memory;
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'profileColor',
++      value: 'white',
++      source: source('msg-a3', '2026-07-07T09:00:00.000Z'),
++    }).memory;
++
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-2',
++      field: 'widthMm',
++      value: 770,
++      source: source('msg-b1', '2026-07-07T09:05:00.000Z'),
++    }).memory;
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-2',
++      field: 'heightMm',
++      value: 1760,
++      source: source('msg-b2', '2026-07-07T09:05:00.000Z'),
++    }).memory;
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-2',
++      field: 'profileColor',
++      value: 'brown',
++      source: source('msg-b3', '2026-07-07T09:05:00.000Z'),
++    }).memory;
++
++    const item1 = memory.items.find((item) => item.id === 'item-1');
++    const item2 = memory.items.find((item) => item.id === 'item-2');
++
++    expect(memory.items).toHaveLength(2);
++    expect(getFactValue(item1?.widthMm)).toBe(720);
++    expect(getFactValue(item1?.heightMm)).toBe(1690);
++    expect(getFactValue(item1?.profileColor)).toBe('white');
++
++    expect(getFactValue(item2?.widthMm)).toBe(770);
++    expect(getFactValue(item2?.heightMm)).toBe(1760);
++    expect(getFactValue(item2?.profileColor)).toBe('brown');
++
++    // No cross-contamination
++    expect(getFactValue(item1?.profileColor)).not.toBe(getFactValue(item2?.profileColor));
++    expect(getFactValue(item1?.widthMm)).not.toBe(getFactValue(item2?.widthMm));
++    expect(memory.changes).toEqual([]);
++  });
++});
++
++describe('order change — муар → глянец with stable RAL', () => {
++  it('records colorFinish change and does not invent RAL change', () => {
++    let memory = createOrderMemory({
++      orderId: 'order-finish',
++      conversationId: 'conv-finish',
++      itemIds: ['item-1'],
++    });
++
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'ral',
++      value: '8028',
++      source: source('msg-1', '2026-07-07T10:00:00.000Z'),
++    }).memory;
++    memory = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'colorFinish',
++      value: 'муар',
++      source: source('msg-1', '2026-07-07T10:00:00.000Z'),
++    }).memory;
++
++    const sameRal = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'ral',
++      value: '8028',
++      source: source('msg-2', '2026-07-10T10:00:00.000Z'),
++    });
++    expect(sameRal.change).toBeNull();
++    memory = sameRal.memory;
++
++    const finishChange = applyOrderItemFact(memory, {
++      orderItemId: 'item-1',
++      field: 'colorFinish',
++      value: 'глянец',
++      source: source('msg-2', '2026-07-10T10:00:00.000Z'),
++    });
++    memory = finishChange.memory;
++
++    expect(finishChange.change).toEqual({
++      type: 'FIELD_CHANGED',
++      orderItemId: 'item-1',
++      field: 'colorFinish',
++      oldValue: 'муар',
++      newValue: 'глянец',
++      sourceMessageId: 'msg-2',
++    });
++
++    expect(getFactValue(memory.items[0]?.ral)).toBe('8028');
++    expect(memory.items[0]?.ral?.history).toEqual([]);
++    expect(memory.items[0]?.ral?.current.sourceMessageId).toBe('msg-1');
++
++    expect(getFactValue(memory.items[0]?.colorFinish)).toBe('глянец');
++    expect(memory.items[0]?.colorFinish?.history).toEqual([
++      {
++        value: 'муар',
++        sourceMessageId: 'msg-1',
++        sourceChannel: 'telegram',
++        sourceTimestamp: '2026-07-07T10:00:00.000Z',
++      },
++    ]);
++    expect(memory.items[0]?.colorFinish?.current.sourceMessageId).toBe('msg-2');
++
++    expect(memory.changes).toHaveLength(1);
++    expect(memory.changes[0]?.field).toBe('colorFinish');
++    expect(memory.changes.some((change) => change.field === 'ral')).toBe(false);
++  });
++});
+-- 
+2.53.0.windows.1
+
