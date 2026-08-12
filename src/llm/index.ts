@@ -32,3 +32,22 @@ export {
   type DeepSeekConfig,
   type DeepSeekProviderErrorCode,
 } from './deepseek/index.js';
+export {
+  DEFAULT_ODIROUTER_BASE_URL,
+  OdiRouterConfigError,
+  OdiRouterLlmProvider,
+  OdiRouterProviderError,
+  filterTextLlmCatalogModels,
+  loadOdiRouterConfig,
+  mapLlmMessagesToOdiRouter,
+  OpenAiCompatibleOdiRouterClient,
+  parseOdiRouterCatalogPayload,
+  toOdiRouterModelShortlist,
+  type OdiRouterCatalogModel,
+  type OdiRouterChatClient,
+  type OdiRouterChatCompletionInput,
+  type OdiRouterChatCompletionOutput,
+  type OdiRouterConfig,
+  type OdiRouterModelShortlistItem,
+  type OdiRouterProviderErrorCode,
+} from './odirouter/index.js';

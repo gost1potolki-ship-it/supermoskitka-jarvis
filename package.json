@@ -15,6 +15,8 @@
     "test:watch": "vitest",
     "smoke:gemini": "tsx scripts/smoke-gemini.ts",
     "smoke:deepseek": "tsx scripts/smoke-deepseek.ts",
+    "models:odirouter": "tsx scripts/list-odirouter-models.ts",
+    "smoke:odirouter": "tsx scripts/smoke-odirouter.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

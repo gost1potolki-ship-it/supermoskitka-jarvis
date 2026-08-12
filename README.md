@@ -8,6 +8,7 @@ HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separ
 - `AGENTS.md` — обязательные правила работы AI coding agents / Cursor
 - `docs/GEMINI_PROVIDER.md` — Gemini Developer API provider (`LlmProvider` adapter)
 - `docs/DEEPSEEK_PROVIDER.md` — DeepSeek API provider (`LlmProvider` adapter)
+- `docs/ODIROUTER_PROVIDER.md` — OdiRouter gateway provider (`LlmProvider` adapter)
 
 ## Requirements
 
@@ -29,6 +30,8 @@ npm install
 | `npm test` | Run unit tests once |
 | `npm run smoke:gemini` | Manual live Gemini smoke (requires API key; not in `npm test`) |
 | `npm run smoke:deepseek` | Manual live DeepSeek smoke (requires API key; not in `npm test`) |
+| `npm run models:odirouter` | List OdiRouter text LLM catalog ids (requires API key; not in `npm test`) |
+| `npm run smoke:odirouter` | Manual live OdiRouter smoke (requires API key + model id; not in `npm test`) |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run the compiled server |
 
@@ -78,3 +81,4 @@ Environment variables (see `.env.example`):
 - `LOG_LEVEL` — `debug` | `info` | `warn` | `error`
 - `GEMINI_API_KEY` / `GEMINI_MODEL` — optional until Gemini provider is used (see `docs/GEMINI_PROVIDER.md`)
 - `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` — optional until DeepSeek provider is used (see `docs/DEEPSEEK_PROVIDER.md`)
+- `ODIROUTER_API_KEY` / `ODIROUTER_MODEL` / `ODIROUTER_BASE_URL` — optional until OdiRouter provider is used (see `docs/ODIROUTER_PROVIDER.md`)
