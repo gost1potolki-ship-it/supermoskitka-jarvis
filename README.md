@@ -2,6 +2,11 @@
 
 HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separate from the surveyor React/Firebase app.
 
+## Project documentation
+
+- `docs/JARVIS_CORE_V1.md` — общая архитектурная спецификация Jarvis V1
+- `AGENTS.md` — обязательные правила работы AI coding agents / Cursor
+
 ## Requirements
 
 - Node.js 20+
