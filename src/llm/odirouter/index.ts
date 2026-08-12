@@ -14,10 +14,18 @@ export type {
   OdiRouterChatCompletionOutput,
   OdiRouterChatMessage,
   OdiRouterChatRole,
+  OdiRouterToolCall,
+  OdiRouterToolDefinition,
 } from './odirouter-chat-client.js';
 export { OdiRouterLlmProvider } from './odirouter-llm-provider.js';
 export { OpenAiCompatibleOdiRouterClient } from './openai-compatible-odirouter-client.js';
-export { mapLlmMessagesToOdiRouter } from './map-llm-to-odirouter.js';
+export {
+  mapLlmMessagesToOdiRouter,
+  mapNeutralToolCallToOdiRouter,
+  mapNeutralToolsToOdiRouter,
+  mapOdiRouterToolCallsToNeutral,
+  mapToolConversationToOdiRouter,
+} from './map-llm-to-odirouter.js';
 export {
   filterTextLlmCatalogModels,
   parseOdiRouterCatalogPayload,

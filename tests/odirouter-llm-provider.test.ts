@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 class FakeOdiRouterClient implements OdiRouterChatClient {
   readonly calls: OdiRouterChatCompletionInput[] = [];
-  nextOutput: OdiRouterChatCompletionOutput = { text: 'ok' };
+  nextOutput: OdiRouterChatCompletionOutput = { text: 'ok', toolCalls: [] };
   nextError: Error | undefined;
 
   async createChatCompletion(

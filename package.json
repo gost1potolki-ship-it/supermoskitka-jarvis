@@ -17,6 +17,7 @@
     "smoke:deepseek": "tsx scripts/smoke-deepseek.ts",
     "models:odirouter": "tsx scripts/list-odirouter-models.ts",
     "smoke:odirouter": "tsx scripts/smoke-odirouter.ts",
+    "smoke:odirouter:calculation": "tsx scripts/smoke-odirouter-calculation.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

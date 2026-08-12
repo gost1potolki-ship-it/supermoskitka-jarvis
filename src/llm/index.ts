@@ -5,7 +5,20 @@ export type {
   LlmRequest,
   LlmResponse,
 } from './llm-provider.js';
+export { isToolCallingLlmProvider } from './llm-provider.js';
+export type {
+  JsonSchema,
+  LlmToolCall,
+  LlmToolConversationMessage,
+  LlmToolDefinition,
+  LlmToolRequest,
+  LlmToolResponse,
+} from './tool-calling-types.js';
 export { FakeLlmProvider } from './fake-llm-provider.js';
+export {
+  FakeToolCallingLlmProvider,
+  fakeCalculateOrderCall,
+} from './fake-tool-calling-llm-provider.js';
 export {
   GeminiConfigError,
   GeminiLlmProvider,
@@ -40,6 +53,10 @@ export {
   filterTextLlmCatalogModels,
   loadOdiRouterConfig,
   mapLlmMessagesToOdiRouter,
+  mapNeutralToolCallToOdiRouter,
+  mapNeutralToolsToOdiRouter,
+  mapOdiRouterToolCallsToNeutral,
+  mapToolConversationToOdiRouter,
   OpenAiCompatibleOdiRouterClient,
   parseOdiRouterCatalogPayload,
   toOdiRouterModelShortlist,

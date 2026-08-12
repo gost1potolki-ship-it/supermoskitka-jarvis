@@ -1,9 +1,15 @@
 import type { LlmProvider, LlmRequest, LlmResponse } from '../llm-provider.js';
+import type { LlmToolRequest, LlmToolResponse } from '../tool-calling-types.js';
 
 import type { OdiRouterChatClient } from './odirouter-chat-client.js';
 import type { OdiRouterConfig } from './odirouter-config.js';
 import { OdiRouterProviderError } from './odirouter-errors.js';
-import { mapLlmMessagesToOdiRouter } from './map-llm-to-odirouter.js';
+import {
+  mapLlmMessagesToOdiRouter,
+  mapNeutralToolsToOdiRouter,
+  mapOdiRouterToolCallsToNeutral,
+  mapToolConversationToOdiRouter,
+} from './map-llm-to-odirouter.js';
 import { OpenAiCompatibleOdiRouterClient } from './openai-compatible-odirouter-client.js';
 
 /**
@@ -52,22 +58,61 @@ export class OdiRouterLlmProvider implements LlmProvider {
 
       return { text };
     } catch (error) {
-      if (error instanceof OdiRouterProviderError) {
-        throw error;
+      throw this.wrapError(error);
+    }
+  }
+
+  async generateWithTools(request: LlmToolRequest): Promise<LlmToolResponse> {
+    const messages = mapToolConversationToOdiRouter(request.messages);
+    const tools = mapNeutralToolsToOdiRouter(request.tools);
+    const toolChoice = request.toolChoice ?? 'auto';
+
+    try {
+      const output = await this.client.createChatCompletion({
+        model: this.model,
+        messages,
+        tools,
+        tool_choice: toolChoice,
+      });
+
+      const toolCalls = output.toolCalls ?? [];
+      if (toolCalls.length > 0) {
+        return {
+          type: 'tool_calls',
+          toolCalls: mapOdiRouterToolCallsToNeutral(toolCalls),
+          ...(output.text !== undefined ? { content: output.text } : {}),
+        };
       }
 
-      const status =
-        typeof error === 'object' &&
-        error !== null &&
-        'status' in error &&
-        typeof (error as { status: unknown }).status === 'number'
-          ? (error as { status: number }).status
-          : undefined;
+      const text = output.text?.trim() ?? '';
+      if (text === '') {
+        throw new OdiRouterProviderError('EMPTY_RESPONSE', 'OdiRouter returned an empty response', {
+          model: this.model,
+        });
+      }
 
-      throw new OdiRouterProviderError('API_ERROR', 'OdiRouter API request failed', {
-        model: this.model,
-        ...(status !== undefined ? { status } : {}),
-      });
+      return { type: 'text', text };
+    } catch (error) {
+      throw this.wrapError(error);
     }
+  }
+
+  private wrapError(error: unknown): OdiRouterProviderError {
+    if (error instanceof OdiRouterProviderError) {
+      return error;
+    }
+
+    const status =
+      typeof error === 'object' &&
+      error !== null &&
+      'status' in error &&
+      typeof (error as { status: unknown }).status === 'number'
+        ? (error as { status: number }).status
+        : undefined;
+
+    return new OdiRouterProviderError('API_ERROR', 'OdiRouter API request failed', {
+      model: this.model,
+      ...(status !== undefined ? { status } : {}),
+    });
   }
 }
