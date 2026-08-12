@@ -18,6 +18,10 @@ export {
   loadKnowledgeBase,
 } from './knowledge-loader.js';
 
+export { buildKnowledgeContext } from './knowledge-context-builder.js';
+
+export { KnowledgeSystemPromptProvider } from './knowledge-system-prompt-provider.js';
+
 export {
   KnowledgeValidationError,
   buildKnowledgeRules,

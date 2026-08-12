@@ -1,6 +1,7 @@
 import type { Conversation } from '../src/domain/conversation.js';
 import type { Message } from '../src/domain/message.js';
 import { ConversationOrchestrator } from '../src/jarvis/conversation/index.js';
+import { FakeSystemPromptProvider } from '../src/jarvis/fake-system-prompt-provider.js';
 import { FakeLlmProvider } from '../src/llm/index.js';
 import { InMemoryConversationStore } from '../src/storage/index.js';
 import { describe, expect, it } from 'vitest';
@@ -37,7 +38,8 @@ describe('ConversationOrchestrator', () => {
     const store = new InMemoryConversationStore();
     await seedConversation(store, { mode: 'AI' });
     const llm = new FakeLlmProvider('Тестовый ответ Jarvis');
-    const orchestrator = new ConversationOrchestrator(store, llm);
+    const systemPrompt = new FakeSystemPromptProvider('SYSTEM PROMPT');
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
 
     const result = await orchestrator.handleIncomingMessage({
       conversationId: 'conv-1',
@@ -58,8 +60,10 @@ describe('ConversationOrchestrator', () => {
     expect(result.aiMessage.text).toBe('Тестовый ответ Jarvis');
 
     expect(llm.requests).toHaveLength(1);
+    expect(systemPrompt.calls).toBe(1);
     expect(llm.requests[0]?.conversationId).toBe('conv-1');
     expect(llm.requests[0]?.messages).toEqual([
+      { role: 'system', content: 'SYSTEM PROMPT' },
       {
         role: 'user',
         content: 'Здравствуйте, сколько стоит москитная сетка?',
@@ -70,11 +74,12 @@ describe('ConversationOrchestrator', () => {
     expect(stored.map((message) => message.sender)).toEqual(['CUSTOMER', 'AI']);
   });
 
-  it('Case B — HUMAN mode stores customer message and does not call LLM', async () => {
+  it('Case B / ORCH-KB-3 — HUMAN mode does not call system prompt or LLM', async () => {
     const store = new InMemoryConversationStore();
     await seedConversation(store, { mode: 'HUMAN' });
     const llm = new FakeLlmProvider('не должен появиться');
-    const orchestrator = new ConversationOrchestrator(store, llm);
+    const systemPrompt = new FakeSystemPromptProvider('SYSTEM PROMPT');
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
 
     const result = await orchestrator.handleIncomingMessage({
       conversationId: 'conv-1',
@@ -93,13 +98,14 @@ describe('ConversationOrchestrator', () => {
       }),
     });
     expect(llm.requests).toHaveLength(0);
+    expect(systemPrompt.calls).toBe(0);
 
     const stored = await store.getMessages('conv-1');
     expect(stored).toHaveLength(1);
     expect(stored[0]?.sender).toBe('CUSTOMER');
   });
 
-  it('Case C — LLM receives full multi-turn history in order', async () => {
+  it('Case C / ORCH-KB-2 — LLM receives system prompt then full history', async () => {
     const store = new InMemoryConversationStore();
     await seedConversation(store, { mode: 'AI' });
     await appendHistory(store, [
@@ -127,7 +133,8 @@ describe('ConversationOrchestrator', () => {
     ]);
 
     const llm = new FakeLlmProvider('Тестовый ответ Jarvis');
-    const orchestrator = new ConversationOrchestrator(store, llm);
+    const systemPrompt = new FakeSystemPromptProvider('SYSTEM PROMPT');
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
 
     await orchestrator.handleIncomingMessage({
       conversationId: 'conv-1',
@@ -138,6 +145,7 @@ describe('ConversationOrchestrator', () => {
 
     expect(llm.requests).toHaveLength(1);
     expect(llm.requests[0]?.messages).toEqual([
+      { role: 'system', content: 'SYSTEM PROMPT' },
       { role: 'user', content: 'Нужна сетка' },
       { role: 'assistant', content: 'На какое окно?' },
       { role: 'user', content: 'На балконную дверь' },
@@ -145,7 +153,7 @@ describe('ConversationOrchestrator', () => {
     ]);
   });
 
-  it('Case D — HUMAN history messages map to assistant role', async () => {
+  it('Case D — HUMAN history messages map to assistant role after system prompt', async () => {
     const store = new InMemoryConversationStore();
     await seedConversation(store, { mode: 'AI' });
     await appendHistory(store, [
@@ -173,7 +181,8 @@ describe('ConversationOrchestrator', () => {
     ]);
 
     const llm = new FakeLlmProvider('Тестовый ответ Jarvis');
-    const orchestrator = new ConversationOrchestrator(store, llm);
+    const systemPrompt = new FakeSystemPromptProvider('SYSTEM PROMPT');
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
 
     await orchestrator.handleIncomingMessage({
       conversationId: 'conv-1',
@@ -183,10 +192,81 @@ describe('ConversationOrchestrator', () => {
     });
 
     expect(llm.requests[0]?.messages).toEqual([
+      { role: 'system', content: 'SYSTEM PROMPT' },
       { role: 'user', content: 'Нужна сетка на дверь' },
       { role: 'assistant', content: 'Уточните размер' },
       { role: 'assistant', content: 'Мы уже замерили — 900 на 2100' },
       { role: 'user', content: 'Сколько будет стоить?' },
     ]);
+  });
+
+  it('ORCH-KB-1 — system prompt is the first LLM message', async () => {
+    const store = new InMemoryConversationStore();
+    await seedConversation(store);
+    const llm = new FakeLlmProvider('ok');
+    const systemPrompt = new FakeSystemPromptProvider('PROMPT A');
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
+
+    await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'msg-1',
+      text: 'Нужна одна сетка',
+    });
+
+    expect(llm.requests[0]?.messages[0]).toEqual({
+      role: 'system',
+      content: 'PROMPT A',
+    });
+  });
+
+  it('ORCH-KB-4 — runtime system prompt is not stored in ConversationStore', async () => {
+    const store = new InMemoryConversationStore();
+    await seedConversation(store);
+    const llm = new FakeLlmProvider('AI reply');
+    const systemPrompt = new FakeSystemPromptProvider(
+      'SECRET KNOWLEDGE PROMPT THAT MUST NOT BE PERSISTED',
+    );
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
+
+    await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'msg-1',
+      text: 'Здравствуйте',
+    });
+
+    const stored = await store.getMessages('conv-1');
+    expect(stored.map((message) => message.sender)).toEqual(['CUSTOMER', 'AI']);
+    expect(
+      stored.some((message) => message.text.includes('SECRET KNOWLEDGE PROMPT')),
+    ).toBe(false);
+  });
+
+  it('ORCH-KB-5 — next AI call uses the updated system prompt', async () => {
+    const store = new InMemoryConversationStore();
+    await seedConversation(store);
+    const llm = new FakeLlmProvider('ok');
+    const systemPrompt = new FakeSystemPromptProvider('PROMPT V1');
+    const orchestrator = new ConversationOrchestrator(store, llm, systemPrompt);
+
+    await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'msg-1',
+      text: 'Первый вопрос',
+      createdAt: '2026-08-12T10:00:01.000Z',
+    });
+
+    systemPrompt.prompt = 'PROMPT V2';
+
+    await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'msg-2',
+      text: 'Второй вопрос',
+      createdAt: '2026-08-12T10:00:02.000Z',
+    });
+
+    expect(llm.requests).toHaveLength(2);
+    expect(llm.requests[0]?.messages[0]?.content).toBe('PROMPT V1');
+    expect(llm.requests[1]?.messages[0]?.content).toBe('PROMPT V2');
+    expect(systemPrompt.calls).toBe(2);
   });
 });

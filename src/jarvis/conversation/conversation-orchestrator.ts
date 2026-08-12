@@ -6,6 +6,8 @@ import type { Message } from '../../domain/message.js';
 import type { LlmProvider } from '../../llm/llm-provider.js';
 import type { ConversationStore } from '../../storage/conversation-store.js';
 
+import type { SystemPromptProvider } from '../system-prompt-provider.js';
+
 import { mapMessagesToLlm } from './map-messages-to-llm.js';
 
 export interface IncomingCustomerMessageInput {
@@ -34,6 +36,7 @@ export class ConversationOrchestrator {
   constructor(
     private readonly store: ConversationStore,
     private readonly llm: LlmProvider,
+    private readonly systemPromptProvider: SystemPromptProvider,
   ) {}
 
   async handleIncomingMessage(
@@ -71,9 +74,16 @@ export class ConversationOrchestrator {
     }
 
     const history = await this.store.getMessages(conversation.conversationId);
+    const systemPrompt = await this.systemPromptProvider.getSystemPrompt();
     const llmResponse = await this.llm.generate({
       conversationId: conversation.conversationId,
-      messages: mapMessagesToLlm(history),
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        ...mapMessagesToLlm(history),
+      ],
     });
 
     const replyText = llmResponse.text.trim();
@@ -81,13 +91,17 @@ export class ConversationOrchestrator {
       throw new InvalidOperationError('LLM returned an empty response');
     }
 
+    const aiCreatedAt = new Date(
+      Math.max(Date.now(), Date.parse(customerMessage.createdAt) + 1),
+    ).toISOString();
+
     const aiMessage = await this.store.appendMessage({
       messageId: randomUUID(),
       conversationId: conversation.conversationId,
       channel: conversation.channel,
       sender: 'AI',
       text: replyText,
-      createdAt: new Date().toISOString(),
+      createdAt: aiCreatedAt,
     });
 
     return {
