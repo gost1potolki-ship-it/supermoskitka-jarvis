@@ -36,6 +36,7 @@ export {
   LEGACY_PARITY_BUSINESS_RULES,
   LEGACY_PARITY_BUSINESS_RULES_VERSION,
   resolveFrameAssemblyLabor,
+  resolvePlisseMeshPriceReference,
 } from './business-rules.js';
 
 export { StaticPriceCatalogProvider } from './price-catalog-provider.js';
@@ -43,12 +44,20 @@ export { SuperMoskitkaCalculationEngine } from './supermoskitka-calculation-engi
 export {
   LegacyMappingError,
   mapColor,
+  mapCornerType,
+  mapFrameFastening,
+  mapHandleType,
   mapMeshType,
+  mapOpening,
+  mapThreshold,
   mapCalculationItemToLegacy,
 } from './legacy/legacy-input-mapper.js';
 export {
+  DOOR_32_PRICING_GAP_WARNING,
+  collectInvalidEnumFields,
   collectInvalidNumericFields,
   collectMissingFields,
   collectRequestValidationFields,
+  isDoor32CurrentPricingGap,
   isSupportedProductType,
 } from './validation.js';

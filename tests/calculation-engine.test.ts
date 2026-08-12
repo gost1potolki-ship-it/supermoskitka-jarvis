@@ -200,7 +200,7 @@ describe('Calculation Engine (public contract)', () => {
   it('CALC-9 priceVersion comes from PriceCatalogProvider', async () => {
     const result = await createLegacyEngine().calculate(itemRequest('FRAME'));
     expect(result.priceVersion).toBe(PRICE_VERSION);
-    expect(result.calculationVersion).toBe('supermoskitka-calculation-v1.1');
+    expect(result.calculationVersion).toBe('supermoskitka-calculation-v1.2');
     expect(result.businessRulesVersion).toBe(LEGACY_PARITY_BUSINESS_RULES_VERSION);
   });
 
@@ -245,6 +245,9 @@ describe('Calculation parity with calc_v2 (historical)', () => {
         expect(result.orderBreakdown?.deliveryCost).toBe(parityCase.expected.deliveryCost);
         expect(result.orderBreakdown?.measurementFee).toBe(parityCase.expected.measurementFee);
         expect(result.orderBreakdown?.discountPercent).toBe(parityCase.expected.discountPercent);
+        if (parityCase.expected.discountAmount !== undefined) {
+          expect(result.orderBreakdown?.discountAmount).toBe(parityCase.expected.discountAmount);
+        }
         expect(result.orderBreakdown?.paymentSurcharge).toBe(parityCase.expected.paymentSurcharge);
       }
     });

@@ -132,6 +132,30 @@ rules:
         source: *a1
         createdAt: 2026-08-12T00:00:00.000Z
         approvedAt: 2026-08-12T00:00:00.000Z
+  - id: SM-PROD-008
+    title: "ПЛИССЕ — полотно Антимошка"
+    category: products
+    status: approved
+    activeVersion: 1
+    tags:
+      - plisse
+      - mesh
+      - antimoshka
+    versions:
+      - version: 1
+        condition: ПЛИССЕ и полотно Антимошка
+        instruction: >-
+          Для ПЛИССЕ доступно полотно Антимошка.
+          Не считать эту конфигурацию недоступной.
+          Цена определяется Calculation Engine.
+
+          По текущему правилу расчёта цена полотна Антимошка для ПЛИССЕ равна цене полотна Антипыль.
+          Это ценовое равенство, а не утверждение, что Антимошка и Антипыль — одно и то же полотно.
+        source:
+          type: owner
+          reference: owner-clarification-2026-08-12-plisse-antimoshka
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
   - id: SM-PROD-010
     title: Standard
     category: products
@@ -297,7 +321,7 @@ rules:
     title: Базовые цвета
     category: products
     status: approved
-    activeVersion: 1
+    activeVersion: 2
     tags:
       - color
     versions:
@@ -310,6 +334,25 @@ rules:
           серый RAL 7016.
           Другие цвета — индивидуальная порошковая окраска по RAL.
         source: *a1
+        createdAt: 2026-08-12T00:00:00.000Z
+        approvedAt: 2026-08-12T00:00:00.000Z
+      - version: 2
+        condition: выбор цвета профиля
+        instruction: |-
+          Базовые цвета профиля:
+          белый,
+          коричневый RAL 8017,
+          серый RAL 7016.
+          Другие цвета — индивидуальная порошковая окраска по RAL.
+
+          Базовый серый цвет — серый RAL 7016.
+          В бизнес-смысле названия «серый», «gray», «антрацит»,
+          «anthracite», «RAL 7016» и «7016» относятся к одному цвету.
+          В обычной клиентской переписке использовать название «серый».
+          RAL 7016 использовать, когда нужна техническая точность.
+        source:
+          type: owner
+          reference: owner-clarification-2026-08-12-gray-7016
         createdAt: 2026-08-12T00:00:00.000Z
         approvedAt: 2026-08-12T00:00:00.000Z
   - id: SM-PROD-031

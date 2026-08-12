@@ -106,6 +106,37 @@ describe('Knowledge Base loader', () => {
     });
   });
 
+  it('KB-COLOR-1 SM-PROD-030 active version equates gray/anthracite/RAL 7016', async () => {
+    const kb = await loadKnowledgeBase(knowledgeRoot);
+    const rule = kb.getRuleById('SM-PROD-030');
+    expect(rule?.activeVersion).toBe(2);
+    expect(rule?.versions).toHaveLength(2);
+    const active = getActiveRuleVersion(rule!);
+    expect(active.instruction).toMatch(/серый/i);
+    expect(active.instruction).toMatch(/антрацит/i);
+    expect(active.instruction).toMatch(/gray/i);
+    expect(active.instruction).toMatch(/anthracite/i);
+    expect(active.instruction).toMatch(/RAL 7016/);
+    expect(active.instruction).toMatch(/одному цвету/);
+    expect(active.source).toEqual({
+      type: 'owner',
+      reference: 'owner-clarification-2026-08-12-gray-7016',
+    });
+  });
+
+  it('KB-PLISSE-1 SM-PROD-008 approves PLISSE Antimoshka', async () => {
+    const kb = await loadKnowledgeBase(knowledgeRoot);
+    const rule = kb.getRuleById('SM-PROD-008');
+    expect(rule?.status).toBe('approved');
+    const active = getActiveRuleVersion(rule!);
+    expect(active.instruction).toContain('Антимошка');
+    expect(active.instruction).toContain('Не считать эту конфигурацию недоступной');
+    expect(active.source).toEqual({
+      type: 'owner',
+      reference: 'owner-clarification-2026-08-12-plisse-antimoshka',
+    });
+  });
+
   it('KB-9 duplicate rule ID fails with a clear error', () => {
     const base = parseKnowledgeRule({
       id: 'DUP-1',

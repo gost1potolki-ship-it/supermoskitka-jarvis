@@ -5,7 +5,7 @@
 
 import type { LegacyPriceCatalog } from './legacy/embedded-default-prices.js';
 
-export const CALCULATION_ENGINE_VERSION = 'supermoskitka-calculation-v1.1';
+export const CALCULATION_ENGINE_VERSION = 'supermoskitka-calculation-v1.2';
 
 export type CalculationCustomerType = 'retail' | 'dealer' | 'corporate';
 
@@ -37,6 +37,10 @@ export type CalculationColor =
 
 export type PriceCatalog = LegacyPriceCatalog;
 
+export type CalculationMeshPriceReference = Partial<
+  Record<CalculationMeshType, CalculationMeshType>
+>;
+
 export interface CurrentCalculationBusinessRules {
   assemblyLabor: {
     frame: {
@@ -53,6 +57,11 @@ export interface CurrentCalculationBusinessRules {
   /** When false, engine uses catalog prices as-is (historical PARITY mode). */
   applyLaborOverrides: boolean;
   applyRegionalDeliveryOverride: boolean;
+  /**
+   * Price-only references for PLISSE mesh unit cost.
+   * Does not change product identity (ANTIMOSHKA stays ANTIMOSHKA).
+   */
+  plisseMeshPriceReference: CalculationMeshPriceReference;
 }
 
 export interface PriceCatalogSnapshot {

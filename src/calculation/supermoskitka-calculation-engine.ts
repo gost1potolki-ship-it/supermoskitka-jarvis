@@ -18,9 +18,12 @@ import {
 } from './legacy/legacy-input-mapper.js';
 import { calculateOrderTotals } from './legacy/order-totals.js';
 import {
+  DOOR_32_PRICING_GAP_WARNING,
+  collectInvalidEnumFields,
   collectInvalidNumericFields,
   collectMissingFields,
   collectRequestValidationFields,
+  isDoor32CurrentPricingGap,
   isSupportedProductType,
 } from './validation.js';
 
@@ -70,7 +73,7 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
     }
 
     for (const item of request.items) {
-      if (!isSupportedProductType(item.productType)) {
+      if (!isSupportedProductType(String(item.productType))) {
         return outcome(
           'unsupported',
           catalog,
@@ -81,8 +84,24 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
         );
       }
 
+      if (isDoor32CurrentPricingGap(item)) {
+        return outcome(
+          'unsupported',
+          catalog,
+          [],
+          null,
+          [DOOR_32_PRICING_GAP_WARNING],
+          [`items[${item.itemId}].doorProfile`],
+        );
+      }
+
       missingFields.push(...collectMissingFields(item));
       for (const field of collectInvalidNumericFields(item)) {
+        if (!missingFields.includes(field)) {
+          missingFields.push(field);
+        }
+      }
+      for (const field of collectInvalidEnumFields(item)) {
         if (!missingFields.includes(field)) {
           missingFields.push(field);
         }
@@ -105,7 +124,7 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
         const { prices, warnings: overrideWarnings } = applyCurrentOverrides(catalog, item);
         warnings.push(...overrideWarnings);
 
-        const mapped = mapCalculationItemToLegacy(item, prices);
+        const mapped = mapCalculationItemToLegacy(item, prices, catalog.businessRules);
         warnings.push(...mapped.warnings);
 
         const priced = calculatePrice(
@@ -152,8 +171,11 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
         });
       } catch (error) {
         if (error instanceof LegacyMappingError) {
+          const status = error.message.includes('CURRENT_PRICING_GAP')
+            ? 'unsupported'
+            : 'needs_input';
           return outcome(
-            'needs_input',
+            status,
             catalog,
             [],
             null,
