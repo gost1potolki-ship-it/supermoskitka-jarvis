@@ -1,6 +1,6 @@
 /**
- * Manual live smoke for Gemini Developer API through Jarvis pipeline.
- * Not part of `npm test`. Requires GEMINI_API_KEY + GEMINI_MODEL.
+ * Manual live smoke for DeepSeek API through Jarvis pipeline.
+ * Not part of `npm test`. Requires DEEPSEEK_API_KEY + DEEPSEEK_MODEL.
  */
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -9,12 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { config as loadEnv } from 'dotenv';
 
 import { ConversationOrchestrator } from '../src/jarvis/conversation/index.js';
-import {
-  GeminiConfigError,
-  GeminiLlmProvider,
-  loadGeminiConfig,
-} from '../src/llm/index.js';
 import { KnowledgeSystemPromptProvider } from '../src/knowledge/index.js';
+import {
+  DeepSeekConfigError,
+  DeepSeekLlmProvider,
+  DeepSeekProviderError,
+  loadDeepSeekConfig,
+} from '../src/llm/index.js';
 import { InMemoryConversationStore } from '../src/storage/index.js';
 
 loadEnv();
@@ -22,12 +23,12 @@ loadEnv();
 async function main(): Promise<void> {
   let config;
   try {
-    config = loadGeminiConfig();
+    config = loadDeepSeekConfig();
   } catch (error) {
-    if (error instanceof GeminiConfigError) {
+    if (error instanceof DeepSeekConfigError) {
       console.error(error.message);
       console.error(
-        'Set GEMINI_API_KEY and GEMINI_MODEL in .env (see .env.example), then re-run: npm run smoke:gemini',
+        'Set DEEPSEEK_API_KEY and DEEPSEEK_MODEL in .env (see .env.example), then re-run: npm run smoke:deepseek',
       );
       process.exitCode = 1;
       return;
@@ -40,7 +41,7 @@ async function main(): Promise<void> {
     '../knowledge',
   );
   const store = new InMemoryConversationStore();
-  const llm = new GeminiLlmProvider(config);
+  const llm = new DeepSeekLlmProvider(config);
   const orchestrator = new ConversationOrchestrator(
     store,
     llm,
@@ -61,7 +62,7 @@ async function main(): Promise<void> {
   const result = await orchestrator.handleIncomingMessage({
     conversationId,
     messageId: randomUUID(),
-    text: 'Какие виды москитных сеток Вы можете предложить?',
+    text: 'Какие москитные сетки Вы можете предложить?',
   });
 
   if (result.status !== 'ai_replied') {
@@ -80,14 +81,25 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log('provider: gemini');
+  console.log('provider: deepseek');
   console.log(`model: ${config.model}`);
-  console.log('response text:');
+  console.log('response:');
   console.log(result.replyText);
-  console.log('SMOKE PASS');
+  console.log('SMOKE: PASS');
 }
 
 main().catch((error: unknown) => {
+  if (error instanceof DeepSeekProviderError) {
+    console.error('SMOKE FAIL:', error.message);
+    if (error.status !== undefined) {
+      console.error('status:', error.status);
+    }
+    if (error.model !== undefined) {
+      console.error('model:', error.model);
+    }
+    process.exitCode = 1;
+    return;
+  }
   const message = error instanceof Error ? error.message : 'Unknown smoke failure';
   console.error('SMOKE FAIL:', message);
   process.exitCode = 1;

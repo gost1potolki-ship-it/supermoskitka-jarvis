@@ -7,6 +7,7 @@ HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separ
 - `docs/JARVIS_CORE_V1.md` — общая архитектурная спецификация Jarvis V1
 - `AGENTS.md` — обязательные правила работы AI coding agents / Cursor
 - `docs/GEMINI_PROVIDER.md` — Gemini Developer API provider (`LlmProvider` adapter)
+- `docs/DEEPSEEK_PROVIDER.md` — DeepSeek API provider (`LlmProvider` adapter)
 
 ## Requirements
 
@@ -27,6 +28,7 @@ npm install
 | `npm run dev` | Start the API with hot reload |
 | `npm test` | Run unit tests once |
 | `npm run smoke:gemini` | Manual live Gemini smoke (requires API key; not in `npm test`) |
+| `npm run smoke:deepseek` | Manual live DeepSeek smoke (requires API key; not in `npm test`) |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run the compiled server |
 
@@ -75,3 +77,4 @@ Environment variables (see `.env.example`):
 - `PORT` — HTTP listen port
 - `LOG_LEVEL` — `debug` | `info` | `warn` | `error`
 - `GEMINI_API_KEY` / `GEMINI_MODEL` — optional until Gemini provider is used (see `docs/GEMINI_PROVIDER.md`)
+- `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` — optional until DeepSeek provider is used (see `docs/DEEPSEEK_PROVIDER.md`)

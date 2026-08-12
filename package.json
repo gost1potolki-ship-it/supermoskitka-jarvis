@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke:gemini": "tsx scripts/smoke-gemini.ts",
+    "smoke:deepseek": "tsx scripts/smoke-deepseek.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -23,6 +24,7 @@
     "@google/genai": "^2.16.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "openai": "^7.4.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
