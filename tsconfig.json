@@ -19,5 +19,5 @@
     "noFallthroughCasesInSwitch": true,
     "noEmit": true
   },
-  "include": ["src/**/*", "tests/**/*", "vitest.config.ts", "eslint.config.js", "prettier.config.js"]
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "vitest.config.ts", "eslint.config.js", "prettier.config.js"]
 }
