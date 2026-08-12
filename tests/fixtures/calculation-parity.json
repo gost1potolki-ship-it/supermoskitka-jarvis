@@ -1,0 +1,363 @@
+{
+  "cases": [
+    {
+      "caseId": "PARITY-001",
+      "description": "FRAME Standard 1000x1500",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "item",
+      "input": {
+        "productType": "FRAME",
+        "widthMm": 1000,
+        "heightMm": 1500,
+        "color": "white",
+        "meshType": "standard",
+        "quantity": 1,
+        "fastening": "z_metal",
+        "frameProfile": "25"
+      },
+      "expected": {
+        "total": 1790,
+        "install": 800
+      }
+    },
+    {
+      "caseId": "PARITY-002",
+      "description": "FRAME Anticat 1000x1500",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "item",
+      "input": {
+        "productType": "FRAME",
+        "widthMm": 1000,
+        "heightMm": 1500,
+        "color": "white",
+        "meshType": "anticat",
+        "quantity": 1,
+        "fastening": "z_metal",
+        "frameProfile": "25"
+      },
+      "expected": {
+        "total": 3320,
+        "install": 800
+      }
+    },
+    {
+      "caseId": "PARITY-003",
+      "description": "WING Krylo 800x1400",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "item",
+      "input": {
+        "productType": "WING",
+        "widthMm": 800,
+        "heightMm": 1400,
+        "color": "white",
+        "meshType": "standard",
+        "quantity": 1,
+        "fastening": "z_metal"
+      },
+      "expected": {
+        "total": 1860,
+        "install": 800
+      }
+    },
+    {
+      "caseId": "PARITY-004",
+      "description": "DOOR 900x2100 profile 42 no bolt",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "item",
+      "input": {
+        "productType": "DOOR",
+        "widthMm": 900,
+        "heightMm": 2100,
+        "color": "white",
+        "meshType": "standard",
+        "quantity": 1,
+        "fastening": "z_metal",
+        "doorProfile": "42",
+        "hingesCount": 3,
+        "hasLatch": true
+      },
+      "expected": {
+        "total": 9270,
+        "install": 1000
+      }
+    },
+    {
+      "caseId": "PARITY-005",
+      "description": "PLISSE_NET side 1000x2000",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "item",
+      "input": {
+        "productType": "PLISSE_NET",
+        "widthMm": 1000,
+        "heightMm": 2000,
+        "color": "white",
+        "meshType": "standard",
+        "quantity": 1,
+        "openingType": "side",
+        "thresholdType": "standard",
+        "handlesCount": 2
+      },
+      "expected": {
+        "total": 15830,
+        "install": 1000
+      }
+    },
+    {
+      "caseId": "PARITY-006",
+      "description": "PLISSE_NET counter 1600x2000",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "item",
+      "input": {
+        "productType": "PLISSE_NET",
+        "widthMm": 1600,
+        "heightMm": 2000,
+        "color": "white",
+        "meshType": "standard",
+        "quantity": 1,
+        "openingType": "counter",
+        "thresholdType": "standard",
+        "handlesCount": 4
+      },
+      "expected": {
+        "total": 27580,
+        "install": 2000
+      }
+    },
+    {
+      "caseId": "PARITY-007",
+      "description": "Order totals city + install + measurement",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "order",
+      "input": {
+        "customerType": "retail",
+        "items": [
+          {
+            "itemId": "item-1",
+            "productType": "FRAME",
+            "widthMm": 1000,
+            "heightMm": 1500,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal",
+            "frameProfile": "25"
+          },
+          {
+            "itemId": "item-2",
+            "productType": "WING",
+            "widthMm": 800,
+            "heightMm": 1400,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal"
+          }
+        ],
+        "delivery": {
+          "type": "city"
+        },
+        "installation": {
+          "enabled": true
+        },
+        "measurement": {
+          "includeFee": true
+        },
+        "discount": {
+          "percent": 0
+        },
+        "payment": {
+          "method": "cash"
+        }
+      },
+      "expected": {
+        "itemsBasePrice": 3650,
+        "installTotal": 1000,
+        "deliveryCost": 1000,
+        "measurementFee": 1000,
+        "discountPercent": 0,
+        "paymentSurcharge": 0,
+        "grandTotal": 6650
+      }
+    },
+    {
+      "caseId": "PARITY-008",
+      "description": "Order totals out-of-city 25km",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "order",
+      "input": {
+        "customerType": "retail",
+        "items": [
+          {
+            "itemId": "item-1",
+            "productType": "FRAME",
+            "widthMm": 1000,
+            "heightMm": 1500,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal",
+            "frameProfile": "25"
+          },
+          {
+            "itemId": "item-2",
+            "productType": "WING",
+            "widthMm": 800,
+            "heightMm": 1400,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal"
+          }
+        ],
+        "delivery": {
+          "type": "out",
+          "distanceKm": 25
+        },
+        "installation": {
+          "enabled": true
+        },
+        "measurement": {
+          "includeFee": false
+        },
+        "discount": {
+          "percent": 0
+        },
+        "payment": {
+          "method": "cash"
+        }
+      },
+      "expected": {
+        "itemsBasePrice": 3650,
+        "installTotal": 1000,
+        "deliveryCost": 2250,
+        "measurementFee": 0,
+        "discountPercent": 0,
+        "paymentSurcharge": 0,
+        "grandTotal": 6900
+      }
+    },
+    {
+      "caseId": "PARITY-009",
+      "description": "Order totals discount 10%",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "order",
+      "input": {
+        "customerType": "retail",
+        "items": [
+          {
+            "itemId": "item-1",
+            "productType": "FRAME",
+            "widthMm": 1000,
+            "heightMm": 1500,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal",
+            "frameProfile": "25"
+          },
+          {
+            "itemId": "item-2",
+            "productType": "WING",
+            "widthMm": 800,
+            "heightMm": 1400,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal"
+          }
+        ],
+        "delivery": {
+          "type": "city"
+        },
+        "installation": {
+          "enabled": true
+        },
+        "measurement": {
+          "includeFee": true
+        },
+        "discount": {
+          "percent": 10
+        },
+        "payment": {
+          "method": "cash"
+        }
+      },
+      "expected": {
+        "itemsBasePrice": 3650,
+        "installTotal": 1000,
+        "deliveryCost": 1000,
+        "measurementFee": 1000,
+        "discountPercent": 10,
+        "discountAmount": 660,
+        "paymentSurcharge": 0,
+        "grandTotal": 5990
+      }
+    },
+    {
+      "caseId": "PARITY-010",
+      "description": "Order totals QR payment surcharge 8%",
+      "legacySourceCommit": "66465b172c105dc259c2772e1c872b2e10e521c9",
+      "priceSnapshotVersion": "calc_v2-constants-PRICES@66465b1",
+      "kind": "order",
+      "input": {
+        "customerType": "retail",
+        "items": [
+          {
+            "itemId": "item-1",
+            "productType": "FRAME",
+            "widthMm": 1000,
+            "heightMm": 1500,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal",
+            "frameProfile": "25"
+          },
+          {
+            "itemId": "item-2",
+            "productType": "WING",
+            "widthMm": 800,
+            "heightMm": 1400,
+            "color": "white",
+            "meshType": "standard",
+            "quantity": 1,
+            "fastening": "z_metal"
+          }
+        ],
+        "delivery": {
+          "type": "city"
+        },
+        "installation": {
+          "enabled": true
+        },
+        "measurement": {
+          "includeFee": true
+        },
+        "discount": {
+          "percent": 0
+        },
+        "payment": {
+          "method": "qr"
+        }
+      },
+      "expected": {
+        "itemsBasePrice": 3650,
+        "installTotal": 1000,
+        "deliveryCost": 1000,
+        "measurementFee": 1000,
+        "discountPercent": 0,
+        "paymentSurcharge": 530,
+        "grandTotal": 7180
+      }
+    }
+  ]
+}
