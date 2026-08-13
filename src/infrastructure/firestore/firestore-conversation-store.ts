@@ -8,6 +8,7 @@ import {
   type Message,
 } from '../../domain/index.js';
 import type { ConversationStore } from '../../storage/conversation-store.js';
+import { maxIsoTimestamp } from '../../storage/max-iso-timestamp.js';
 
 import {
   JARVIS_CONVERSATIONS_COLLECTION,
@@ -60,7 +61,7 @@ export class FirestoreConversationStore implements ConversationStore {
       }
       const decoded = decodeConversationDocument(existing);
       const expected = conversation.revision;
-      if (expected !== undefined && expected !== decoded.revision) {
+      if (expected === undefined || expected === 0 || expected !== decoded.revision) {
         throw new PersistenceConflictError(
           `Conversation revision conflict for ${conversation.conversationId}`,
         );
@@ -101,7 +102,11 @@ export class FirestoreConversationStore implements ConversationStore {
       });
       const revision = decoded.revision + 1;
       const { revision: _ignored, ...conversation } = decoded.conversation;
-      const doc = buildConversationDocument(conversation, messages, revision);
+      const updatedConversation = {
+        ...conversation,
+        updatedAt: maxIsoTimestamp(conversation.updatedAt, message.createdAt),
+      };
+      const doc = buildConversationDocument(updatedConversation, messages, revision);
       assertSerializedSize(doc, 'conversation');
       tx.set(JARVIS_CONVERSATIONS_COLLECTION, message.conversationId, doc);
       return { ...message };

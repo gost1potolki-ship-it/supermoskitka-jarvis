@@ -9,6 +9,7 @@ import {
 import type { Message } from '../domain/message.js';
 
 import type { ConversationStore } from './conversation-store.js';
+import { maxIsoTimestamp } from './max-iso-timestamp.js';
 
 function compareMessages(a: Message, b: Message): number {
   const byTime = a.createdAt.localeCompare(b.createdAt);
@@ -46,7 +47,8 @@ export class InMemoryConversationStore implements ConversationStore {
     }
 
     const currentRevision = existing.revision ?? 0;
-    if (conversation.revision !== undefined && conversation.revision !== currentRevision) {
+    const expected = conversation.revision;
+    if (expected === undefined || expected === 0 || expected !== currentRevision) {
       throw new PersistenceConflictError(
         `Conversation revision conflict for ${conversation.conversationId}`,
       );
@@ -88,7 +90,7 @@ export class InMemoryConversationStore implements ConversationStore {
       this.conversations.set(message.conversationId, {
         ...conversation,
         revision: (conversation.revision ?? 0) + 1,
-        updatedAt: message.createdAt,
+        updatedAt: maxIsoTimestamp(conversation.updatedAt, message.createdAt),
       });
     }
 

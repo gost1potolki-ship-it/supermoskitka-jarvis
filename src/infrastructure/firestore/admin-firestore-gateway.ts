@@ -8,9 +8,20 @@ import type {
   JarvisFirestoreTransaction,
 } from './firestore-gateway.js';
 import { assertJarvisCollectionName, assertSafeDocumentId } from './constants.js';
+import { resolveJarvisFirebaseApp } from './firebase-app-resolve.js';
 
 function toPlain(data: Record<string, unknown>): FirestorePlainObject {
   return JSON.parse(JSON.stringify(data)) as FirestorePlainObject;
+}
+
+function buildCredential(config: JarvisFirestoreConfig) {
+  return config.clientEmail && config.privateKey
+    ? cert({
+        projectId: config.projectId,
+        clientEmail: config.clientEmail,
+        privateKey: config.privateKey,
+      })
+    : applicationDefault();
 }
 
 /**
@@ -21,21 +32,19 @@ export class AdminFirestoreGateway implements JarvisFirestoreGateway {
   private readonly db: Firestore;
 
   constructor(config: JarvisFirestoreConfig, app?: App) {
-    const existing = getApps()[0];
-    const resolvedApp =
-      app ??
-      existing ??
-      initializeApp({
-        credential:
-          config.clientEmail && config.privateKey
-            ? cert({
-                projectId: config.projectId,
-                clientEmail: config.clientEmail,
-                privateKey: config.privateKey,
-              })
-            : applicationDefault(),
-        projectId: config.projectId,
-      });
+    const resolvedApp = resolveJarvisFirebaseApp(
+      config,
+      getApps(),
+      (appName) =>
+        initializeApp(
+          {
+            credential: buildCredential(config),
+            projectId: config.projectId,
+          },
+          appName,
+        ),
+      app,
+    );
     this.db = getFirestore(resolvedApp);
   }
 

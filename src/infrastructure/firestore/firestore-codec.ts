@@ -229,12 +229,16 @@ function decodeOrderChange(value: unknown, path: string): OrderChange {
   if (!ITEM_FIELD_SET.has(field)) {
     fail(`Invalid OrderChange.field at ${path}`);
   }
+  const itemField = field as OrderItemFactField;
+  // Both values use the same field-specific semantics as OrderItem facts (fail closed).
+  const oldValue = decodeItemFieldValue(itemField, value.oldValue, `${path}.oldValue`);
+  const newValue = decodeItemFieldValue(itemField, value.newValue, `${path}.newValue`);
   return {
     type: 'FIELD_CHANGED',
     orderItemId: requireString(value.orderItemId, `${path}.orderItemId`),
-    field: field as OrderItemFactField,
-    oldValue: value.oldValue,
-    newValue: value.newValue,
+    field: itemField,
+    oldValue,
+    newValue,
     sourceMessageId: requireString(value.sourceMessageId, `${path}.sourceMessageId`),
   };
 }

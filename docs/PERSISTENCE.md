@@ -57,13 +57,30 @@ Each aggregate document has `schemaVersion` + integer `revision` (starts at 1).
 
 Updates run inside a Firestore transaction: read → compare expected revision → write `revision + 1`.
 
-Stale writer → `PersistenceConflictError` (`PERSISTENCE_CONFLICT`). No silent last-write-wins when `revision` is supplied.
+**Fail-closed rules:**
+
+| Operation | Missing / `0` revision |
+| --- | --- |
+| `OrderMemoryStore.save` create (no doc) | allowed → revision `1` |
+| `OrderMemoryStore.save` update (doc exists) | `PERSISTENCE_CONFLICT` |
+| `saveConversation` (existing) | `PERSISTENCE_CONFLICT` (revision required) |
+| `appendMessage` | caller revision not required (atomic over current aggregate) |
+
+Stale or revisionless overwrite → `PersistenceConflictError` (`PERSISTENCE_CONFLICT`). `undefined` does **not** disable optimistic concurrency.
+
+`appendMessage` sets `conversation.updatedAt = max(existing.updatedAt, message.createdAt)` so out-of-order messages do not move activity time backwards.
+
+### Firebase Admin app boundary
+
+Jarvis uses a **named** Admin app `jarvis-firestore-<projectId>`. It never reuses `getApps()[0]` without verifying `projectId`. Injected apps with a mismatched project → `PersistenceConfigError`.
 
 Document IDs must be safe (`[A-Za-z0-9][A-Za-z0-9_.-]{0,127}`) — no `/` or `..`.
 
 ## Codecs
 
 `firestore-codec.ts` encodes/decodes domain ↔ plain JSON. Firestore `Timestamp` must not leak into domain types (ISO strings). Corrupted / invalid enums → `PersistenceDataError` (fail closed, no silent repair).
+
+`OrderChange.oldValue` / `newValue` are decoded with the same field-specific enum/number rules as item facts.
 
 ## Size guard
 

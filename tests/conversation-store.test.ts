@@ -129,11 +129,12 @@ describe('InMemoryConversationStore', () => {
 
   it('persists conversation mode changes', async () => {
     const store = new InMemoryConversationStore();
-    await store.createConversation(conversation({ mode: 'AI' }));
+    const created = await store.createConversation(conversation({ mode: 'AI' }));
 
     await store.saveConversation(
       conversation({
         mode: 'HUMAN',
+        revision: created.revision,
         updatedAt: '2026-08-12T11:00:00.000Z',
       }),
     );

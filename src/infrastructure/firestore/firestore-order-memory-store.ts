@@ -47,8 +47,9 @@ export class FirestoreOrderMemoryStore implements OrderMemoryStore {
         return { ...withoutRevision, revision };
       }
 
+      // Existing document: revision is required (undefined/0 must not overwrite).
       const decoded = decodeOrderMemoryDocument(existing);
-      if (expected !== undefined && expected !== decoded.revision) {
+      if (expected === undefined || expected === 0 || expected !== decoded.revision) {
         throw new PersistenceConflictError(
           `OrderMemory revision conflict for ${memory.conversationId}`,
         );

@@ -19,6 +19,12 @@ export type {
 
 export { InMemoryFirestoreGateway } from './in-memory-firestore-gateway.js';
 export { AdminFirestoreGateway } from './admin-firestore-gateway.js';
+export {
+  assertFirebaseAppProjectMatch,
+  jarvisFirebaseAppName,
+  resolveJarvisFirebaseApp,
+  type FirebaseAppLike,
+} from './firebase-app-resolve.js';
 export { FirestoreConversationStore } from './firestore-conversation-store.js';
 export { FirestoreOrderMemoryStore } from './firestore-order-memory-store.js';
 

@@ -13,6 +13,7 @@ export class InMemoryOrderMemoryStore implements OrderMemoryStore {
   async save(memory: OrderMemory): Promise<OrderMemory> {
     const existing = this.byConversation.get(memory.conversationId);
     const expected = memory.revision;
+
     if (!existing) {
       if (expected !== undefined && expected !== 0) {
         throw new PersistenceConflictError(
@@ -24,12 +25,14 @@ export class InMemoryOrderMemoryStore implements OrderMemoryStore {
       return structuredClone(stored);
     }
 
+    // Existing document: revision is required (undefined/0 must not overwrite).
     const currentRevision = existing.revision ?? 0;
-    if (expected !== undefined && expected !== currentRevision) {
+    if (expected === undefined || expected === 0 || expected !== currentRevision) {
       throw new PersistenceConflictError(
         `OrderMemory revision conflict for ${memory.conversationId}`,
       );
     }
+
     const stored = {
       ...structuredClone(memory),
       revision: currentRevision + 1,
