@@ -28,6 +28,29 @@ Jarvis Core V1 — единое серверное AI-ядро, которое:
 
 ## 2. Что сознательно НЕ входит в V1
 
+### 2.1 Preliminary qualification (Task 11)
+
+- Jarvis может назвать **предварительную цену под ключ** через `PRELIMINARY_ALL_IN` и Calculation Engine.
+- Для FRAME/WING без размеров расчёт использует средний типовой размер **800×1600** только внутри движка; в Order Memory размеры клиента **не подменяются**.
+- Согласие на цену (`preliminaryPriceAccepted`) и согласие на замер (`measurementAgreed`) — **разные факты**.
+- После расчёта сохраняется `PreliminaryQuoteSnapshot` (публичная сумма + fingerprint); себестоимость и маржа клиенту и LLM **не раскрываются**.
+- Минимальная маржа **47%**: при нарушении публичная сумма только **повышается** (см. `docs/PRELIMINARY_QUALIFICATION.md`).
+
+### 2.2 Exterior color trust
+
+Канонические цвета профиля (см. §6): `WHITE`, `BROWN_8017`, `GRAY_7016`, `CUSTOM_RAL`.
+
+```text
+WHITE != GRAY_7016
+```
+
+Изменение `profileColor: WHITE → GRAY_7016` — смена цвета клиентом, не эквивалентность значений.
+
+### 2.3 Measurement automation boundary
+
+- Политика по умолчанию: `AUTO_WHEN_READY` → внутреннее решение `AUTO_ALLOWED` при `READY_FOR_MEASUREMENT`.
+- **`AUTO_ALLOWED` ≠ запись в CRM.** Jarvis V1 не пишет в `measurements`, `ready_orders` и другие операционные коллекции.
+
 На первом этапе не разрабатываем как основную задачу:
 
 - новый производственный CRM;

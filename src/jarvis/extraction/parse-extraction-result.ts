@@ -173,14 +173,19 @@ export function parseExtractOrderFactsArguments(
 
   const rootKeys = assertOnlyKeys(
     parsed,
-    new Set(['itemProposals', 'customerFacts', 'fulfillmentFacts']),
+    new Set(['itemProposals', 'customerFacts', 'fulfillmentFacts', 'commercialFacts']),
     'root',
   );
   if (rootKeys) {
     return { ok: false, issues: [rootKeys] };
   }
 
-  if (!Array.isArray(parsed.itemProposals) || !Array.isArray(parsed.customerFacts) || !Array.isArray(parsed.fulfillmentFacts)) {
+  if (
+    !Array.isArray(parsed.itemProposals) ||
+    !Array.isArray(parsed.customerFacts) ||
+    !Array.isArray(parsed.fulfillmentFacts) ||
+    !Array.isArray(parsed.commercialFacts)
+  ) {
     return {
       ok: false,
       issues: [{ code: 'INVALID_SHAPE', message: 'Missing required proposal arrays' }],
@@ -214,12 +219,22 @@ export function parseExtractOrderFactsArguments(
     fulfillmentFacts.push(fact.proposal);
   }
 
+  const commercialFacts: ExtractedFieldProposal[] = [];
+  for (let index = 0; index < parsed.commercialFacts.length; index += 1) {
+    const fact = parseFieldProposal(parsed.commercialFacts[index], `commercialFacts[${index}]`);
+    if (!fact.ok) {
+      return { ok: false, issues: [fact.issue] };
+    }
+    commercialFacts.push(fact.proposal);
+  }
+
   return {
     ok: true,
     result: {
       itemProposals,
       customerFacts,
       fulfillmentFacts,
+      commercialFacts,
       issues: [],
     },
   };

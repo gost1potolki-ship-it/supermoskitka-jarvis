@@ -21,6 +21,10 @@ export class ToolRuntime {
     return this.calculationTool.execute(call);
   }
 
+  getLastCalculationMeta() {
+    return this.calculationTool.lastExecuteMeta;
+  }
+
   serializeToolResult(result: SafeToolResult): string {
     return JSON.stringify(result);
   }

@@ -1,10 +1,14 @@
 import {
   CHANNELS,
+  COMMERCIAL_FACT_FIELDS,
   CUSTOMER_FACT_FIELDS,
   FULFILLMENT_FACT_FIELDS,
+  MEASUREMENT_BASIS_VALUES,
   ORDER_ITEM_FACT_FIELDS,
   PersistenceDataError,
   type Channel,
+  type CommercialFactField,
+  type CommercialFacts,
   type Conversation,
   type ConversationMode,
   type CustomerFactField,
@@ -19,6 +23,7 @@ import {
   type OrderItem,
   type OrderItemFactField,
   type OrderMemory,
+  type PreliminaryQuoteSnapshot,
 } from '../../domain/index.js';
 
 import { JARVIS_PERSISTENCE_SCHEMA_VERSION } from './constants.js';
@@ -29,6 +34,8 @@ const SENDER_SET = new Set<string>(['CUSTOMER', 'AI', 'HUMAN', 'SYSTEM']);
 const ITEM_FIELD_SET = new Set<string>(ORDER_ITEM_FACT_FIELDS);
 const CUSTOMER_FIELD_SET = new Set<string>(CUSTOMER_FACT_FIELDS);
 const FULFILLMENT_FIELD_SET = new Set<string>(FULFILLMENT_FACT_FIELDS);
+const COMMERCIAL_FIELD_SET = new Set<string>(COMMERCIAL_FACT_FIELDS);
+const MEASUREMENT_BASIS_SET = new Set<string>(MEASUREMENT_BASIS_VALUES);
 const PROFILE_COLORS = new Set(['WHITE', 'BROWN_8017', 'GRAY_7016', 'CUSTOM_RAL']);
 const PRODUCT_TYPES = new Set(['FRAME', 'WING', 'DOOR', 'PLISSE_NET']);
 const MESH_TYPES = new Set(['STANDARD', 'ANTIMOSHKA', 'ANTICAT', 'ANTIDUST']);
@@ -136,6 +143,9 @@ function decodeItemFieldValue(field: OrderItemFactField, value: unknown, path: s
   if (field === 'profileColor' && !PROFILE_COLORS.has(asString)) {
     fail(`Invalid profileColor enum at ${path}`);
   }
+  if (field === 'measurementBasis' && !MEASUREMENT_BASIS_SET.has(asString)) {
+    fail(`Invalid measurementBasis enum at ${path}`);
+  }
   return asString;
 }
 
@@ -218,6 +228,65 @@ function decodeFulfillmentFacts(value: unknown, path: string): FulfillmentFacts 
   return fulfillment;
 }
 
+function decodeCommercialFacts(value: unknown, path: string): CommercialFacts {
+  if (!isRecord(value)) {
+    fail(`Invalid commercial facts at ${path}`);
+  }
+  const commercial: CommercialFacts = {};
+  for (const key of Object.keys(value)) {
+    if (!COMMERCIAL_FIELD_SET.has(key)) {
+      fail(`Unknown commercial field at ${path}.${key}`);
+    }
+    const field = key as CommercialFactField;
+    commercial[field] = decodeFact(value[field], `${path}.${field}`, (raw, valuePath) =>
+      requireBoolean(raw, valuePath),
+    ) as never;
+  }
+  return commercial;
+}
+
+function decodePreliminaryQuoteSnapshot(value: unknown, path: string): PreliminaryQuoteSnapshot {
+  if (!isRecord(value)) {
+    fail(`Invalid PreliminaryQuoteSnapshot at ${path}`);
+  }
+  const allowed = new Set([
+    'quoteId',
+    'inputFingerprint',
+    'publicTotalRub',
+    'createdAt',
+    'pricingPolicyVersion',
+    'marginGuardPassed',
+    'calculationVersion',
+    'priceVersion',
+  ]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      fail(`Unknown PreliminaryQuoteSnapshot field at ${path}.${key}`);
+    }
+  }
+  const marginGuardPassed = value.marginGuardPassed;
+  if (marginGuardPassed !== true) {
+    fail(`Invalid marginGuardPassed at ${path}`);
+  }
+  const snapshot: PreliminaryQuoteSnapshot = {
+    quoteId: requireString(value.quoteId, `${path}.quoteId`),
+    inputFingerprint: requireString(value.inputFingerprint, `${path}.inputFingerprint`),
+    publicTotalRub: requireNumber(value.publicTotalRub, `${path}.publicTotalRub`),
+    createdAt: requireString(value.createdAt, `${path}.createdAt`),
+    pricingPolicyVersion: requireString(value.pricingPolicyVersion, `${path}.pricingPolicyVersion`),
+    marginGuardPassed: true,
+  };
+  const calculationVersion = optionalString(value.calculationVersion, `${path}.calculationVersion`);
+  if (calculationVersion !== undefined) {
+    snapshot.calculationVersion = calculationVersion;
+  }
+  const priceVersion = optionalString(value.priceVersion, `${path}.priceVersion`);
+  if (priceVersion !== undefined) {
+    snapshot.priceVersion = priceVersion;
+  }
+  return snapshot;
+}
+
 function decodeOrderChange(value: unknown, path: string): OrderChange {
   if (!isRecord(value)) {
     fail(`Invalid OrderChange at ${path}`);
@@ -268,6 +337,18 @@ export function decodeOrderMemory(raw: unknown): OrderMemory {
   }
   if (raw.fulfillment !== undefined) {
     memory.fulfillment = decodeFulfillmentFacts(raw.fulfillment, 'fulfillment');
+  }
+  if (raw.commercial !== undefined) {
+    memory.commercial = decodeCommercialFacts(raw.commercial, 'commercial');
+  }
+  if (raw.preliminaryQuote !== undefined) {
+    memory.preliminaryQuote = decodePreliminaryQuoteSnapshot(raw.preliminaryQuote, 'preliminaryQuote');
+  }
+  if (raw.acceptedPreliminaryQuoteId !== undefined) {
+    memory.acceptedPreliminaryQuoteId = requireString(
+      raw.acceptedPreliminaryQuoteId,
+      'acceptedPreliminaryQuoteId',
+    );
   }
   return memory;
 }

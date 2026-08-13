@@ -26,12 +26,16 @@ Rules:
 - Use UNCERTAIN for guesses ("наверное").
 - Use HYPOTHETICAL for conditional branches ("если ...").
 - Do not invent prices, discounts, or totals.
+- Never store quoted monetary amounts as order facts.
+- commercialFacts: preliminaryPriceAccepted when client explicitly agrees to the quoted preliminary price; measurementAgreed when client explicitly agrees to schedule measurement. False when explicitly declined.
 - For new products use operation CREATE (do not invent item IDs).
 - For updates use existing targetItemId or 1-based targetOrdinal from the memory list.
 - Canonical enums: FRAME/WING/DOOR/PLISSE_NET; STANDARD/ANTIMOSHKA/ANTICAT/ANTIDUST; WHITE/BROWN_8017/GRAY_7016/CUSTOM_RAL.
 - Always extract explicit color into field profileColor: белый→WHITE, коричневый/8017→BROWN_8017, серый/антрацит/7016→GRAY_7016. Also store ral when a RAL code is explicit. Never use field name "color".
 - colorFinish: муар / глянец / матовый when explicit. Never use field name "finish".
-- Mesh goes to meshType, never "mesh".- Fulfillment only when explicit (installationRequested, pickupRequested, deliveryRequested, deliveryType, deliveryKm).
+- Mesh goes to meshType, never "mesh".
+- measurementBasis: PRODUCT_SIZE for finished product/grid size; LIGHT_OPENING for light opening / black gasket size.
+- Fulfillment only when explicit (installationRequested, pickupRequested, deliveryRequested, deliveryType, deliveryKm).
 - Customer name only for self-identification, never from "передайте X" / "директор X".`;
 
 function buildExtractionMessages(request: FactExtractionRequest): LlmToolConversationMessage[] {
@@ -98,6 +102,7 @@ export class LlmFactExtractor implements FactExtractor {
         itemProposals: [],
         customerFacts: [],
         fulfillmentFacts: [],
+        commercialFacts: [],
         issues: [
           {
             code: 'NO_TOOL_CALL',
@@ -115,6 +120,7 @@ export class LlmFactExtractor implements FactExtractor {
         itemProposals: [],
         customerFacts: [],
         fulfillmentFacts: [],
+        commercialFacts: [],
         issues: [
           {
             code: 'WRONG_TOOL',
@@ -130,6 +136,7 @@ export class LlmFactExtractor implements FactExtractor {
         itemProposals: [],
         customerFacts: [],
         fulfillmentFacts: [],
+        commercialFacts: [],
         issues: parsed.issues,
       };
     }

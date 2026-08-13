@@ -47,6 +47,7 @@ export interface FactExtractionResult {
   itemProposals: ExtractedItemProposal[];
   customerFacts: ExtractedFieldProposal[];
   fulfillmentFacts: ExtractedFieldProposal[];
+  commercialFacts: ExtractedFieldProposal[];
   issues: ExtractionIssue[];
 }
 

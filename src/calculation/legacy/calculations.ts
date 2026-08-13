@@ -116,10 +116,13 @@ const ClassicEngine = {
 
     const labor = type === ProductType.DOOR ? CF.markups.door_assembly_labor : CF.markups.assembly_labor;
     const profitMult = type === ProductType.DOOR ? CF.markups.door_profit_multiplier : CF.markups.company_profit_multiplier;
+    const ralPainting = isRAL
+      ? Math.max(CF.markups.ral_surcharge, Math.ceil(perimeter) * (CF.markups.ral_painting_rate_m ?? 220))
+      : 0;
     
     let total = (materials + labor) * profitMult;
     // RAL: общая длина профилей округляется до целого метра вверх, × ставка за м; не менее 1000 ₽
-    if (isRAL) total += Math.max(CF.markups.ral_surcharge, Math.ceil(perimeter) * (CF.markups.ral_painting_rate_m ?? 220));
+    if (isRAL) total += ralPainting;
     // Заградительная цена только для рамочных сеток (FRAME) по типу полотна
     if (type === ProductType.FRAME) {
       const FRAME_MIN_BY_MESH: Partial<Record<MeshType, number>> = {
@@ -133,7 +136,11 @@ const ClassicEngine = {
       const minPrice = FRAME_MIN_BY_MESH[mesh] ?? 1400;
       total = Math.max(total, minPrice);
     }
-    return { total, install: type === ProductType.DOOR ? 1000 : 800 };
+    return {
+      total,
+      install: type === ProductType.DOOR ? 1000 : 800,
+      directCost: materials + labor + ralPainting,
+    };
   }
 };
 
@@ -188,14 +195,19 @@ const PlisseNetEngine = {
     const subtotal = (sumMaterials + workAssembly) * mult;
     const wasteLine = subtotal * 0.0357; // Эталонный процент
     let total = subtotal + wasteLine;
+    let ralPainting = 0;
     // RAL: цена как у белого + покраска (длина профилей до целого м вверх × 220 ₽/м, не менее 1000 ₽)
     if (color === 'ral') {
       const ralMeters = Math.ceil(lFrame + lSash);
-      const ralPainting = Math.max(1000, ralMeters * (PN.markups.ral_painting_rate_m ?? 220));
+      ralPainting = Math.max(1000, ralMeters * (PN.markups.ral_painting_rate_m ?? 220));
       total += ralPainting;
     }
 
-    return { total, install: wM > 1.4 ? 2000 : 1000 };
+    return {
+      total,
+      install: wM > 1.4 ? 2000 : 1000,
+      directCost: sumMaterials + workAssembly + ralPainting,
+    };
   }
 };
 
@@ -246,11 +258,17 @@ const BlindsEngine = {
       const workAssembly = (wM * hM) * (isCounter ? PN.markups.assembly_rate_meeting : PN.markups.assembly_rate_standard);
       const subtotal = (sumMaterials + workAssembly) * (PN.markups.profit_multiplier || 3.35);
       let total = subtotal + (subtotal * 0.0357);
+      let ralPainting = 0;
       if (color === 'ral') {
         const ralMeters = Math.ceil(lFrame + lSash);
-        total += Math.max(1000, ralMeters * (PN.markups.ral_painting_rate_m ?? 220));
+        ralPainting = Math.max(1000, ralMeters * (PN.markups.ral_painting_rate_m ?? 220));
+        total += ralPainting;
       }
-      return { total, install: wM > 1.4 ? 2000 : 1000 };
+      return {
+        total,
+        install: wM > 1.4 ? 2000 : 1000,
+        directCost: sumMaterials + workAssembly + ralPainting,
+      };
     }
 
     let sumMaterials = 0;
@@ -271,14 +289,16 @@ const BlindsEngine = {
 
     const subtotal = (sumMaterials + workAssembly) * mult;
     let total = subtotal + (subtotal * 0.0357);
+    let ralPainting = 0;
     if (type === ProductType.JALOUSIE_COZY && color === 'ral') {
       const lFrame = (wM + hM) * 2;
       const lSash = opening === 'side' ? hM : wM;
       const ralMeters = Math.ceil(lFrame + lSash);
-      total += Math.max(PB.ral_painting.min_per_item, ralMeters * PB.ral_painting.rate_m);
+      ralPainting = Math.max(PB.ral_painting.min_per_item, ralMeters * PB.ral_painting.rate_m);
+      total += ralPainting;
     }
 
-    return { total, install: 800 };
+    return { total, install: 800, directCost: sumMaterials + workAssembly + ralPainting };
   }
 };
 
@@ -295,8 +315,9 @@ const RollEngine = {
     const pPrice = RN.profiles.standard;
     const mPrice = RN.meshes[mesh as keyof typeof RN.meshes] ?? RN.meshes.standard;
     const materials = perimeter * pPrice + area * mPrice + RN.components.accessories_set;
-    const total = (materials + RN.markups.assembly_labor) * RN.markups.profit_multiplier;
-    return { total, install: 800 };
+    const labor = RN.markups.assembly_labor;
+    const total = (materials + labor) * RN.markups.profit_multiplier;
+    return { total, install: 800, directCost: materials + labor };
   }
 };
 
@@ -323,7 +344,8 @@ const MaintenanceEngine = {
       case ProductType.ADJUSTMENT: unitPrice = subType === 'door' ? WW.labor_rates.adjustment_door : WW.labor_rates.adjustment_window; break;
     }
 
-    return { total: unitPrice * quantity, install: 0 };
+    const total = unitPrice * quantity;
+    return { total, install: 0, directCost: total };
   }
 };
 
@@ -352,14 +374,18 @@ export function calculatePrice(
   hasLatch: boolean = true,
   hasBolt: boolean = false,
   frameProfile: '25' | '32' = '25'
-): { total: number; install: number } {
+): { total: number; install: number; directCost?: number } {
   const wM = width / 1000, hM = height / 1000;
-  let result = { total: 0, install: 0 };
+  let result: { total: number; install: number; directCost?: number } = { total: 0, install: 0 };
 
   // 1. Блок Обслуживания
   if ([ProductType.SEAL, ProductType.COMB, ProductType.CHILD_LOCK, ProductType.ADJUSTMENT].includes(type)) {
     result = MaintenanceEngine.calculate(type, quantity, subType, handleType, prices);
-    return { total: roundToTens(Math.round(result.total)), install: 0 };
+    return {
+      total: roundToTens(Math.round(result.total)),
+      install: 0,
+      ...(typeof result.directCost === 'number' ? { directCost: result.directCost } : {}),
+    };
   }
 
   // 2. Блок Классики
@@ -384,6 +410,9 @@ export function calculatePrice(
 
   return { 
     total: roundToTens(Math.round(result.total * quantity)), 
-    install: roundToTens(Math.round(result.install * quantity)) 
+    install: roundToTens(Math.round(result.install * quantity)),
+    ...(typeof result.directCost === 'number'
+      ? { directCost: result.directCost * quantity }
+      : {}),
   };
 }

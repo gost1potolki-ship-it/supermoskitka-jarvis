@@ -22,6 +22,7 @@ export class FakeFactExtractor implements FactExtractor {
       itemProposals: [],
       customerFacts: [],
       fulfillmentFacts: [],
+      commercialFacts: [],
       issues: [],
     };
     if (next instanceof Error) {
@@ -39,6 +40,7 @@ export function emptyExtraction(): FactExtractionResult {
     itemProposals: [],
     customerFacts: [],
     fulfillmentFacts: [],
+    commercialFacts: [],
     issues: [],
   };
 }

@@ -19,6 +19,7 @@
     "smoke:odirouter": "tsx scripts/smoke-odirouter.ts",
     "smoke:odirouter:calculation": "tsx scripts/smoke-odirouter-calculation.ts",
     "smoke:odirouter:facts": "tsx scripts/smoke-odirouter-facts.ts",
+    "smoke:odirouter:readiness": "tsx scripts/smoke-odirouter-readiness.ts",
     "smoke:firestore:persistence": "tsx scripts/smoke-firestore-persistence.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

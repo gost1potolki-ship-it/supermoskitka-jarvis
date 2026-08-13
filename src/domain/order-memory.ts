@@ -1,6 +1,7 @@
 import type { OrderChange } from './order-change.js';
 import type { OrderItem } from './order-item.js';
-import type { CustomerFacts, FulfillmentFacts } from './order-sections.js';
+import type { CommercialFacts, CustomerFacts, FulfillmentFacts } from './order-sections.js';
+import type { PreliminaryQuoteSnapshot } from './preliminary-quote.js';
 
 export interface OrderMemory {
   orderId: string;
@@ -11,6 +12,12 @@ export interface OrderMemory {
   customer?: CustomerFacts;
   /** Optional fulfillment semantics (Task 09). No monetary fields. */
   fulfillment?: FulfillmentFacts;
+  /** Optional commercial consent facts (Task 11). No monetary authority. */
+  commercial?: CommercialFacts;
+  /** Last guarded preliminary quote snapshot (system-generated). */
+  preliminaryQuote?: PreliminaryQuoteSnapshot;
+  /** Bound when the customer explicitly accepts the current non-stale quote. */
+  acceptedPreliminaryQuoteId?: string;
   createdAt: string;
   updatedAt: string;
   /** Persistence revision (Task 10). Undefined until first save. */

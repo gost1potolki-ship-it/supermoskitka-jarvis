@@ -24,17 +24,25 @@ export type { Message, MessageSender } from './message.js';
 export type { OrderChange, OrderChangeType } from './order-change.js';
 
 export type {
+  MeasurementBasis,
   OrderItem,
   OrderItemFactField,
   OrderItemFactValue,
   OrderItemFacts,
 } from './order-item.js';
-export { ORDER_ITEM_FACT_FIELDS, createEmptyOrderItem } from './order-item.js';
+export {
+  MEASUREMENT_BASIS_VALUES,
+  ORDER_ITEM_FACT_FIELDS,
+  createEmptyOrderItem,
+} from './order-item.js';
 
 export type { OrderMemory } from './order-memory.js';
 export { getOrderItem } from './order-memory.js';
 
 export type {
+  CommercialFactField,
+  CommercialFacts,
+  CommercialFactValue,
   CustomerFactField,
   CustomerFacts,
   CustomerFactValue,
@@ -43,6 +51,18 @@ export type {
   FulfillmentFactValue,
 } from './order-sections.js';
 export {
+  COMMERCIAL_FACT_FIELDS,
   CUSTOMER_FACT_FIELDS,
   FULFILLMENT_FACT_FIELDS,
 } from './order-sections.js';
+
+export type { PreliminaryQuoteSnapshot } from './preliminary-quote.js';
+export { PRICING_POLICY_VERSION } from './preliminary-quote.js';
+
+export type {
+  LeadReadiness,
+  LeadReadinessCode,
+  LeadReadinessStatus,
+  MeasurementActionDecision,
+  MeasurementActionPolicy,
+} from './lead-readiness.js';

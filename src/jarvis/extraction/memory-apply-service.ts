@@ -1,8 +1,11 @@
 import {
+  COMMERCIAL_FACT_FIELDS,
   CUSTOMER_FACT_FIELDS,
   FULFILLMENT_FACT_FIELDS,
   ORDER_ITEM_FACT_FIELDS,
   type Channel,
+  type CommercialFactField,
+  type CommercialFactValue,
   type CustomerFactField,
   type CustomerFactValue,
   type FactSource,
@@ -14,6 +17,7 @@ import {
 } from '../../domain/index.js';
 import {
   addOrderItem,
+  applyCommercialFact,
   applyCustomerFact,
   applyFulfillmentFact,
   applyOrderItemFact,
@@ -21,6 +25,7 @@ import {
 
 import {
   canonicalizeColorFinish,
+  canonicalizeMeasurementBasis,
   canonicalizeMeshType,
   canonicalizeProductType,
   canonicalizeProfileColor,
@@ -39,6 +44,7 @@ import type {
 const ITEM_FIELDS = new Set<string>(ORDER_ITEM_FACT_FIELDS);
 const CUSTOMER_FIELDS = new Set<string>(CUSTOMER_FACT_FIELDS);
 const FULFILLMENT_FIELDS = new Set<string>(FULFILLMENT_FACT_FIELDS);
+const COMMERCIAL_FIELDS = new Set<string>(COMMERCIAL_FACT_FIELDS);
 
 const FORBIDDEN_PRICE_FIELDS = new Set([
   'preliminaryTotal',
@@ -142,6 +148,12 @@ function canonicalizeItemValue(
     const canonical = canonicalizeRal(value);
     return canonical ? { ok: true, value: canonical } : { ok: false, reason: 'invalid ral' };
   }
+  if (field === 'measurementBasis') {
+    const canonical = canonicalizeMeasurementBasis(value);
+    return canonical
+      ? { ok: true, value: canonical as OrderItemFactValue['measurementBasis'] }
+      : { ok: false, reason: 'unknown measurementBasis' };
+  }
   if (field === 'quantity' || field === 'widthMm' || field === 'heightMm') {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       return { ok: false, reason: `invalid ${field}` };
@@ -205,6 +217,16 @@ function canonicalizeFulfillmentValue(
     return { ok: true, value };
   }
   return { ok: false, reason: `unsupported ${field}` };
+}
+
+function canonicalizeCommercialValue(
+  field: CommercialFactField,
+  value: unknown,
+): { ok: true; value: CommercialFactValue[CommercialFactField] } | { ok: false; reason: string } {
+  if (typeof value !== 'boolean') {
+    return { ok: false, reason: `invalid ${field}` };
+  }
+  return { ok: true, value };
 }
 
 function considerField(
@@ -513,6 +535,32 @@ export function applyValidatedExtraction(
     });
     next = applied.memory;
     diagnostics.appliedFields.push(`fulfillment.${field}`);
+  }
+
+  const commercialFacts = extraction.commercialFacts ?? [];
+  for (let index = 0; index < commercialFacts.length; index += 1) {
+    const fact = commercialFacts[index]!;
+    const path = `commercialFacts[${index}]`;
+    if (!considerField(fact, messageText, COMMERCIAL_FIELDS, path, diagnostics)) {
+      continue;
+    }
+    const field = fact.field as CommercialFactField;
+    const canonical = canonicalizeCommercialValue(field, fact.value);
+    if (!canonical.ok) {
+      diagnostics.issues.push({
+        code: 'INVALID_VALUE',
+        message: canonical.reason,
+        path,
+      });
+      continue;
+    }
+    const applied = applyCommercialFact(next, {
+      field,
+      value: canonical.value,
+      source,
+    });
+    next = applied.memory;
+    diagnostics.appliedFields.push(`commercial.${field}`);
   }
 
   return { memory: next, diagnostics };

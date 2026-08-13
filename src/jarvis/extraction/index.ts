@@ -18,6 +18,7 @@ export {
 export { evidenceMatchesMessage, normalizeEvidenceText } from './evidence.js';
 export {
   canonicalizeColorFinish,
+  canonicalizeMeasurementBasis,
   canonicalizeMeshType,
   canonicalizeProductType,
   canonicalizeProfileColor,

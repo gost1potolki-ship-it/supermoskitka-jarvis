@@ -10,6 +10,11 @@ export {
   type ApplyFulfillmentFactResult,
 } from './apply-fulfillment-fact.js';
 export {
+  applyCommercialFact,
+  type ApplyCommercialFactInput,
+  type ApplyCommercialFactResult,
+} from './apply-commercial-fact.js';
+export {
   addOrderItem,
   createOrderMemory,
   type CreateOrderMemoryInput,

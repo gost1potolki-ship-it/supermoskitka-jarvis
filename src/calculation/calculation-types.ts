@@ -163,6 +163,8 @@ export interface CalculationItemResult {
   unitPrice: number;
   productTotal: number;
   installationTotal: number;
+  /** Materials + labor (+ RAL painting when applicable). Internal only. */
+  directCost?: number;
 }
 
 export interface CalculationOutcome {
@@ -174,6 +176,8 @@ export interface CalculationOutcome {
   calculationVersion: string;
   priceVersion: string;
   businessRulesVersion: string;
+  /** Sum of item direct costs + measurement + install + delivery (internal only). */
+  trustedDirectCostRub?: number;
   orderBreakdown?: {
     itemsBasePrice: number;
     measurementFee: number;

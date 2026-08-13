@@ -118,3 +118,46 @@ export function canonicalizeRal(value: unknown): string | null {
   }
   return null;
 }
+
+const MEASUREMENT_BASIS = new Set(['PRODUCT_SIZE', 'LIGHT_OPENING']);
+
+export function canonicalizeMeasurementBasis(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  const upper = trimmed.toUpperCase().replace(/\s+/g, '_');
+  const aliases: Record<string, string> = {
+    PRODUCT_SIZE: 'PRODUCT_SIZE',
+    FINISHED_SIZE: 'PRODUCT_SIZE',
+    READY_SIZE: 'PRODUCT_SIZE',
+    ГОТОВОЙ_СЕТКИ: 'PRODUCT_SIZE',
+    ГОТОВОГО_ИЗДЕЛИЯ: 'PRODUCT_SIZE',
+    ИЗДЕЛИЯ: 'PRODUCT_SIZE',
+    LIGHT_OPENING: 'LIGHT_OPENING',
+    LIGHT_OPENING_SIZE: 'LIGHT_OPENING',
+    СВЕТОВОГО_ПРОЁМА: 'LIGHT_OPENING',
+    СВЕТОВОГО_ПРОЕМА: 'LIGHT_OPENING',
+    ЧЁРНОЙ_РЕЗИНКЕ: 'LIGHT_OPENING',
+    ЧЕРНОЙ_РЕЗИНКЕ: 'LIGHT_OPENING',
+  };
+  const normalized = trimmed.toLowerCase().replace(/ё/g, 'е');
+  const phraseAliases: Record<string, string> = {
+    'размер готовой сетки': 'PRODUCT_SIZE',
+    'размер готового изделия': 'PRODUCT_SIZE',
+    'готового изделия': 'PRODUCT_SIZE',
+    'светового проема': 'LIGHT_OPENING',
+    'светового проёма': 'LIGHT_OPENING',
+    'черной резинке': 'LIGHT_OPENING',
+    'чёрной резинке': 'LIGHT_OPENING',
+  };
+  const phrase = phraseAliases[normalized];
+  if (phrase) {
+    return phrase;
+  }
+  const mapped = aliases[upper] ?? aliases[trimmed.toUpperCase()];
+  if (mapped && MEASUREMENT_BASIS.has(mapped)) {
+    return mapped;
+  }
+  return MEASUREMENT_BASIS.has(upper) ? upper : null;
+}

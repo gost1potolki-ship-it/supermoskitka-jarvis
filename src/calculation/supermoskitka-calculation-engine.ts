@@ -159,6 +159,7 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
           unitPrice,
           productTotal: priced.total,
           installationTotal: priced.install,
+          ...(typeof priced.directCost === 'number' ? { directCost: priced.directCost } : {}),
         });
 
         cartItems.push({
@@ -208,6 +209,16 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
       totalsPrices,
     );
 
+    const itemsDirectCost = itemResults.reduce(
+      (sum, item) => sum + (item.directCost ?? 0),
+      0,
+    );
+    const trustedDirectCostRub =
+      itemsDirectCost +
+      totals.measurementFee +
+      totals.installTotal +
+      totals.deliveryCost;
+
     return {
       status: 'calculated',
       items: itemResults,
@@ -217,6 +228,7 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
       calculationVersion: CALCULATION_ENGINE_VERSION,
       priceVersion: catalog.version,
       businessRulesVersion: catalog.businessRulesVersion,
+      trustedDirectCostRub,
       orderBreakdown: {
         itemsBasePrice: totals.itemsBasePrice,
         measurementFee: totals.measurementFee,

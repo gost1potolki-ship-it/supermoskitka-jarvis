@@ -18,6 +18,7 @@ import {
   type MemoryApplyDiagnostics,
 } from '../extraction/index.js';
 import { createOrderMemory } from '../memory/index.js';
+import { PreliminaryQuoteService } from '../preliminary/index.js';
 import {
   PriceIntegrityGuard,
   type CalculationMode,
@@ -130,6 +131,7 @@ export class ConversationOrchestrator {
   private readonly priceIntegrityGuard: PriceIntegrityGuard;
   private readonly factExtractor: FactExtractor | undefined;
   private readonly orderMemoryStore: OrderMemoryStore | undefined;
+  private readonly preliminaryQuoteService: PreliminaryQuoteService;
 
   constructor(
     private readonly store: ConversationStore,
@@ -143,6 +145,7 @@ export class ConversationOrchestrator {
     this.priceIntegrityGuard = options.priceIntegrityGuard ?? new PriceIntegrityGuard();
     this.factExtractor = options.factExtractor;
     this.orderMemoryStore = options.orderMemoryStore;
+    this.preliminaryQuoteService = new PreliminaryQuoteService();
   }
 
   async handleIncomingMessage(
@@ -277,10 +280,17 @@ export class ConversationOrchestrator {
     ];
 
     const turn = this.toolRuntime
-      ? await this.runToolAwareTurn(conversation.conversationId, baseMessages)
+      ? await this.runToolAwareTurn(conversation.conversationId, baseMessages, orderMemory)
       : {
           replyText: await this.runTextOnlyTurn(conversation.conversationId, baseMessages),
         };
+
+    if (this.orderMemoryStore && orderMemory) {
+      const refreshed = await this.orderMemoryStore.get(conversation.conversationId);
+      if (refreshed) {
+        orderMemory = refreshed;
+      }
+    }
 
     const aiCreatedAt = new Date(
       Math.max(Date.now(), Date.parse(customerMessage.createdAt) + 1),
@@ -339,6 +349,7 @@ export class ConversationOrchestrator {
   private async runToolAwareTurn(
     conversationId: string,
     initialMessages: LlmToolConversationMessage[],
+    orderMemory?: OrderMemory,
   ): Promise<ToolAwareTurnResult> {
     if (!this.toolRuntime) {
       throw new InvalidOperationError('Tool runtime is not configured');
@@ -406,6 +417,7 @@ export class ConversationOrchestrator {
         toolCallsExecuted += 1;
         const result = await this.toolRuntime.executeToolCall(call);
         turnState = toTurnState(result);
+        await this.persistPreliminaryQuoteIfNeeded(conversationId, result, orderMemory);
         messages.push({
           role: 'tool',
           toolCallId: call.id,
@@ -416,5 +428,43 @@ export class ConversationOrchestrator {
     }
 
     throw new InvalidOperationError('TOOL_LOOP_LIMIT: maximum tool rounds exceeded');
+  }
+
+  private async persistPreliminaryQuoteIfNeeded(
+    conversationId: string,
+    result: SafeToolResult,
+    orderMemory?: OrderMemory,
+  ): Promise<void> {
+    if (!this.orderMemoryStore || !this.toolRuntime) {
+      return;
+    }
+    if (result.status !== 'calculated' || result.mode !== 'PRELIMINARY_ALL_IN') {
+      return;
+    }
+    if (typeof result.total !== 'number' || !Number.isFinite(result.total)) {
+      return;
+    }
+
+    const meta = this.toolRuntime.getLastCalculationMeta();
+    const memory =
+      orderMemory ??
+      (await this.orderMemoryStore.get(conversationId)) ??
+      createOrderMemory({
+        orderId: conversationId,
+        conversationId,
+      });
+
+    const persisted = this.preliminaryQuoteService.persistAfterPreliminaryCalculation({
+      memory,
+      publicTotalRub: result.total,
+      calculationVersion: meta?.outcome?.calculationVersion,
+      priceVersion: meta?.outcome?.priceVersion,
+    });
+
+    try {
+      await this.orderMemoryStore.save(persisted.memory);
+    } catch {
+      // Fail closed: customer turn continues; quote persistence is best-effort internal state.
+    }
   }
 }

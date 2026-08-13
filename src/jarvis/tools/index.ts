@@ -7,6 +7,7 @@ export {
   CalculationTool,
   parseCalculationRequestArguments,
   projectSafeCalculationOutcome,
+  type CalculationToolExecuteMeta,
 } from './calculation-tool.js';
 export { ToolRuntime } from './tool-runtime.js';
 export {

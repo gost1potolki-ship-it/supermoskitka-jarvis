@@ -36,3 +36,19 @@ export type FulfillmentFactValue = {
 export type FulfillmentFacts = {
   [K in FulfillmentFactField]?: Fact<FulfillmentFactValue[K]>;
 };
+
+export const COMMERCIAL_FACT_FIELDS = [
+  'preliminaryPriceAccepted',
+  'measurementAgreed',
+] as const;
+
+export type CommercialFactField = (typeof COMMERCIAL_FACT_FIELDS)[number];
+
+export type CommercialFactValue = {
+  preliminaryPriceAccepted: boolean;
+  measurementAgreed: boolean;
+};
+
+export type CommercialFacts = {
+  [K in CommercialFactField]?: Fact<CommercialFactValue[K]>;
+};

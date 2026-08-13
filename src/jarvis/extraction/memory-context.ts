@@ -1,5 +1,4 @@
 import { getFactValue, type OrderMemory } from '../../domain/index.js';
-
 /** Compact current-value context for the main LLM (no fact history / sources). */
 export function buildOrderMemoryContext(memory: OrderMemory): string {
   const lines: string[] = ['[INTERNAL ORDER MEMORY DATA]'];
@@ -27,6 +26,7 @@ export function buildOrderMemoryContext(memory: OrderMemory): string {
       const widthMm = getFactValue(item.widthMm);
       const heightMm = getFactValue(item.heightMm);
       const meshType = getFactValue(item.meshType);
+      const measurementBasis = getFactValue(item.measurementBasis);
       const profileColor = getFactValue(item.profileColor);
       const ral = getFactValue(item.ral);
       const colorFinish = getFactValue(item.colorFinish);
@@ -53,6 +53,9 @@ export function buildOrderMemoryContext(memory: OrderMemory): string {
       }
       if (meshType !== undefined) {
         parts.push(String(meshType));
+      }
+      if (measurementBasis !== undefined) {
+        parts.push(`basis=${measurementBasis}`);
       }
       if (profileType !== undefined) {
         parts.push(`profile=${profileType}`);
@@ -93,6 +96,27 @@ export function buildOrderMemoryContext(memory: OrderMemory): string {
   if (fulfillmentLines.length > 0) {
     lines.push('Fulfillment:');
     lines.push(...fulfillmentLines);
+  }
+
+  const commercialLines: string[] = [];
+  if (memory.commercial) {
+    const priceAccepted = getFactValue(memory.commercial.preliminaryPriceAccepted);
+    const measurementAgreed = getFactValue(memory.commercial.measurementAgreed);
+    if (priceAccepted !== undefined) {
+      commercialLines.push(`- preliminaryPriceAccepted: ${String(priceAccepted)}`);
+    }
+    if (measurementAgreed !== undefined) {
+      commercialLines.push(`- measurementAgreed: ${String(measurementAgreed)}`);
+    }
+  }
+  if (memory.preliminaryQuote) {
+    commercialLines.push(
+      `- preliminaryQuote: quoteId=${memory.preliminaryQuote.quoteId}, publicTotalRub=${memory.preliminaryQuote.publicTotalRub}`,
+    );
+  }
+  if (commercialLines.length > 0) {
+    lines.push('Commercial:');
+    lines.push(...commercialLines);
   }
 
   lines.push('[/INTERNAL ORDER MEMORY DATA]');
