@@ -290,32 +290,46 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
   return snapshot;
 }
 
+const LEGACY_PRICING_POLICY_STATUSES = new Set([
+  'FRAME_COMMERCIAL_PRICING_PASSED',
+  'FRAME_MARGIN_GUARD_PASSED',
+  'EXISTING_PRODUCT_FORMULA',
+  'TRUSTED_LEGACY_CALCULATION',
+]);
+
 function resolveQuoteTrustStatus(
   value: Record<string, unknown>,
   path: string,
 ): QuoteTrustStatus {
+  // Strict: validate every present migration field, even when quoteTrustStatus is already valid.
+  let hasValidTrustSignal = false;
+
   if (value.quoteTrustStatus !== undefined) {
     if (value.quoteTrustStatus !== 'TRUSTED_LEGACY_CALCULATION') {
       fail(`Invalid quoteTrustStatus at ${path}`);
     }
-    return 'TRUSTED_LEGACY_CALCULATION';
+    hasValidTrustSignal = true;
   }
+
   if (value.pricingPolicyStatus !== undefined) {
     const status = value.pricingPolicyStatus;
-    if (
-      status !== 'FRAME_COMMERCIAL_PRICING_PASSED' &&
-      status !== 'FRAME_MARGIN_GUARD_PASSED' &&
-      status !== 'EXISTING_PRODUCT_FORMULA' &&
-      status !== 'TRUSTED_LEGACY_CALCULATION'
-    ) {
+    if (typeof status !== 'string' || !LEGACY_PRICING_POLICY_STATUSES.has(status)) {
       fail(`Invalid pricingPolicyStatus at ${path}`);
     }
-    return 'TRUSTED_LEGACY_CALCULATION';
+    hasValidTrustSignal = true;
   }
-  if (value.marginGuardPassed === true) {
-    return 'TRUSTED_LEGACY_CALCULATION';
+
+  if (value.marginGuardPassed !== undefined) {
+    if (value.marginGuardPassed !== true) {
+      fail(`Invalid marginGuardPassed at ${path}`);
+    }
+    hasValidTrustSignal = true;
   }
-  fail(`Invalid quoteTrustStatus at ${path}`);
+
+  if (!hasValidTrustSignal) {
+    fail(`Invalid quoteTrustStatus at ${path}`);
+  }
+  return 'TRUSTED_LEGACY_CALCULATION';
 }
 
 function decodeOrderProfitabilitySnapshot(
@@ -362,6 +376,8 @@ function decodeOrderProfitabilitySnapshot(
     fail(`Invalid profitabilityBand at ${path}`);
   }
 
+  const sellingTotalRub = requireNumber(value.sellingTotalRub, `${path}.sellingTotalRub`);
+
   if (costBasisStatus !== 'EXACT') {
     if (
       value.grossProfitRub !== undefined ||
@@ -374,11 +390,27 @@ function decodeOrderProfitabilitySnapshot(
     if (profitabilityBand !== 'UNAVAILABLE') {
       fail(`profitabilityBand must be UNAVAILABLE when cost basis is not EXACT at ${path}`);
     }
+  } else {
+    if (profitabilityBand === 'UNAVAILABLE') {
+      fail(`profitabilityBand must not be UNAVAILABLE when cost basis is EXACT at ${path}`);
+    }
+    if (value.actualDirectCostRub === undefined) {
+      fail(`actualDirectCostRub is required when cost basis is EXACT at ${path}`);
+    }
+    if (value.grossProfitRub === undefined) {
+      fail(`grossProfitRub is required when cost basis is EXACT at ${path}`);
+    }
+    if (value.grossMarginPercent === undefined) {
+      fail(`grossMarginPercent is required when cost basis is EXACT at ${path}`);
+    }
+    if (value.markupPercent === undefined) {
+      fail(`markupPercent is required when cost basis is EXACT at ${path}`);
+    }
   }
 
   const snapshot: OrderProfitabilitySnapshot = {
     costBasisStatus,
-    sellingTotalRub: requireNumber(value.sellingTotalRub, `${path}.sellingTotalRub`),
+    sellingTotalRub,
     profitabilityBand,
     actualCostCatalogVersion: requireString(
       value.actualCostCatalogVersion,
@@ -419,6 +451,32 @@ function decodeOrderProfitabilitySnapshot(
       requireString(reason, `${path}.missingCostReasons[${index}]`),
     );
   }
+
+  if (costBasisStatus === 'EXACT') {
+    const cost = snapshot.actualDirectCostRub!;
+    const profit = snapshot.grossProfitRub!;
+    const margin = snapshot.grossMarginPercent!;
+    const markup = snapshot.markupPercent!;
+    const expectedProfit = sellingTotalRub - cost;
+    const expectedMargin = (expectedProfit / sellingTotalRub) * 100;
+    const expectedMarkup = (expectedProfit / cost) * 100;
+    const tolerance = 0.01;
+    if (Math.abs(profit - expectedProfit) > tolerance) {
+      fail(`Inconsistent grossProfitRub at ${path}`);
+    }
+    if (Math.abs(margin - expectedMargin) > tolerance) {
+      fail(`Inconsistent grossMarginPercent at ${path}`);
+    }
+    if (Math.abs(markup - expectedMarkup) > tolerance) {
+      fail(`Inconsistent markupPercent at ${path}`);
+    }
+    const expectedBand =
+      margin >= 50 ? 'GREEN' : margin >= 47 ? 'YELLOW' : 'RED';
+    if (profitabilityBand !== expectedBand) {
+      fail(`Inconsistent profitabilityBand at ${path}`);
+    }
+  }
+
   return snapshot;
 }
 

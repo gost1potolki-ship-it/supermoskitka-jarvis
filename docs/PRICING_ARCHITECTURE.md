@@ -135,7 +135,17 @@ WING / mixed orders: quote succeeds; profitability is not EXACT.
 
 Legacy documents with `marginGuardPassed: true` or Task 11.1 `pricingPolicyStatus` values migrate to `TRUSTED_LEGACY_CALCULATION`. Unknown status → `PersistenceDataError`.
 
-Trusted quotes are created only via `TrustedPreliminaryQuoteProof` (runtime-branded). A raw number + status string cannot become a readiness-qualified quote.
+Trusted quotes are created only via `createTrustedPreliminaryQuoteProof` after:
+
+```text
+trusted normalized input → Calculation Engine → calculated outcome → proof
+```
+
+There is no public raw-number / fingerprint factory. A plain object or forged constructor token cannot become a readiness-qualified quote.
+
+When FRAME actual cost `missingCostReasons` is empty and known subtotal > 0, profitability becomes `EXACT` automatically (orchestration path). Incomplete hardware/profile still yields `PARTIAL`.
+
+Partial known subtotals are never exposed as exact-looking `totalDirectCostRub`.
 
 ---
 

@@ -21,8 +21,6 @@ import {
 import {
   ESTIMATED_AVERAGE_HEIGHT_MM,
   ESTIMATED_AVERAGE_WIDTH_MM,
-  PreliminaryQuoteService,
-  TrustedPreliminaryQuoteProof,
   applyMarginGuard,
   buildMeasurementDraft,
   computeQuoteInputFingerprintFromMemory,
@@ -30,6 +28,7 @@ import {
   evaluateLeadReadiness,
   resolveItemCalculationSize,
 } from '../src/jarvis/preliminary/index.js';
+import { persistTestQuote } from './helpers/persist-test-quote.js';
 import { CalculationTool, ToolRuntime, projectSafeCalculationOutcome } from '../src/jarvis/tools/index.js';
 import { ConversationOrchestrator } from '../src/jarvis/conversation/index.js';
 import { FakeSystemPromptProvider } from '../src/jarvis/fake-system-prompt-provider.js';
@@ -89,14 +88,7 @@ function memoryWithItem(productType: string, fields: Record<string, unknown> = {
 }
 
 function persistQuote(memory: OrderMemory, publicTotalRub: number) {
-  const service = new PreliminaryQuoteService();
-  return service.persistAfterPreliminaryCalculation({
-    memory,
-    proof: TrustedPreliminaryQuoteProof.fromTrustedLegacyCalculation({
-      publicTotalRub,
-      inputFingerprint: computeQuoteInputFingerprintFromMemory(memory),
-    }),
-  });
+  return persistTestQuote(memory, publicTotalRub);
 }
 
 function extractionRequest(memory: OrderMemory, text: string): FactExtractionRequest {

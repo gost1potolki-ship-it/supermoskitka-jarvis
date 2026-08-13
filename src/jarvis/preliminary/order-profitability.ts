@@ -17,6 +17,13 @@ export interface ComputeOrderProfitabilitySnapshotInput {
   computedAt?: string;
 }
 
+export interface FinalizeFrameOrderProfitabilityInput {
+  sellingTotalRub: number;
+  knownDirectCostSubtotalRub: number;
+  missingCostReasons: string[];
+  computedAt?: string;
+}
+
 function uniqueReasons(reasons: string[]): string[] {
   return [...new Set(reasons)];
 }
@@ -25,6 +32,35 @@ function itemProductTypes(memory: OrderMemory): string[] {
   return memory.items
     .map((item) => getFactValue(item.productType))
     .filter((value): value is string => value !== undefined);
+}
+
+/**
+ * Orchestration decision: EXACT only when missing reasons are empty and known subtotal > 0.
+ * Incomplete FRAME (e.g. hardware) correctly stays PARTIAL until owner confirms full basis.
+ */
+export function finalizeFrameOrderProfitability(
+  input: FinalizeFrameOrderProfitabilityInput,
+): OrderProfitabilitySnapshot {
+  const computedAt = input.computedAt ?? new Date().toISOString();
+  const missing = uniqueReasons(input.missingCostReasons);
+
+  if (missing.length === 0 && input.knownDirectCostSubtotalRub > 0) {
+    return computeOrderProfitability({
+      sellingTotalRub: input.sellingTotalRub,
+      costBasisStatus: 'EXACT',
+      actualDirectCostRub: input.knownDirectCostSubtotalRub,
+      knownDirectCostSubtotalRub: input.knownDirectCostSubtotalRub,
+      computedAt,
+    });
+  }
+
+  return computeOrderProfitability({
+    sellingTotalRub: input.sellingTotalRub,
+    costBasisStatus: 'PARTIAL',
+    knownDirectCostSubtotalRub: input.knownDirectCostSubtotalRub,
+    missingCostReasons: missing.length > 0 ? missing : ['DIRECT_COST_BASIS_INCOMPLETE'],
+    computedAt,
+  });
 }
 
 /**
@@ -111,11 +147,10 @@ export function computeOrderProfitabilitySnapshot(
 
   missing.push(...actual.missingCostReasons);
 
-  return computeOrderProfitability({
+  return finalizeFrameOrderProfitability({
     sellingTotalRub: input.sellingTotalRub,
-    costBasisStatus: 'PARTIAL',
     knownDirectCostSubtotalRub: actual.knownDirectCostSubtotalRub,
-    missingCostReasons: uniqueReasons(missing),
+    missingCostReasons: missing,
     computedAt,
   });
 }

@@ -191,7 +191,6 @@ export class CalculationTool {
     const trustedQuote = createTrustedPreliminaryQuoteProof({
       memory,
       outcome,
-      deliveryType: built.input.delivery.type,
       trustedInput: built.input,
     });
 

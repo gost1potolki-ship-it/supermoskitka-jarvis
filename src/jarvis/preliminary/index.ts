@@ -98,5 +98,7 @@ export {
 
 export {
   computeOrderProfitabilitySnapshot,
+  finalizeFrameOrderProfitability,
   type ComputeOrderProfitabilitySnapshotInput,
+  type FinalizeFrameOrderProfitabilityInput,
 } from './order-profitability.js';

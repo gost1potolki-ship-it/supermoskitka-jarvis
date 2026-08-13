@@ -9,6 +9,7 @@ import {
   SuperMoskitkaCalculationEngine,
   calculateFrame600x1800WhiteStandardFixture,
   calculateFrameBomCost,
+  type CalculationOutcome,
 } from '../src/calculation/index.js';
 import {
   buildOrderMemoryDocument,
@@ -20,6 +21,7 @@ import {
 } from '../src/jarvis/memory/index.js';
 import {
   buildPreliminaryQuoteSnapshot,
+  buildTrustedPreliminaryCalculationInput,
   computeFrameOrderDirectCost,
   createTrustedPreliminaryQuoteProof,
   ESTIMATED_AVERAGE_HEIGHT_MM,
@@ -37,6 +39,35 @@ const SOURCE = {
   sourceChannel: 'telegram' as const,
   sourceTimestamp: '2026-08-13T10:00:00.000Z',
 };
+
+function calculatedOutcome(total: number): CalculationOutcome {
+  return {
+    status: 'calculated',
+    items: [],
+    total,
+    warnings: [],
+    missingFields: [],
+    calculationVersion: 'v',
+    priceVersion: 'p',
+    businessRulesVersion: 'b',
+  };
+}
+
+function proofForMemory(
+  memory: OrderMemory,
+  total: number,
+  deliveryType: 'city' | 'out' | 'pickup' = 'city',
+) {
+  const built = buildTrustedPreliminaryCalculationInput(memory, { type: deliveryType });
+  if (!built.ok) {
+    return { ok: false as const, code: built.code };
+  }
+  return createTrustedPreliminaryQuoteProof({
+    memory,
+    outcome: calculatedOutcome(total),
+    trustedInput: built.input,
+  });
+}
 
 function createEngine() {
   return new SuperMoskitkaCalculationEngine(
@@ -281,9 +312,11 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
       expect(direct.measurementDirectCostRub).toBe(1000);
       expect(direct.deliveryDirectCostRub).toBe(1000);
       expect(direct.installationDirectCostRub).toBe(1000);
-      expect(direct.totalDirectCostRub).toBe(
-        direct.productDirectCostRub + 1000 + 1000 + 1000,
+      expect(direct.knownDirectCostSubtotalRub).toBe(
+        direct.productKnownSubtotalRub + 1000 + 1000 + 1000,
       );
+      expect(direct.costBasisStatus).toBe('PARTIAL');
+      expect(direct.actualDirectCostRub).toBeUndefined();
     });
 
     it('self pickup zeros service direct costs', () => {
@@ -296,41 +329,16 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
       expect(direct.measurementDirectCostRub).toBe(0);
       expect(direct.deliveryDirectCostRub).toBe(0);
       expect(direct.installationDirectCostRub).toBe(0);
-      expect(direct.totalDirectCostRub).toBe(direct.productDirectCostRub);
+      expect(direct.knownDirectCostSubtotalRub).toBe(direct.productKnownSubtotalRub);
+      expect(direct.actualDirectCostRub).toBeUndefined();
     });
   });
 
   describe('psychological pricing is not active', () => {
     it('legacy 9000 / 9050 stay unchanged on the customer path', async () => {
       const memory = frameMemory();
-      const nineThousand = createTrustedPreliminaryQuoteProof({
-        memory,
-        outcome: {
-          status: 'calculated',
-          items: [],
-          total: 9000,
-          warnings: [],
-          missingFields: [],
-          calculationVersion: 'v',
-          priceVersion: 'p',
-          businessRulesVersion: 'b',
-        },
-        deliveryType: 'city',
-      });
-      const nineFifty = createTrustedPreliminaryQuoteProof({
-        memory,
-        outcome: {
-          status: 'calculated',
-          items: [],
-          total: 9050,
-          warnings: [],
-          missingFields: [],
-          calculationVersion: 'v',
-          priceVersion: 'p',
-          businessRulesVersion: 'b',
-        },
-        deliveryType: 'city',
-      });
+      const nineThousand = proofForMemory(memory, 9000);
+      const nineFifty = proofForMemory(memory, 9050);
       expect(nineThousand.ok).toBe(true);
       expect(nineFifty.ok).toBe(true);
       if (nineThousand.ok) {
@@ -535,7 +543,8 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
       expect(direct.ok).toBe(true);
       if (direct.ok) {
         expect(direct.installationDirectCostRub).toBe(1500);
-        expect(direct.productDirectCostRub).toBeGreaterThan(0);
+        expect(direct.productKnownSubtotalRub).toBeGreaterThan(0);
+        expect(direct.actualDirectCostRub).toBeUndefined();
       }
     });
 
@@ -604,10 +613,15 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
         payment: { method: 'cash' },
       });
 
+      const built = buildTrustedPreliminaryCalculationInput(memory, { type: 'city' });
+      expect(built.ok).toBe(true);
+      if (!built.ok) {
+        return;
+      }
       const guarded = createTrustedPreliminaryQuoteProof({
         memory,
         outcome,
-        deliveryType: 'city',
+        trustedInput: built.input,
       });
       expect(guarded.ok).toBe(true);
       if (guarded.ok) {

@@ -37,9 +37,9 @@ import {
   createTrustedPreliminaryQuoteProof,
   decideMeasurementAction,
   evaluateLeadReadiness,
-  PreliminaryQuoteService,
   type TrustedPreliminaryQuoteProof,
 } from '../src/jarvis/preliminary/index.js';
+import { persistTestQuote } from './helpers/persist-test-quote.js';
 import { CalculationTool, projectSafeCalculationOutcome } from '../src/jarvis/tools/index.js';
 import { fakeCalculateOrderCall } from '../src/llm/index.js';
 import { CURRENT_PRICE_CATALOG } from './fixtures/calculation-prices-current.js';
@@ -73,6 +73,22 @@ function calculatedOutcome(total: number): CalculationOutcome {
     priceVersion: 'p',
     businessRulesVersion: 'b',
   };
+}
+
+function proofForMemory(
+  memory: OrderMemory,
+  total: number,
+  deliveryType: 'city' | 'out' | 'pickup' = 'city',
+) {
+  const built = buildTrustedPreliminaryCalculationInput(memory, { type: deliveryType });
+  if (!built.ok) {
+    return { ok: false as const, code: built.code };
+  }
+  return createTrustedPreliminaryQuoteProof({
+    memory,
+    outcome: calculatedOutcome(total),
+    trustedInput: built.input,
+  });
 }
 
 function frameMemory(fields: Record<string, unknown> = {}, quantity = 1): OrderMemory {
@@ -158,11 +174,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       expect(snapshot.grossMarginPercent).toBe(43.75);
       expect(snapshot.profitabilityBand).toBe('RED');
       expect(snapshot.sellingTotalRub).toBe(8000);
-      const quote = createTrustedPreliminaryQuoteProof({
-        memory: frameMemory(),
-        outcome: calculatedOutcome(8000),
-        deliveryType: 'city',
-      });
+      const quote = proofForMemory(frameMemory(), 8000);
       expect(quote.ok).toBe(true);
       if (quote.ok) {
         expect(quote.proof.publicTotalRub).toBe(8000);
@@ -178,11 +190,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       });
       expect(snapshot.sellingTotalRub).toBe(15200);
       expect(snapshot.profitabilityBand).toBe('GREEN');
-      const quote = createTrustedPreliminaryQuoteProof({
-        memory: frameMemory(),
-        outcome: calculatedOutcome(15200),
-        deliveryType: 'city',
-      });
+      const quote = proofForMemory(frameMemory(), 15200);
       expect(quote.ok).toBe(true);
       if (quote.ok) {
         expect(quote.proof.publicTotalRub).toBe(15200);
@@ -192,11 +200,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
 
   describe('PRICE-IMMUTABLE', () => {
     it('PRICE-IMMUTABLE-1 legacy 8500 stays 8500', () => {
-      const created = createTrustedPreliminaryQuoteProof({
-        memory: frameMemory(),
-        outcome: calculatedOutcome(8500),
-        deliveryType: 'city',
-      });
+      const created = proofForMemory(frameMemory(), 8500);
       expect(created.ok).toBe(true);
       if (created.ok) {
         expect(created.proof.publicTotalRub).toBe(8500);
@@ -204,11 +208,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
     });
 
     it('PRICE-IMMUTABLE-2 legacy 9000 is not 8970', () => {
-      const created = createTrustedPreliminaryQuoteProof({
-        memory: frameMemory(),
-        outcome: calculatedOutcome(9000),
-        deliveryType: 'city',
-      });
+      const created = proofForMemory(frameMemory(), 9000);
       expect(created.ok).toBe(true);
       if (created.ok) {
         expect(created.proof.publicTotalRub).toBe(9000);
@@ -216,11 +216,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
     });
 
     it('PRICE-IMMUTABLE-3 legacy 9050 is not 8970', () => {
-      const created = createTrustedPreliminaryQuoteProof({
-        memory: frameMemory(),
-        outcome: calculatedOutcome(9050),
-        deliveryType: 'city',
-      });
+      const created = proofForMemory(frameMemory(), 9050);
       expect(created.ok).toBe(true);
       if (created.ok) {
         expect(created.proof.publicTotalRub).toBe(9050);
@@ -511,11 +507,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
         MISSING_COST_REASON.FRAME_PROFILE_32_ACTUAL_COST_UNKNOWN,
       );
       const memory = frameMemory({ profileType: '32' });
-      const created = createTrustedPreliminaryQuoteProof({
-        memory,
-        outcome: calculatedOutcome(12000),
-        deliveryType: 'city',
-      });
+      const created = proofForMemory(memory, 12000);
       expect(created.ok).toBe(true);
       const profitability = computeOrderProfitabilitySnapshot({
         memory,
@@ -641,20 +633,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
         value: 'Москва',
         source: SOURCE,
       }).memory;
-      const created = createTrustedPreliminaryQuoteProof({
-        memory,
-        outcome: calculatedOutcome(8000),
-        deliveryType: 'city',
-      });
-      expect(created.ok).toBe(true);
-      if (!created.ok) {
-        return;
-      }
-      memory = new PreliminaryQuoteService().persistAfterPreliminaryCalculation({
-        memory,
-        proof: created.proof,
-        deliveryType: 'city',
-      }).memory;
+      memory = persistTestQuote(memory, 8000).memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,

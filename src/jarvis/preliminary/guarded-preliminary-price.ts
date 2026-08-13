@@ -3,51 +3,47 @@ import type { QuoteTrustStatus } from '../../domain/index.js';
 import type { OrderMemory } from '../../domain/index.js';
 
 import { computeOrderProfitabilitySnapshot } from './order-profitability.js';
-import {
-  computeQuoteInputFingerprintFromMemory,
-  computeQuoteInputFingerprintFromTrustedCalculation,
-} from './quote-fingerprint.js';
-import {
-  buildTrustedPreliminaryCalculationInput,
-  type TrustedPreliminaryCalculationInput,
-} from './trusted-preliminary-calculation.js';
+import { computeQuoteInputFingerprintFromTrustedCalculation } from './quote-fingerprint.js';
+import type { TrustedPreliminaryCalculationInput } from './trusted-preliminary-calculation.js';
 
-const PROOF_BRAND = Symbol('TrustedPreliminaryQuoteProof');
+/** Module-private token — not exported. Prevents external construction. */
+const PROOF_CREATE_TOKEN = Symbol('TrustedPreliminaryQuoteProof.create');
 
 export type TrustedPreliminaryQuoteFailureCode =
   | 'NEEDS_INPUT'
   | 'NEEDS_SIZE_BASIS'
+  | 'TRUSTED_INPUT_REQUIRED'
   | 'CALCULATION_INCOMPLETE';
 
+/**
+ * Runtime-branded proof of a trusted legacy calculation.
+ * Constructible only with the module-private create token
+ * (via createTrustedPreliminaryQuoteProof / test-only helper).
+ * No public raw-number / fingerprint factory.
+ */
 export class TrustedPreliminaryQuoteProof {
-  declare readonly [PROOF_BRAND]: true;
+  readonly publicTotalRub: number;
+  readonly quoteTrustStatus: QuoteTrustStatus;
+  readonly inputFingerprint: string;
+  readonly calculationVersion: string | undefined;
+  readonly priceVersion: string | undefined;
 
-  private constructor(
-    readonly publicTotalRub: number,
-    readonly quoteTrustStatus: QuoteTrustStatus,
-    readonly inputFingerprint: string,
-    readonly calculationVersion: string | undefined,
-    readonly priceVersion: string | undefined,
+  constructor(
+    token: typeof PROOF_CREATE_TOKEN,
+    publicTotalRub: number,
+    quoteTrustStatus: QuoteTrustStatus,
+    inputFingerprint: string,
+    calculationVersion: string | undefined,
+    priceVersion: string | undefined,
   ) {
-    Object.defineProperty(this, PROOF_BRAND, {
-      value: true,
-      enumerable: false,
-    });
-  }
-
-  static fromTrustedLegacyCalculation(input: {
-    publicTotalRub: number;
-    inputFingerprint: string;
-    calculationVersion?: string;
-    priceVersion?: string;
-  }): TrustedPreliminaryQuoteProof {
-    return new TrustedPreliminaryQuoteProof(
-      input.publicTotalRub,
-      'TRUSTED_LEGACY_CALCULATION',
-      input.inputFingerprint,
-      input.calculationVersion,
-      input.priceVersion,
-    );
+    if (token !== PROOF_CREATE_TOKEN) {
+      throw new Error('TrustedPreliminaryQuoteProof cannot be constructed directly');
+    }
+    this.publicTotalRub = publicTotalRub;
+    this.quoteTrustStatus = quoteTrustStatus;
+    this.inputFingerprint = inputFingerprint;
+    this.calculationVersion = calculationVersion;
+    this.priceVersion = priceVersion;
   }
 }
 
@@ -64,47 +60,69 @@ export type CreateTrustedPreliminaryQuoteResult =
 export interface CreateTrustedPreliminaryQuoteInput {
   memory: OrderMemory;
   outcome: CalculationOutcome;
-  deliveryType: 'city' | 'out' | 'pickup';
-  trustedInput?: TrustedPreliminaryCalculationInput;
+  /** Required. No memory-fingerprint fallback. */
+  trustedInput: TrustedPreliminaryCalculationInput;
 }
 
 /**
  * Trusted customer quote from the legacy Calculation Engine total.
  * Actual cost / profitability never changes publicTotalRub.
+ *
+ * Requires the same trusted normalized input that drove engine.calculate().
  */
 export function createTrustedPreliminaryQuoteProof(
   input: CreateTrustedPreliminaryQuoteInput,
 ): CreateTrustedPreliminaryQuoteResult {
-  const { memory, outcome, deliveryType } = input;
+  const { memory, outcome, trustedInput } = input;
+
+  if (trustedInput === undefined) {
+    return { ok: false, code: 'TRUSTED_INPUT_REQUIRED' };
+  }
 
   if (outcome.status !== 'calculated' || outcome.total === null || !Number.isFinite(outcome.total)) {
     return { ok: false, code: 'CALCULATION_INCOMPLETE' };
   }
 
-  const trustedInput =
-    input.trustedInput ??
-    (() => {
-      const built = buildTrustedPreliminaryCalculationInput(memory, { type: deliveryType });
-      return built.ok ? built.input : undefined;
-    })();
-
-  const inputFingerprint = trustedInput
-    ? computeQuoteInputFingerprintFromTrustedCalculation(memory, trustedInput)
-    : computeQuoteInputFingerprintFromMemory(memory, { deliveryType });
+  const inputFingerprint = computeQuoteInputFingerprintFromTrustedCalculation(
+    memory,
+    trustedInput,
+  );
 
   return {
     ok: true,
-    proof: TrustedPreliminaryQuoteProof.fromTrustedLegacyCalculation({
-      publicTotalRub: outcome.total,
+    proof: new TrustedPreliminaryQuoteProof(
+      PROOF_CREATE_TOKEN,
+      outcome.total,
+      'TRUSTED_LEGACY_CALCULATION',
       inputFingerprint,
-      calculationVersion: outcome.calculationVersion,
-      priceVersion: outcome.priceVersion,
-    }),
+      outcome.calculationVersion,
+      outcome.priceVersion,
+    ),
   };
 }
 
 /** @deprecated Use createTrustedPreliminaryQuoteProof. */
 export const createGuardedPreliminaryPrice = createTrustedPreliminaryQuoteProof;
+
+/**
+ * @internal Test-only. Not re-exported from preliminary/index.
+ * Production orchestration must use createTrustedPreliminaryQuoteProof after engine.calculate().
+ */
+export function createTrustedPreliminaryQuoteProofForTests(input: {
+  publicTotalRub: number;
+  inputFingerprint: string;
+  calculationVersion?: string;
+  priceVersion?: string;
+}): TrustedPreliminaryQuoteProof {
+  return new TrustedPreliminaryQuoteProof(
+    PROOF_CREATE_TOKEN,
+    input.publicTotalRub,
+    'TRUSTED_LEGACY_CALCULATION',
+    input.inputFingerprint,
+    input.calculationVersion,
+    input.priceVersion,
+  );
+}
 
 export function attachProfitabilityToMemory(
   memory: OrderMemory,
