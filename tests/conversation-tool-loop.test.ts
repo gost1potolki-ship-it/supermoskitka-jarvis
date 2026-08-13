@@ -20,6 +20,7 @@ import { CURRENT_PRICE_CATALOG } from './fixtures/calculation-prices-current.js'
 import { describe, expect, it } from 'vitest';
 
 const VALID_FRAME_ARGS = {
+  mode: 'PRODUCT_ONLY',
   customerType: 'retail',
   items: [
     {
@@ -99,7 +100,11 @@ describe('ConversationOrchestrator tool loop', () => {
     expect(engine.calls).toHaveLength(1);
     expect(llm.toolRequests).toHaveLength(2);
     if (result.status === 'ai_replied') {
-      expect(result.replyText).toContain('3650');
+      // PRICE-1 regression: wrong LLM amount must not reach the customer
+      expect(result.replyText).toContain('1 790 ₽');
+      expect(result.replyText).not.toContain('3650');
+      expect(result.priceIntegrity?.accepted).toBe(false);
+      expect(result.priceIntegrity?.authoritativeTotal).toBe(1790);
     }
   });
 
@@ -139,6 +144,7 @@ describe('ConversationOrchestrator tool loop', () => {
     await seed(store);
     const engine = createTrackingEngine();
     const incomplete = {
+      mode: 'PRODUCT_ONLY',
       customerType: 'retail',
       items: [
         {
@@ -274,9 +280,11 @@ describe('ConversationOrchestrator tool loop', () => {
     expect(stored.map((message) => message.sender)).toEqual(['CUSTOMER', 'AI']);
     expect(stored.some((message) => message.text.includes('widthMm'))).toBe(false);
     expect(stored.some((message) => message.text.includes('calculate_order'))).toBe(false);
+    expect(stored[1]?.text).toContain('1 790 ₽');
+    expect(stored[1]?.text).not.toContain('3650');
   });
 
-  it('ORCH-TOOL-7 final AI answer persisted once', async () => {
+  it('ORCH-TOOL-7 final AI answer persisted once (guarded)', async () => {
     const store = new InMemoryConversationStore();
     await seed(store);
     const engine = createTrackingEngine();
@@ -302,7 +310,8 @@ describe('ConversationOrchestrator tool loop', () => {
 
     const ai = (await store.getMessages('conv-1')).filter((message) => message.sender === 'AI');
     expect(ai).toHaveLength(1);
-    expect(ai[0]?.text).toBe('Итого 3650');
+    expect(ai[0]?.text).toContain('1 790 ₽');
+    expect(ai[0]?.text).not.toContain('3650');
   });
 
   it('ORCH-TOOL-8 provider without tool capability + enabled tools → config error', async () => {
@@ -359,7 +368,8 @@ describe('ConversationOrchestrator tool loop', () => {
 
     expect(result.status).toBe('ai_replied');
     if (result.status === 'ai_replied') {
-      expect(result.replyText).toContain(String(total));
+      expect(result.replyText.replace(/[\s\u00a0]/g, '')).toContain(String(total));
+      expect(result.priceIntegrity?.accepted).toBe(true);
     }
   });
 });

@@ -1,110 +1,76 @@
 import type {
   CalculationEngine,
-  CalculationItemResult,
   CalculationOutcome,
-  CalculationRequest,
 } from '../../calculation/index.js';
 import type { LlmToolCall } from '../../llm/tool-calling-types.js';
+import {
+  buildCalculationRequestFromTrustedInput,
+  parseTrustedCalculationToolInput,
+  type CalculationMode,
+} from '../pricing/index.js';
 
 import {
   CALCULATE_ORDER_TOOL_NAME,
   createCalculateOrderToolDefinition,
 } from './calculate-order-schema.js';
-import type { SafeCalculationItemResult, SafeToolResult } from './tool-types.js';
+import type { SafeToolResult } from './tool-types.js';
 
-function projectItem(item: CalculationItemResult): SafeCalculationItemResult {
-  return {
-    itemId: item.itemId,
-    productType: item.productType,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    productTotal: item.productTotal,
-    installationTotal: item.installationTotal,
-  };
-}
-
-export function projectSafeCalculationOutcome(outcome: CalculationOutcome): SafeToolResult {
-  const base: SafeToolResult = {
-    status: outcome.status,
-    total: outcome.total,
-    items: outcome.items.map(projectItem),
-    missingFields: [...outcome.missingFields],
-    warnings: [...outcome.warnings],
-  };
-
+export function projectSafeCalculationOutcome(
+  outcome: CalculationOutcome,
+  mode?: CalculationMode,
+): SafeToolResult {
   if (outcome.status === 'calculated') {
     return {
-      ...base,
+      status: 'calculated',
+      total: outcome.total,
+      ...(mode !== undefined ? { mode } : {}),
+      ...(outcome.warnings.length > 0 ? { warnings: [...outcome.warnings] } : {}),
       message:
-        'Calculation completed. Reply to the customer with the total now. Do not call calculate_order again unless inputs change.',
+        'Calculation completed. Reply to the customer with the total now. Do not call calculate_order again unless inputs change. Do not change the total.',
     };
   }
+
   if (outcome.status === 'needs_input') {
     return {
-      ...base,
+      status: 'needs_input',
+      missingFields: [...outcome.missingFields],
+      warnings: [...outcome.warnings],
       message:
         'Missing required fields. Ask the customer for missingFields. Do not invent values or prices.',
     };
   }
+
   if (outcome.status === 'unsupported') {
     return {
-      ...base,
+      status: 'unsupported',
+      warnings: [...outcome.warnings],
       message:
         'This configuration cannot be calculated automatically. Do not invent a price.',
     };
   }
-  return base;
-}
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return {
+    status: outcome.status,
+    message: 'Calculation completed with an unexpected status.',
+  };
 }
 
 /**
- * Minimal structural check before handing to CalculationEngine.
- * Engine remains the authoritative validator.
+ * @deprecated Prefer parseTrustedCalculationToolInput + buildCalculationRequestFromTrustedInput.
+ * Kept as a thin alias for tests that assert invalid JSON rejection.
  */
 export function parseCalculationRequestArguments(
   argumentsJson: string,
-): { ok: true; request: CalculationRequest } | { ok: false; result: SafeToolResult } {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(argumentsJson);
-  } catch {
-    return {
-      ok: false,
-      result: {
-        status: 'invalid_arguments',
-        message: 'Calculation arguments are invalid.',
-      },
-    };
+): { ok: true; request: unknown } | { ok: false; result: SafeToolResult } {
+  const trusted = parseTrustedCalculationToolInput(argumentsJson);
+  if (!trusted.ok) {
+    return trusted;
   }
-
-  if (!isRecord(parsed)) {
-    return {
-      ok: false,
-      result: {
-        status: 'invalid_arguments',
-        message: 'Calculation arguments are invalid.',
-      },
-    };
+  const built = buildCalculationRequestFromTrustedInput(trusted.input);
+  if (!built.ok) {
+    return built;
   }
-
-  if (typeof parsed.customerType !== 'string' || !Array.isArray(parsed.items)) {
-    return {
-      ok: false,
-      result: {
-        status: 'invalid_arguments',
-        message: 'Calculation arguments are invalid.',
-      },
-    };
-  }
-
-  // Trust boundary: cast only after JSON parse + shape check; engine validates deeply.
-  return {
-    ok: true,
-    request: parsed as unknown as CalculationRequest,
-  };
+  return { ok: true, request: built.request };
 }
 
 export class CalculationTool {
@@ -120,14 +86,19 @@ export class CalculationTool {
       };
     }
 
-    const parsed = parseCalculationRequestArguments(call.argumentsJson);
-    if (!parsed.ok) {
-      return parsed.result;
+    const trusted = parseTrustedCalculationToolInput(call.argumentsJson);
+    if (!trusted.ok) {
+      return trusted.result;
+    }
+
+    const built = buildCalculationRequestFromTrustedInput(trusted.input);
+    if (!built.ok) {
+      return built.result;
     }
 
     try {
-      const outcome = await this.engine.calculate(parsed.request);
-      return projectSafeCalculationOutcome(outcome);
+      const outcome = await this.engine.calculate(built.request);
+      return projectSafeCalculationOutcome(outcome, trusted.input.mode);
     } catch {
       return {
         status: 'tool_error',

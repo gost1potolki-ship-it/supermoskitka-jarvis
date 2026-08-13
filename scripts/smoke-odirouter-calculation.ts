@@ -1,5 +1,5 @@
 /**
- * Live smoke: OdiRouter tool calling → Calculation Engine.
+ * Live smoke: OdiRouter tool calling → Calculation Engine → PriceIntegrityGuard.
  * DEV SMOKE PRICE SNAPSHOT — NOT PRODUCTION LIVE PRICE SOURCE.
  *
  * Requires ODIROUTER_API_KEY + ODIROUTER_MODEL (tool_calling capable).
@@ -56,16 +56,18 @@ const SMOKE_FRAME_REQUEST: CalculationRequest = {
 };
 
 const CUSTOMER_PROMPT =
-  'Нужна именно одна белая рамочная москитная сетка 1000×1500 мм, крепление металлический Z, профиль 25 мм, пластиковые углы и ручка. Пожалуйста, посчитайте и назовите точную стоимость этой рамочной сетки.';
+  'Нужна именно одна белая рамочная москитная сетка 1000×1500 мм, крепление металлический Z, профиль 25 мм, пластиковые углы и ручка. Пожалуйста, посчитайте и назовите точную стоимость этой рамочной сетки (только изделие, без замера/доставки/установки).';
 
 class TrackingEngine implements CalculationEngine {
   calls = 0;
   lastOutcome: Awaited<ReturnType<CalculationEngine['calculate']>> | null = null;
+  lastRequest: CalculationRequest | null = null;
 
   constructor(private readonly inner: CalculationEngine) {}
 
   async calculate(request: CalculationRequest) {
     this.calls += 1;
+    this.lastRequest = request;
     this.lastOutcome = await this.inner.calculate(request);
     return this.lastOutcome;
   }
@@ -196,12 +198,25 @@ async function main(): Promise<void> {
   const totalOk = containsTotal(reply, expected.total);
   const engineCalled = engine.calls >= 1;
   const calculated = engine.lastOutcome?.status === 'calculated';
+  const integrity = result.priceIntegrity;
+  const mode = integrity?.mode ?? '(unknown)';
+  const guardLabel = integrity
+    ? integrity.accepted
+      ? 'accepted'
+      : `fallback (${integrity.reason})`
+    : '(no calculation / guard skipped)';
 
   console.log('provider: odirouter');
   console.log(`model: ${config.model}`);
   console.log('tool name: calculate_order');
+  console.log(`mode: ${mode}`);
   console.log(`calculation status: ${engine.lastOutcome?.status ?? 'not_called'}`);
-  console.log(`calculated total: ${expected.total}`);
+  console.log(`authoritative total: ${integrity?.authoritativeTotal ?? expected.total}`);
+  if (integrity?.candidateText) {
+    console.log('candidate model response:');
+    console.log(integrity.candidateText);
+  }
+  console.log(`guard: ${guardLabel}`);
   console.log('final response:');
   console.log(reply);
 
@@ -212,7 +227,9 @@ async function main(): Promise<void> {
     !forbidden &&
     !leaked &&
     senders.join(',') === 'CUSTOMER,AI' &&
-    reply.trim() !== ''
+    reply.trim() !== '' &&
+    integrity !== undefined &&
+    integrity.authoritativeTotal === expected.total
   ) {
     console.log('SMOKE: PASS');
     console.log('NOTE: DEV SMOKE PRICE SNAPSHOT — NOT PRODUCTION LIVE PRICE SOURCE');
@@ -225,6 +242,7 @@ async function main(): Promise<void> {
   console.error(`totalPresent=${totalOk}`);
   console.error(`internalLeak=${forbidden || leaked}`);
   console.error(`persistedSenders=${senders.join(',')}`);
+  console.error(`guardPresent=${integrity !== undefined}`);
   process.exitCode = 1;
 }
 

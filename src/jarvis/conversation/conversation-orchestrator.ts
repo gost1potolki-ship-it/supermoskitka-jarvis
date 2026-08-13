@@ -9,8 +9,14 @@ import type { ConversationStore } from '../../storage/conversation-store.js';
 
 import type { SystemPromptProvider } from '../system-prompt-provider.js';
 import {
+  PriceIntegrityGuard,
+  type CalculationMode,
+  type PriceIntegrityReason,
+} from '../pricing/index.js';
+import {
   MAX_TOOL_CALLS_PER_TURN,
   MAX_TOOL_ROUNDS,
+  type SafeToolResult,
   type ToolRuntime,
 } from '../tools/index.js';
 
@@ -24,6 +30,14 @@ export interface IncomingCustomerMessageInput {
   externalMessageId?: string;
 }
 
+export interface PriceIntegrityDiagnostics {
+  accepted: boolean;
+  reason: PriceIntegrityReason;
+  authoritativeTotal: number;
+  mode: CalculationMode;
+  candidateText: string;
+}
+
 export type HandleIncomingMessageResult =
   | {
       status: 'ai_replied';
@@ -31,6 +45,7 @@ export type HandleIncomingMessageResult =
       customerMessage: Message;
       aiMessage: Message;
       replyText: string;
+      priceIntegrity?: PriceIntegrityDiagnostics;
     }
   | {
       status: 'human_owned';
@@ -42,12 +57,39 @@ export interface ConversationOrchestratorOptions {
   toolRuntime?: ToolRuntime;
   maxToolRounds?: number;
   maxToolCallsPerTurn?: number;
+  priceIntegrityGuard?: PriceIntegrityGuard;
+}
+
+interface AuthoritativeCalculation {
+  total: number;
+  mode: CalculationMode;
+}
+
+interface ToolAwareTurnResult {
+  replyText: string;
+  priceIntegrity?: PriceIntegrityDiagnostics;
+}
+
+function readAuthoritativeFromToolResult(
+  result: SafeToolResult,
+): AuthoritativeCalculation | null {
+  if (result.status !== 'calculated') {
+    return null;
+  }
+  if (typeof result.total !== 'number' || !Number.isInteger(result.total)) {
+    return null;
+  }
+  if (result.mode !== 'PRODUCT_ONLY' && result.mode !== 'PRELIMINARY_ALL_IN') {
+    return null;
+  }
+  return { total: result.total, mode: result.mode };
 }
 
 export class ConversationOrchestrator {
   private readonly toolRuntime: ToolRuntime | undefined;
   private readonly maxToolRounds: number;
   private readonly maxToolCallsPerTurn: number;
+  private readonly priceIntegrityGuard: PriceIntegrityGuard;
 
   constructor(
     private readonly store: ConversationStore,
@@ -58,6 +100,7 @@ export class ConversationOrchestrator {
     this.toolRuntime = options.toolRuntime;
     this.maxToolRounds = options.maxToolRounds ?? MAX_TOOL_ROUNDS;
     this.maxToolCallsPerTurn = options.maxToolCallsPerTurn ?? MAX_TOOL_CALLS_PER_TURN;
+    this.priceIntegrityGuard = options.priceIntegrityGuard ?? new PriceIntegrityGuard();
   }
 
   async handleIncomingMessage(
@@ -104,9 +147,11 @@ export class ConversationOrchestrator {
       ...mapMessagesToLlm(history),
     ];
 
-    const replyText = this.toolRuntime
+    const turn = this.toolRuntime
       ? await this.runToolAwareTurn(conversation.conversationId, baseMessages)
-      : await this.runTextOnlyTurn(conversation.conversationId, baseMessages);
+      : {
+          replyText: await this.runTextOnlyTurn(conversation.conversationId, baseMessages),
+        };
 
     const aiCreatedAt = new Date(
       Math.max(Date.now(), Date.parse(customerMessage.createdAt) + 1),
@@ -117,7 +162,7 @@ export class ConversationOrchestrator {
       conversationId: conversation.conversationId,
       channel: conversation.channel,
       sender: 'AI',
-      text: replyText,
+      text: turn.replyText,
       createdAt: aiCreatedAt,
     });
 
@@ -126,7 +171,10 @@ export class ConversationOrchestrator {
       conversation,
       customerMessage,
       aiMessage,
-      replyText,
+      replyText: turn.replyText,
+      ...(turn.priceIntegrity !== undefined
+        ? { priceIntegrity: turn.priceIntegrity }
+        : {}),
     };
   }
 
@@ -160,7 +208,7 @@ export class ConversationOrchestrator {
   private async runToolAwareTurn(
     conversationId: string,
     initialMessages: LlmToolConversationMessage[],
-  ): Promise<string> {
+  ): Promise<ToolAwareTurnResult> {
     if (!this.toolRuntime) {
       throw new InvalidOperationError('Tool runtime is not configured');
     }
@@ -173,6 +221,7 @@ export class ConversationOrchestrator {
     const messages: LlmToolConversationMessage[] = [...initialMessages];
     let toolCallsExecuted = 0;
     let completedToolRound = false;
+    let authoritative: AuthoritativeCalculation | null = null;
 
     for (let round = 0; round < this.maxToolRounds; round += 1) {
       const response = await this.llm.generateWithTools({
@@ -183,11 +232,27 @@ export class ConversationOrchestrator {
       });
 
       if (response.type === 'text') {
-        const replyText = response.text.trim();
-        if (replyText === '') {
+        const candidateText = response.text.trim();
+        if (candidateText === '') {
           throw new InvalidOperationError('LLM returned an empty response');
         }
-        return replyText;
+        if (!authoritative) {
+          return { replyText: candidateText };
+        }
+        const guarded = this.priceIntegrityGuard.enforce(candidateText, {
+          mode: authoritative.mode,
+          authoritativeTotal: authoritative.total,
+        });
+        return {
+          replyText: guarded.outgoingText,
+          priceIntegrity: {
+            accepted: guarded.accepted,
+            reason: guarded.reason,
+            authoritativeTotal: authoritative.total,
+            mode: authoritative.mode,
+            candidateText: guarded.candidateText,
+          },
+        };
       }
 
       if (response.toolCalls.length === 0) {
@@ -207,6 +272,10 @@ export class ConversationOrchestrator {
       for (const call of response.toolCalls) {
         toolCallsExecuted += 1;
         const result = await this.toolRuntime.executeToolCall(call);
+        const nextAuthoritative = readAuthoritativeFromToolResult(result);
+        if (nextAuthoritative) {
+          authoritative = nextAuthoritative;
+        }
         messages.push({
           role: 'tool',
           toolCallId: call.id,

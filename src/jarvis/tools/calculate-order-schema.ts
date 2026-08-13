@@ -1,11 +1,20 @@
 import type { LlmToolDefinition } from '../../llm/tool-calling-types.js';
 
-/** Canonical JSON Schema for calculate_order — mirrors public CalculationRequest. */
+/**
+ * AI-facing calculate_order schema — TrustedCalculationToolInput only.
+ * No discount, payment, installation overrides, or other monetary authority.
+ */
 export const CALCULATE_ORDER_PARAMETERS_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['customerType', 'items'],
+  required: ['mode', 'customerType', 'items'],
   properties: {
+    mode: {
+      type: 'string',
+      enum: ['PRODUCT_ONLY', 'PRELIMINARY_ALL_IN'],
+      description:
+        'PRODUCT_ONLY = product price only (self-measure / pickup / self-install). PRELIMINARY_ALL_IN = preliminary turnkey order price with measurement, delivery, installation.',
+    },
     customerType: {
       type: 'string',
       enum: ['retail', 'dealer', 'corporate'],
@@ -73,40 +82,6 @@ export const CALCULATE_ORDER_PARAMETERS_SCHEMA = {
         distanceKm: { type: 'number' },
       },
     },
-    installation: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['enabled'],
-      properties: {
-        enabled: { type: 'boolean' },
-        overrideAmount: { type: ['number', 'null'] },
-      },
-    },
-    measurement: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['includeFee'],
-      properties: {
-        includeFee: { type: 'boolean' },
-        paidCash: { type: 'boolean' },
-      },
-    },
-    discount: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['percent'],
-      properties: {
-        percent: { type: 'integer', enum: [0, 5, 10] },
-      },
-    },
-    payment: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['method'],
-      properties: {
-        method: { type: 'string', enum: ['cash', 'qr'] },
-      },
-    },
   },
 } as const;
 
@@ -116,7 +91,7 @@ export function createCalculateOrderToolDefinition(): LlmToolDefinition {
   return {
     name: CALCULATE_ORDER_TOOL_NAME,
     description:
-      'Calculate SuperMoskitka order price using the deterministic Calculation Engine. Use for any concrete customer order pricing. Do not invent prices yourself. After a calculated result, tell the customer the total from the tool result.',
+      'Calculate SuperMoskitka order price using the deterministic Calculation Engine. Always set mode: PRELIMINARY_ALL_IN for normal on-site orders; PRODUCT_ONLY only for explicit product-only / self-service. Do not invent prices, discounts, or overrides. After a calculated result, tell the customer only the total from the tool result.',
     parameters: CALCULATE_ORDER_PARAMETERS_SCHEMA as unknown as Record<string, unknown>,
   };
 }
