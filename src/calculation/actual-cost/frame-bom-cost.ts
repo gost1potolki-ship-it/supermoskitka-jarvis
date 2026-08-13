@@ -8,6 +8,7 @@ import {
   IMPOST_CONNECTOR_COST_RUB,
   IMPOST_COST_RUB_PER_M,
   MESH_ACTUAL_COST_RUB_PER_M2,
+  MISSING_COST_REASON,
   type ActualCostMeshType,
   type ActualCostProfileColor,
 } from './actual-cost-catalog-v1.js';
@@ -34,7 +35,14 @@ export interface FrameBomCostBreakdown {
   wasteRub: number;
   materialsAfterWasteRub: number;
   manufacturingLaborRub: number;
+  /** Known confirmed components only. Never treats missing hardware as 0 for EXACT claims. */
+  knownProductDirectCostSubtotalRub: number;
+  /**
+   * Alias of knownProductDirectCostSubtotalRub for Task 11.1 fixture compatibility.
+   * Not an EXACT product cost claim.
+   */
   totalProductDirectCostRub: number;
+  missingCostReasons: string[];
   quantities: {
     profileMeters: number;
     impostMeters: number;
@@ -59,6 +67,8 @@ function impostApplies(heightMm: number): boolean {
 
 export function calculateFrameBomCost(input: FrameBomCostInput): FrameBomCostBreakdown {
   const { widthMm, heightMm, profileColor, meshType, fastening, businessRules } = input;
+  const frameProfile = input.frameProfile ?? '25';
+  const missingCostReasons: string[] = [MISSING_COST_REASON.FRAME_HARDWARE_ACTUAL_COST_UNKNOWN];
 
   const perimeter = perimeterMeters(widthMm, heightMm);
   const profileMeters = Math.ceil(perimeter);
@@ -66,7 +76,12 @@ export function calculateFrameBomCost(input: FrameBomCostInput): FrameBomCostBre
   const heightM = heightMm / 1000;
   const meshM2 = widthM * heightM;
 
-  const profileRub = profileMeters * FRAME_PROFILE_25_COST_RUB_PER_M[profileColor];
+  let profileRub = 0;
+  if (frameProfile === '32') {
+    missingCostReasons.push(MISSING_COST_REASON.FRAME_PROFILE_32_ACTUAL_COST_UNKNOWN);
+  } else {
+    profileRub = profileMeters * FRAME_PROFILE_25_COST_RUB_PER_M[profileColor];
+  }
 
   let impostMeters = 0;
   let impostRub = 0;
@@ -96,7 +111,7 @@ export function calculateFrameBomCost(input: FrameBomCostInput): FrameBomCostBre
 
   const manufacturingLaborRub = resolveFrameAssemblyLabor(meshType, fastening, businessRules);
 
-  const totalProductDirectCostRub = materialsAfterWasteRub + manufacturingLaborRub;
+  const knownProductDirectCostSubtotalRub = materialsAfterWasteRub + manufacturingLaborRub;
 
   return {
     profileRub,
@@ -109,7 +124,9 @@ export function calculateFrameBomCost(input: FrameBomCostInput): FrameBomCostBre
     wasteRub,
     materialsAfterWasteRub,
     manufacturingLaborRub,
-    totalProductDirectCostRub,
+    knownProductDirectCostSubtotalRub,
+    totalProductDirectCostRub: knownProductDirectCostSubtotalRub,
+    missingCostReasons: [...new Set(missingCostReasons)],
     quantities: {
       profileMeters,
       impostMeters,
@@ -121,9 +138,8 @@ export function calculateFrameBomCost(input: FrameBomCostInput): FrameBomCostBre
   };
 }
 
-/** Fixed fixture helper for 600×1800 WHITE STANDARD verification tests. */
 export function calculateFrame600x1800WhiteStandardFixture(): FrameBomCostBreakdown {
-  return calculateFrameBomCost({
+  const bom = calculateFrameBomCost({
     widthMm: 600,
     heightMm: 1800,
     profileColor: 'WHITE',
@@ -148,4 +164,5 @@ export function calculateFrame600x1800WhiteStandardFixture(): FrameBomCostBreakd
       plisseMeshPriceReference: {},
     },
   });
+  return bom;
 }

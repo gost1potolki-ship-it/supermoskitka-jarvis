@@ -462,7 +462,7 @@ export class ConversationOrchestrator {
 
     const persisted = this.preliminaryQuoteService.persistAfterPreliminaryCalculation({
       memory,
-      guarded: meta.guardedPrice,
+      proof: meta.guardedPrice,
       deliveryType: meta.deliveryType,
     });
 

@@ -10,14 +10,14 @@ export const MEASUREMENT_DIRECT_COST_RUB = 1000;
 export const INSTALLATION_DIRECT_COST_PER_FRAME_RUB = 500;
 export const CITY_DELIVERY_DIRECT_COST_RUB = 1000;
 
-export type FrameDirectCostCode = 'DIRECT_COST_BASIS_INCOMPLETE';
-
 export interface FrameOrderDirectCostBreakdown {
   productDirectCostRub: number;
   measurementDirectCostRub: number;
   installationDirectCostRub: number;
   deliveryDirectCostRub: number;
   totalDirectCostRub: number;
+  knownDirectCostSubtotalRub: number;
+  missingCostReasons: string[];
 }
 
 export interface FrameOrderDirectCostInput {
@@ -28,11 +28,11 @@ export interface FrameOrderDirectCostInput {
 
 export type FrameOrderDirectCostResult =
   | ({ ok: true } & FrameOrderDirectCostBreakdown)
-  | { ok: false; code: FrameDirectCostCode };
+  | { ok: false; code: 'DIRECT_COST_BASIS_INCOMPLETE'; missingCostReasons: string[] };
 
 /**
- * Order direct cost from Actual Cost Catalog (FRAME BOM + service direct costs).
- * Does not use legacy selling engine directCost fields.
+ * Known FRAME order direct-cost subtotal for analytics.
+ * Incomplete basis does not fail a customer quote.
  */
 export function computeFrameOrderDirectCost(
   input: FrameOrderDirectCostInput,
@@ -47,11 +47,26 @@ export function computeFrameOrderDirectCost(
     })();
 
   if (!trustedInput) {
-    return { ok: false, code: 'DIRECT_COST_BASIS_INCOMPLETE' };
+    return {
+      ok: false,
+      code: 'DIRECT_COST_BASIS_INCOMPLETE',
+      missingCostReasons: ['TRUSTED_COST_INPUT_UNAVAILABLE'],
+    };
   }
 
-  return computeFrameActualOrderDirectCost({
+  const actual = computeFrameActualOrderDirectCost({
     memory: input.memory,
     trustedInput,
   });
+
+  return {
+    ok: true,
+    productDirectCostRub: actual.productKnownSubtotalRub,
+    measurementDirectCostRub: actual.measurementDirectCostRub,
+    installationDirectCostRub: actual.installationDirectCostRub,
+    deliveryDirectCostRub: actual.deliveryDirectCostRub,
+    totalDirectCostRub: actual.knownDirectCostSubtotalRub,
+    knownDirectCostSubtotalRub: actual.knownDirectCostSubtotalRub,
+    missingCostReasons: actual.missingCostReasons,
+  };
 }

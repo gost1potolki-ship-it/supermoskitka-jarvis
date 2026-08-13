@@ -33,11 +33,7 @@ export function evaluateLeadReadiness(memory: OrderMemory): LeadReadiness {
   if (!memory.preliminaryQuote) {
     blockingCodes.add('QUOTE_MISSING');
   } else {
-    if (
-      memory.preliminaryQuote.pricingPolicyStatus !== 'FRAME_COMMERCIAL_PRICING_PASSED' &&
-      memory.preliminaryQuote.pricingPolicyStatus !== 'FRAME_MARGIN_GUARD_PASSED' &&
-      memory.preliminaryQuote.pricingPolicyStatus !== 'EXISTING_PRODUCT_FORMULA'
-    ) {
+    if (memory.preliminaryQuote.quoteTrustStatus !== 'TRUSTED_LEGACY_CALCULATION') {
       blockingCodes.add('PRICING_POLICY_INCOMPLETE');
     }
     const trustedBuild = buildTrustedPreliminaryCalculationInput(memory);

@@ -19,19 +19,13 @@ import {
   createOrderMemory,
 } from '../src/jarvis/memory/index.js';
 import {
-  applyCommercialPricingPolicy,
-  applyPsychologicalPricing,
-  computeHardFloor47Rub,
-  computeRawCommercialPriceRub,
-  computeTargetPrice50Rub,
-} from '../src/jarvis/pricing/commercial-pricing-policy.js';
-import {
   buildPreliminaryQuoteSnapshot,
   computeFrameOrderDirectCost,
-  createGuardedPreliminaryPrice,
+  createTrustedPreliminaryQuoteProof,
   ESTIMATED_AVERAGE_HEIGHT_MM,
   ESTIMATED_AVERAGE_WIDTH_MM,
   resolvePreliminaryInputs,
+  type TrustedPreliminaryQuoteProof,
 } from '../src/jarvis/preliminary/index.js';
 import { CalculationTool } from '../src/jarvis/tools/index.js';
 import { fakeCalculateOrderCall } from '../src/llm/index.js';
@@ -122,8 +116,8 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
     it('COSTCAT-7 ANTICAT = 155.51/m²', () => {
       expect(MESH_ACTUAL_COST_RUB_PER_M2.ANTICAT).toBe(155.51);
     });
-    it('COSTCAT-8 POLL-TEX = 329.93/m²', () => {
-      expect(MESH_ACTUAL_COST_RUB_PER_M2.ANTIDUST).toBe(329.93);
+    it('COSTCAT-8 POLL-TEX = 330.00/m²', () => {
+      expect(MESH_ACTUAL_COST_RUB_PER_M2.ANTIDUST).toBe(330.0);
     });
     it('COSTCAT-9 legacy selling values remain separate and unchanged', async () => {
       const whiteOutcome = await createEngine().calculate({
@@ -250,7 +244,7 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
       expect(anticat.totalProductDirectCostRub).toBeLessThan(antidust.totalProductDirectCostRub);
       expect(antimoshka.meshRub / bomMeshM2(600, 1800)).toBeCloseTo(87.39, 2);
       expect(anticat.meshRub / bomMeshM2(600, 1800)).toBeCloseTo(155.51, 2);
-      expect(antidust.meshRub / bomMeshM2(600, 1800)).toBeCloseTo(329.93, 2);
+      expect(antidust.meshRub / bomMeshM2(600, 1800)).toBeCloseTo(330.0, 2);
     });
 
     it('labor: STANDARD/ANTIMOSHKA 250, ANTICAT/ANTIDUST 300', () => {
@@ -276,29 +270,8 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
     });
   });
 
-  describe('order direct cost and commercial policy', () => {
-    it('self pickup: 2×750 → order 1500, target 3000', () => {
-      expect(computeTargetPrice50Rub(1500)).toBe(3000);
-      const decision = applyCommercialPricingPolicy({
-        legacyCommercialTotalRub: 2500,
-        orderDirectCostRub: 1500,
-      });
-      expect(decision.rawCommercialPriceRub).toBe(3000);
-    });
-
-    it('full service: 4500 order direct, target 9000, floor 8491, psych 8970', () => {
-      expect(computeTargetPrice50Rub(4500)).toBe(9000);
-      expect(computeHardFloor47Rub(4500)).toBe(8491);
-
-      const decision = applyCommercialPricingPolicy({
-        legacyCommercialTotalRub: 8500,
-        orderDirectCostRub: 4500,
-      });
-      expect(decision.rawCommercialPriceRub).toBe(9000);
-      expect(decision.finalCustomerPriceRub).toBe(8970);
-    });
-
-    it('services are part of order direct cost before target pricing', async () => {
+  describe('order direct cost analytics (no selling mutation)', () => {
+    it('services are part of known order direct cost subtotal', async () => {
       const memory = frameMemory({}, 2);
       const direct = computeFrameOrderDirectCost({ memory, deliveryType: 'city' });
       expect(direct.ok).toBe(true);
@@ -325,49 +298,47 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
       expect(direct.installationDirectCostRub).toBe(0);
       expect(direct.totalDirectCostRub).toBe(direct.productDirectCostRub);
     });
-
-    it('legacy vs target: never lower when legacy higher', () => {
-      expect(computeRawCommercialPriceRub(11000, 9000)).toBe(11000);
-      expect(computeRawCommercialPriceRub(8500, 9000)).toBe(9000);
-    });
-
-    it('47% hard floor: 5750 → floor 10850, target50 11500', () => {
-      expect(computeHardFloor47Rub(5750)).toBe(10850);
-      expect(computeTargetPrice50Rub(5750)).toBe(11500);
-
-      const belowFloor = applyCommercialPricingPolicy({
-        legacyCommercialTotalRub: 10700,
-        orderDirectCostRub: 5750,
-      });
-      expect(belowFloor.finalCustomerPriceRub).toBe(11500);
-
-      const aboveTarget = applyCommercialPricingPolicy({
-        legacyCommercialTotalRub: 15200,
-        orderDirectCostRub: 5750,
-      });
-      expect(aboveTarget.finalCustomerPriceRub).toBe(15200);
-    });
   });
 
-  describe('psychological pricing', () => {
-    it('PSYCH-1 raw=9000 → 8970', () => {
-      expect(applyPsychologicalPricing(9000, 4500).finalPriceRub).toBe(8970);
-    });
-    it('PSYCH-2 raw=9050 → 8970', () => {
-      expect(applyPsychologicalPricing(9050, 4500).finalPriceRub).toBe(8970);
-    });
-    it('PSYCH-3 raw=9051 → unchanged', () => {
-      expect(applyPsychologicalPricing(9051, 4500).finalPriceRub).toBe(9051);
-    });
-    it('PSYCH-4 raw=8990 → unchanged', () => {
-      expect(applyPsychologicalPricing(8990, 4500).finalPriceRub).toBe(8990);
-    });
-    it('PSYCH-5 raw=10000 → 9970', () => {
-      expect(applyPsychologicalPricing(10000, 5000).finalPriceRub).toBe(9970);
-    });
-    it('PSYCH-6 candidate below 47% floor → rejected', () => {
-      const tight = applyPsychologicalPricing(9000, 8500);
-      expect(tight.finalPriceRub).toBe(9000);
+  describe('psychological pricing is not active', () => {
+    it('legacy 9000 / 9050 stay unchanged on the customer path', async () => {
+      const memory = frameMemory();
+      const nineThousand = createTrustedPreliminaryQuoteProof({
+        memory,
+        outcome: {
+          status: 'calculated',
+          items: [],
+          total: 9000,
+          warnings: [],
+          missingFields: [],
+          calculationVersion: 'v',
+          priceVersion: 'p',
+          businessRulesVersion: 'b',
+        },
+        deliveryType: 'city',
+      });
+      const nineFifty = createTrustedPreliminaryQuoteProof({
+        memory,
+        outcome: {
+          status: 'calculated',
+          items: [],
+          total: 9050,
+          warnings: [],
+          missingFields: [],
+          calculationVersion: 'v',
+          priceVersion: 'p',
+          businessRulesVersion: 'b',
+        },
+        deliveryType: 'city',
+      });
+      expect(nineThousand.ok).toBe(true);
+      expect(nineFifty.ok).toBe(true);
+      if (nineThousand.ok) {
+        expect(nineThousand.proof.publicTotalRub).toBe(9000);
+      }
+      if (nineFifty.ok) {
+        expect(nineFifty.proof.publicTotalRub).toBe(9050);
+      }
     });
   });
 
@@ -527,9 +498,10 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
         payment: { method: 'cash' },
       });
       expect(tool.lastExecuteMeta?.outcome?.total).toBe(singleFrameOutcome.total);
-      expect(tool.lastExecuteMeta?.guardedPrice?.pricingPolicyStatus).toBe(
-        'FRAME_COMMERCIAL_PRICING_PASSED',
+      expect(tool.lastExecuteMeta?.guardedPrice?.quoteTrustStatus).toBe(
+        'TRUSTED_LEGACY_CALCULATION',
       );
+      expect(tool.lastExecuteMeta?.guardedPrice?.publicTotalRub).toBe(singleFrameOutcome.total);
     });
 
     it('SELLING-VS-COST: public install ≠ direct install for 3 frames', async () => {
@@ -632,33 +604,33 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
         payment: { method: 'cash' },
       });
 
-      const guarded = createGuardedPreliminaryPrice({
+      const guarded = createTrustedPreliminaryQuoteProof({
         memory,
         outcome,
         deliveryType: 'city',
       });
       expect(guarded.ok).toBe(true);
       if (guarded.ok) {
-        expect(guarded.guarded.publicTotalRub).toBe(outcome.total);
-        expect(guarded.guarded.pricingPolicyStatus).toBe('EXISTING_PRODUCT_FORMULA');
+        expect(guarded.proof.publicTotalRub).toBe(outcome.total);
+        expect(guarded.proof.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
       }
     });
 
-    it('buildPreliminaryQuoteSnapshot requires guarded pipeline input', () => {
+    it('arbitrary object cannot create trusted readiness quote', () => {
       const memory = frameMemory();
-      const snapshot = buildPreliminaryQuoteSnapshot({
-        memory,
-        guarded: {
-          publicTotalRub: 20000,
-          pricingPolicyStatus: 'FRAME_COMMERCIAL_PRICING_PASSED',
-          inputFingerprint: 'fp-test',
-        },
-      });
-      expect(snapshot.pricingPolicyStatus).toBe('FRAME_COMMERCIAL_PRICING_PASSED');
-      expect(snapshot.pricingPolicyVersion).toBe('jarvis-pricing-policy-v2');
+      expect(() =>
+        buildPreliminaryQuoteSnapshot({
+          memory,
+          proof: {
+            publicTotalRub: 20000,
+            quoteTrustStatus: 'TRUSTED_LEGACY_CALCULATION',
+            inputFingerprint: 'fp-test',
+          } as unknown as TrustedPreliminaryQuoteProof,
+        }),
+      ).toThrow(/arbitrary object cannot create trusted readiness quote/);
     });
 
-    it('WING-only PRELIMINARY_ALL_IN fails closed', async () => {
+    it('WING-only PRELIMINARY_ALL_IN quotes via legacy engine', async () => {
       let memory = createOrderMemory({
         orderId: 'o3',
         conversationId: 'c3',
@@ -699,10 +671,14 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
           delivery: { type: 'city' },
         }),
       );
-      expect(result.status).toBe('tool_error');
+      expect(result.status).toBe('calculated');
+      expect(typeof result.total).toBe('number');
+      expect(tool.lastExecuteMeta?.guardedPrice?.publicTotalRub).toBe(
+        tool.lastExecuteMeta?.outcome?.total,
+      );
     });
 
-    it('legacy marginGuardPassed decodes as FRAME_MARGIN_GUARD_PASSED', () => {
+    it('legacy marginGuardPassed decodes as TRUSTED_LEGACY_CALCULATION', () => {
       const legacy = {
         quoteId: 'pq_legacy',
         inputFingerprint: 'fp',
@@ -725,10 +701,10 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
           1,
         ),
       ).memory;
-      expect(decoded.preliminaryQuote?.pricingPolicyStatus).toBe('FRAME_MARGIN_GUARD_PASSED');
+      expect(decoded.preliminaryQuote?.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
     });
 
-    it('FRAME_COMMERCIAL_PRICING_PASSED persists in codec', () => {
+    it('legacy FRAME_COMMERCIAL_PRICING_PASSED migrates in codec', () => {
       const snapshot = {
         quoteId: 'pq_v2',
         inputFingerprint: 'fp',
@@ -746,14 +722,12 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
               itemIds: [],
               now: '2026-08-13T10:00:00.000Z',
             }),
-            preliminaryQuote: snapshot,
+            preliminaryQuote: snapshot as never,
           },
           1,
         ),
       ).memory;
-      expect(decoded.preliminaryQuote?.pricingPolicyStatus).toBe(
-        'FRAME_COMMERCIAL_PRICING_PASSED',
-      );
+      expect(decoded.preliminaryQuote?.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
     });
   });
 });

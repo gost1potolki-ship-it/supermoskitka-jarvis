@@ -77,7 +77,6 @@ export {
   computeFrameActualOrderDirectCost,
   type FrameActualOrderCostBreakdown,
   type FrameActualOrderCostInput,
-  type FrameActualOrderCostResult,
 } from './frame-actual-order-cost.js';
 
 export {
@@ -87,9 +86,17 @@ export {
 } from './product-pricing-strategy.js';
 
 export {
+  TrustedPreliminaryQuoteProof,
+  attachProfitabilityToMemory,
   createGuardedPreliminaryPrice,
-  type CreateGuardedPreliminaryPriceInput,
-  type CreateGuardedPreliminaryPriceResult,
-  type GuardedPreliminaryPrice,
-  type GuardedPreliminaryPriceCode,
+  createTrustedPreliminaryQuoteProof,
+  isTrustedPreliminaryQuoteProof,
+  type CreateTrustedPreliminaryQuoteInput,
+  type CreateTrustedPreliminaryQuoteResult,
+  type TrustedPreliminaryQuoteFailureCode,
 } from './guarded-preliminary-price.js';
+
+export {
+  computeOrderProfitabilitySnapshot,
+  type ComputeOrderProfitabilitySnapshotInput,
+} from './order-profitability.js';

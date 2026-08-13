@@ -23,7 +23,9 @@ import {
   type OrderItem,
   type OrderItemFactField,
   type OrderMemory,
+  type OrderProfitabilitySnapshot,
   type PreliminaryQuoteSnapshot,
+  type QuoteTrustStatus,
 } from '../../domain/index.js';
 
 import { JARVIS_PERSISTENCE_SCHEMA_VERSION } from './constants.js';
@@ -255,6 +257,7 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
     'publicTotalRub',
     'createdAt',
     'pricingPolicyVersion',
+    'quoteTrustStatus',
     'pricingPolicyStatus',
     'marginGuardPassed',
     'calculationVersion',
@@ -266,22 +269,7 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
     }
   }
 
-  let pricingPolicyStatus: PreliminaryQuoteSnapshot['pricingPolicyStatus'];
-  if (value.pricingPolicyStatus !== undefined) {
-    const status = value.pricingPolicyStatus;
-    if (
-      status !== 'FRAME_COMMERCIAL_PRICING_PASSED' &&
-      status !== 'FRAME_MARGIN_GUARD_PASSED' &&
-      status !== 'EXISTING_PRODUCT_FORMULA'
-    ) {
-      fail(`Invalid pricingPolicyStatus at ${path}`);
-    }
-    pricingPolicyStatus = status;
-  } else if (value.marginGuardPassed === true) {
-    pricingPolicyStatus = 'FRAME_MARGIN_GUARD_PASSED';
-  } else {
-    fail(`Invalid pricingPolicyStatus at ${path}`);
-  }
+  const quoteTrustStatus = resolveQuoteTrustStatus(value, path);
 
   const snapshot: PreliminaryQuoteSnapshot = {
     quoteId: requireString(value.quoteId, `${path}.quoteId`),
@@ -289,7 +277,7 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
     publicTotalRub: requireNumber(value.publicTotalRub, `${path}.publicTotalRub`),
     createdAt: requireString(value.createdAt, `${path}.createdAt`),
     pricingPolicyVersion: requireString(value.pricingPolicyVersion, `${path}.pricingPolicyVersion`),
-    pricingPolicyStatus,
+    quoteTrustStatus,
   };
   const calculationVersion = optionalString(value.calculationVersion, `${path}.calculationVersion`);
   if (calculationVersion !== undefined) {
@@ -298,6 +286,138 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
   const priceVersion = optionalString(value.priceVersion, `${path}.priceVersion`);
   if (priceVersion !== undefined) {
     snapshot.priceVersion = priceVersion;
+  }
+  return snapshot;
+}
+
+function resolveQuoteTrustStatus(
+  value: Record<string, unknown>,
+  path: string,
+): QuoteTrustStatus {
+  if (value.quoteTrustStatus !== undefined) {
+    if (value.quoteTrustStatus !== 'TRUSTED_LEGACY_CALCULATION') {
+      fail(`Invalid quoteTrustStatus at ${path}`);
+    }
+    return 'TRUSTED_LEGACY_CALCULATION';
+  }
+  if (value.pricingPolicyStatus !== undefined) {
+    const status = value.pricingPolicyStatus;
+    if (
+      status !== 'FRAME_COMMERCIAL_PRICING_PASSED' &&
+      status !== 'FRAME_MARGIN_GUARD_PASSED' &&
+      status !== 'EXISTING_PRODUCT_FORMULA' &&
+      status !== 'TRUSTED_LEGACY_CALCULATION'
+    ) {
+      fail(`Invalid pricingPolicyStatus at ${path}`);
+    }
+    return 'TRUSTED_LEGACY_CALCULATION';
+  }
+  if (value.marginGuardPassed === true) {
+    return 'TRUSTED_LEGACY_CALCULATION';
+  }
+  fail(`Invalid quoteTrustStatus at ${path}`);
+}
+
+function decodeOrderProfitabilitySnapshot(
+  value: unknown,
+  path: string,
+): OrderProfitabilitySnapshot {
+  if (!isRecord(value)) {
+    fail(`Invalid OrderProfitabilitySnapshot at ${path}`);
+  }
+  const allowed = new Set([
+    'costBasisStatus',
+    'sellingTotalRub',
+    'actualDirectCostRub',
+    'knownDirectCostSubtotalRub',
+    'grossProfitRub',
+    'grossMarginPercent',
+    'markupPercent',
+    'profitabilityBand',
+    'missingCostReasons',
+    'actualCostCatalogVersion',
+    'computedAt',
+  ]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      fail(`Unknown OrderProfitabilitySnapshot field at ${path}.${key}`);
+    }
+  }
+
+  const costBasisStatus = value.costBasisStatus;
+  if (
+    costBasisStatus !== 'EXACT' &&
+    costBasisStatus !== 'PARTIAL' &&
+    costBasisStatus !== 'UNAVAILABLE'
+  ) {
+    fail(`Invalid costBasisStatus at ${path}`);
+  }
+  const profitabilityBand = value.profitabilityBand;
+  if (
+    profitabilityBand !== 'GREEN' &&
+    profitabilityBand !== 'YELLOW' &&
+    profitabilityBand !== 'RED' &&
+    profitabilityBand !== 'UNAVAILABLE'
+  ) {
+    fail(`Invalid profitabilityBand at ${path}`);
+  }
+
+  if (costBasisStatus !== 'EXACT') {
+    if (
+      value.grossProfitRub !== undefined ||
+      value.grossMarginPercent !== undefined ||
+      value.markupPercent !== undefined ||
+      value.actualDirectCostRub !== undefined
+    ) {
+      fail(`Exact profit metrics are forbidden when cost basis is not EXACT at ${path}`);
+    }
+    if (profitabilityBand !== 'UNAVAILABLE') {
+      fail(`profitabilityBand must be UNAVAILABLE when cost basis is not EXACT at ${path}`);
+    }
+  }
+
+  const snapshot: OrderProfitabilitySnapshot = {
+    costBasisStatus,
+    sellingTotalRub: requireNumber(value.sellingTotalRub, `${path}.sellingTotalRub`),
+    profitabilityBand,
+    actualCostCatalogVersion: requireString(
+      value.actualCostCatalogVersion,
+      `${path}.actualCostCatalogVersion`,
+    ),
+    computedAt: requireString(value.computedAt, `${path}.computedAt`),
+  };
+
+  if (value.actualDirectCostRub !== undefined) {
+    snapshot.actualDirectCostRub = requireNumber(
+      value.actualDirectCostRub,
+      `${path}.actualDirectCostRub`,
+    );
+  }
+  if (value.knownDirectCostSubtotalRub !== undefined) {
+    snapshot.knownDirectCostSubtotalRub = requireNumber(
+      value.knownDirectCostSubtotalRub,
+      `${path}.knownDirectCostSubtotalRub`,
+    );
+  }
+  if (value.grossProfitRub !== undefined) {
+    snapshot.grossProfitRub = requireNumber(value.grossProfitRub, `${path}.grossProfitRub`);
+  }
+  if (value.grossMarginPercent !== undefined) {
+    snapshot.grossMarginPercent = requireNumber(
+      value.grossMarginPercent,
+      `${path}.grossMarginPercent`,
+    );
+  }
+  if (value.markupPercent !== undefined) {
+    snapshot.markupPercent = requireNumber(value.markupPercent, `${path}.markupPercent`);
+  }
+  if (value.missingCostReasons !== undefined) {
+    if (!Array.isArray(value.missingCostReasons)) {
+      fail(`Invalid missingCostReasons at ${path}`);
+    }
+    snapshot.missingCostReasons = value.missingCostReasons.map((reason, index) =>
+      requireString(reason, `${path}.missingCostReasons[${index}]`),
+    );
   }
   return snapshot;
 }
@@ -358,6 +478,12 @@ export function decodeOrderMemory(raw: unknown): OrderMemory {
   }
   if (raw.preliminaryQuote !== undefined) {
     memory.preliminaryQuote = decodePreliminaryQuoteSnapshot(raw.preliminaryQuote, 'preliminaryQuote');
+  }
+  if (raw.orderProfitability !== undefined) {
+    memory.orderProfitability = decodeOrderProfitabilitySnapshot(
+      raw.orderProfitability,
+      'orderProfitability',
+    );
   }
   if (raw.acceptedPreliminaryQuoteId !== undefined) {
     memory.acceptedPreliminaryQuoteId = requireString(

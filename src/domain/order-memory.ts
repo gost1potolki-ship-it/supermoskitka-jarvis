@@ -1,6 +1,7 @@
 import type { OrderChange } from './order-change.js';
 import type { OrderItem } from './order-item.js';
 import type { CommercialFacts, CustomerFacts, FulfillmentFacts } from './order-sections.js';
+import type { OrderProfitabilitySnapshot } from './profitability.js';
 import type { PreliminaryQuoteSnapshot } from './preliminary-quote.js';
 
 export interface OrderMemory {
@@ -14,8 +15,10 @@ export interface OrderMemory {
   fulfillment?: FulfillmentFacts;
   /** Optional commercial consent facts (Task 11). No monetary authority. */
   commercial?: CommercialFacts;
-  /** Last guarded preliminary quote snapshot (system-generated). */
+  /** Last trusted preliminary quote snapshot (system-generated). */
   preliminaryQuote?: PreliminaryQuoteSnapshot;
+  /** Internal owner-only economics. Never serialized into customer LLM context. */
+  orderProfitability?: OrderProfitabilitySnapshot;
   /** Bound when the customer explicitly accepts the current non-stale quote. */
   acceptedPreliminaryQuoteId?: string;
   createdAt: string;

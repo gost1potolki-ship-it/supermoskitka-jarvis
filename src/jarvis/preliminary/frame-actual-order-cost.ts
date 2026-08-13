@@ -2,6 +2,7 @@ import type { CalculationItemInput } from '../../calculation/index.js';
 import { CURRENT_BUSINESS_RULES } from '../../calculation/business-rules.js';
 import {
   calculateFrameBomCost,
+  MISSING_COST_REASON,
   type ActualCostMeshType,
   type ActualCostProfileColor,
 } from '../../calculation/actual-cost/index.js';
@@ -14,19 +15,14 @@ import {
   INSTALLATION_DIRECT_COST_PER_FRAME_RUB,
 } from './frame-order-direct-cost.js';
 
-export type FrameActualOrderCostCode = 'DIRECT_COST_BASIS_INCOMPLETE';
-
 export interface FrameActualOrderCostBreakdown {
-  productDirectCostRub: number;
+  productKnownSubtotalRub: number;
   measurementDirectCostRub: number;
   installationDirectCostRub: number;
   deliveryDirectCostRub: number;
-  totalDirectCostRub: number;
+  knownDirectCostSubtotalRub: number;
+  missingCostReasons: string[];
 }
-
-export type FrameActualOrderCostResult =
-  | ({ ok: true } & FrameActualOrderCostBreakdown)
-  | { ok: false; code: FrameActualOrderCostCode };
 
 export interface FrameActualOrderCostInput {
   memory: OrderMemory;
@@ -59,17 +55,23 @@ function findTrustedItem(
   return trustedInput.items.find((item) => item.itemId === itemId);
 }
 
+/**
+ * Known FRAME BOM + confirmed service payouts.
+ * Never claims EXACT: hardware/handle/screw quantities are unresolved in V1.
+ * Never silently prices FRAME 32 as FRAME 25.
+ */
 export function computeFrameActualOrderDirectCost(
   input: FrameActualOrderCostInput,
-): FrameActualOrderCostResult {
+): FrameActualOrderCostBreakdown {
   const { memory, trustedInput } = input;
   const deliveryType = trustedInput.delivery.type;
+  const missingCostReasons: string[] = [];
 
   if (deliveryType === 'out') {
-    return { ok: false, code: 'DIRECT_COST_BASIS_INCOMPLETE' };
+    missingCostReasons.push(MISSING_COST_REASON.REGIONAL_DELIVERY_DIRECT_COST_UNKNOWN);
   }
 
-  let productDirectCostRub = 0;
+  let productKnownSubtotalRub = 0;
   let frameQuantity = 0;
 
   for (const orderItem of memory.items) {
@@ -84,19 +86,27 @@ export function computeFrameActualOrderDirectCost(
       trustedItem.widthMm === undefined ||
       trustedItem.heightMm === undefined
     ) {
-      return { ok: false, code: 'DIRECT_COST_BASIS_INCOMPLETE' };
+      missingCostReasons.push('FRAME_TRUSTED_SIZE_UNAVAILABLE');
+      continue;
     }
 
     const profileColor = mapProfileColor(getFactValue(orderItem.profileColor));
     const meshType = mapMeshType(getFactValue(orderItem.meshType));
-    if (!profileColor || !meshType) {
-      return { ok: false, code: 'DIRECT_COST_BASIS_INCOMPLETE' };
+    if (!profileColor) {
+      if (getFactValue(orderItem.profileColor) === 'CUSTOM_RAL') {
+        missingCostReasons.push(MISSING_COST_REASON.FRAME_RAL_PAINTING_ACTUAL_COST_UNKNOWN);
+      } else {
+        missingCostReasons.push('FRAME_PROFILE_COLOR_ACTUAL_COST_UNKNOWN');
+      }
+      continue;
+    }
+    if (!meshType) {
+      missingCostReasons.push('FRAME_MESH_ACTUAL_COST_UNKNOWN');
+      continue;
     }
 
     const fastening =
-      trustedItem.productType === 'FRAME' && trustedItem.fastening === 'PLUNGER'
-        ? 'PLUNGER'
-        : 'Z_METAL';
+      trustedItem.fastening === 'PLUNGER' ? 'PLUNGER' : 'Z_METAL';
 
     const bom = calculateFrameBomCost({
       widthMm: trustedItem.widthMm,
@@ -104,18 +114,14 @@ export function computeFrameActualOrderDirectCost(
       profileColor,
       meshType,
       fastening,
-      frameProfile:
-        trustedItem.productType === 'FRAME' && trustedItem.frameProfile === '32' ? '32' : '25',
+      frameProfile: trustedItem.frameProfile === '32' ? '32' : '25',
       businessRules: CURRENT_BUSINESS_RULES,
     });
 
+    missingCostReasons.push(...bom.missingCostReasons);
     const quantity = trustedItem.quantity ?? 1;
-    productDirectCostRub += bom.totalProductDirectCostRub * quantity;
+    productKnownSubtotalRub += bom.knownProductDirectCostSubtotalRub * quantity;
     frameQuantity += quantity;
-  }
-
-  if (frameQuantity === 0 || productDirectCostRub <= 0) {
-    return { ok: false, code: 'DIRECT_COST_BASIS_INCOMPLETE' };
   }
 
   const isSelfPickup = deliveryType === 'pickup';
@@ -126,18 +132,18 @@ export function computeFrameActualOrderDirectCost(
     ? 0
     : INSTALLATION_DIRECT_COST_PER_FRAME_RUB * frameQuantity;
 
-  const totalDirectCostRub =
-    productDirectCostRub +
+  const knownDirectCostSubtotalRub =
+    productKnownSubtotalRub +
     measurementDirectCostRub +
     deliveryDirectCostRub +
     installationDirectCostRub;
 
   return {
-    ok: true,
-    productDirectCostRub,
+    productKnownSubtotalRub,
     measurementDirectCostRub,
     installationDirectCostRub,
     deliveryDirectCostRub,
-    totalDirectCostRub,
+    knownDirectCostSubtotalRub,
+    missingCostReasons: [...new Set(missingCostReasons)],
   };
 }

@@ -125,6 +125,7 @@ export function buildTrustedPreliminaryCalculationInput(
 export function buildCalculationRequestFromTrustedPreliminaryInput(
   input: TrustedPreliminaryCalculationInput,
 ): CalculationRequest {
+  const isPickup = input.delivery.type === 'pickup';
   return {
     customerType: input.customerType,
     items: input.items,
@@ -134,8 +135,8 @@ export function buildCalculationRequestFromTrustedPreliminaryInput(
         ? { distanceKm: input.delivery.distanceKm }
         : {}),
     },
-    installation: { enabled: true },
-    measurement: { includeFee: true },
+    installation: { enabled: !isPickup },
+    measurement: { includeFee: !isPickup },
     discount: { percent: 0 },
     payment: { method: 'cash' },
   };

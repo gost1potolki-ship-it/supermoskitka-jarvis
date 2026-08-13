@@ -193,8 +193,8 @@ export function buildCalculationRequestFromTrustedInput(
           ? { distanceKm: input.delivery.distanceKm }
           : {}),
       },
-      installation: { enabled: true },
-      measurement: { includeFee: true },
+      installation: { enabled: input.delivery.type !== 'pickup' },
+      measurement: { includeFee: input.delivery.type !== 'pickup' },
       discount: { percent: 0 },
       payment: { method: 'cash' },
     },

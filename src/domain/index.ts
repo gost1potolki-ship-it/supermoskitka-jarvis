@@ -56,8 +56,19 @@ export {
   FULFILLMENT_FACT_FIELDS,
 } from './order-sections.js';
 
-export type { PreliminaryQuoteSnapshot, PricingPolicyStatus } from './preliminary-quote.js';
+export type {
+  LegacyPricingPolicyStatus,
+  PreliminaryQuoteSnapshot,
+  PricingPolicyStatus,
+  QuoteTrustStatus,
+} from './preliminary-quote.js';
 export { PRICING_POLICY_VERSION } from './preliminary-quote.js';
+
+export type {
+  CostBasisStatus,
+  OrderProfitabilitySnapshot,
+  ProfitabilityBand,
+} from './profitability.js';
 
 export type {
   LeadReadiness,

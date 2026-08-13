@@ -10,10 +10,9 @@ import {
   llmDimensionsConflictWithTrusted,
 } from '../preliminary/trusted-preliminary-calculation.js';
 import {
-  createGuardedPreliminaryPrice,
-  type GuardedPreliminaryPrice,
+  createTrustedPreliminaryQuoteProof,
+  type TrustedPreliminaryQuoteProof,
 } from '../preliminary/guarded-preliminary-price.js';
-import { applyMarginGuard } from '../preliminary/margin-guard.js';
 import {
   buildCalculationRequestFromTrustedInput,
   parseTrustedCalculationToolInput,
@@ -31,7 +30,7 @@ export interface CalculationToolExecuteMeta {
   mode?: CalculationMode;
   outcome?: CalculationOutcome;
   guardedTotal?: number | null;
-  guardedPrice?: GuardedPreliminaryPrice;
+  guardedPrice?: TrustedPreliminaryQuoteProof;
   deliveryType?: 'city' | 'out' | 'pickup';
 }
 
@@ -83,26 +82,6 @@ function failPreliminaryGuard(): SafeToolResult {
     message:
       'The preliminary price cannot be completed safely right now. Ask the customer to wait or connect them with a manager.',
   };
-}
-
-function applyLegacyPreliminaryMarginGuard(
-  outcome: CalculationOutcome,
-): { ok: true; total: number } | { ok: false; result: SafeToolResult } {
-  const publicTotalRub = outcome.total;
-  if (publicTotalRub === null || !Number.isFinite(publicTotalRub)) {
-    return { ok: false, result: failPreliminaryGuard() };
-  }
-
-  const guarded = applyMarginGuard({
-    publicTotalRub,
-    trustedDirectCostRub: outcome.trustedDirectCostRub,
-  });
-
-  if (!guarded.ok) {
-    return { ok: false, result: failPreliminaryGuard() };
-  }
-
-  return { ok: true, total: guarded.publicTotalRub };
 }
 
 function trustedBuildFailure(code: string, missingFields?: string[]): SafeToolResult {
@@ -177,22 +156,6 @@ export class CalculationTool {
 
       const outcome = await this.engine.calculate(built.request);
 
-      if (
-        trusted.input.mode === 'PRELIMINARY_ALL_IN' &&
-        outcome.status === 'calculated'
-      ) {
-        const margin = applyLegacyPreliminaryMarginGuard(outcome);
-        if (!margin.ok) {
-          return margin.result;
-        }
-        this.lastExecuteMeta = {
-          mode: trusted.input.mode,
-          outcome,
-          guardedTotal: margin.total,
-        };
-        return projectSafeCalculationOutcome(outcome, trusted.input.mode, margin.total);
-      }
-
       this.lastExecuteMeta = {
         mode: trusted.input.mode,
         outcome,
@@ -225,28 +188,29 @@ export class CalculationTool {
       return projectSafeCalculationOutcome(outcome, toolInput.mode);
     }
 
-    const guardedPrice = createGuardedPreliminaryPrice({
+    const trustedQuote = createTrustedPreliminaryQuoteProof({
       memory,
       outcome,
       deliveryType: built.input.delivery.type,
+      trustedInput: built.input,
     });
 
-    if (!guardedPrice.ok) {
+    if (!trustedQuote.ok) {
       return failPreliminaryGuard();
     }
 
     this.lastExecuteMeta = {
       mode: toolInput.mode,
       outcome,
-      guardedTotal: guardedPrice.guarded.publicTotalRub,
-      guardedPrice: guardedPrice.guarded,
+      guardedTotal: trustedQuote.proof.publicTotalRub,
+      guardedPrice: trustedQuote.proof,
       deliveryType: built.input.delivery.type,
     };
 
     return projectSafeCalculationOutcome(
       outcome,
       toolInput.mode,
-      guardedPrice.guarded.publicTotalRub,
+      trustedQuote.proof.publicTotalRub,
     );
   }
 }

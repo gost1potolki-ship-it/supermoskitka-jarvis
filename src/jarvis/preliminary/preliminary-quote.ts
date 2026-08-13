@@ -6,11 +6,14 @@ import {
   type PreliminaryQuoteSnapshot,
 } from '../../domain/index.js';
 
-import type { GuardedPreliminaryPrice } from './guarded-preliminary-price.js';
+import {
+  isTrustedPreliminaryQuoteProof,
+  type TrustedPreliminaryQuoteProof,
+} from './guarded-preliminary-price.js';
 
 export interface BuildPreliminaryQuoteSnapshotInput {
   memory: OrderMemory;
-  guarded: GuardedPreliminaryPrice;
+  proof: TrustedPreliminaryQuoteProof;
   pricingPolicyVersion?: string;
   createdAt?: string;
 }
@@ -30,24 +33,28 @@ export function generatePreliminaryQuoteId(
 export function buildPreliminaryQuoteSnapshot(
   input: BuildPreliminaryQuoteSnapshotInput,
 ): PreliminaryQuoteSnapshot {
+  if (!isTrustedPreliminaryQuoteProof(input.proof)) {
+    throw new Error('arbitrary object cannot create trusted readiness quote');
+  }
+
   const createdAt = input.createdAt ?? new Date().toISOString();
 
   return {
     quoteId: generatePreliminaryQuoteId(
-      input.guarded.inputFingerprint,
-      input.guarded.publicTotalRub,
+      input.proof.inputFingerprint,
+      input.proof.publicTotalRub,
       createdAt,
     ),
-    inputFingerprint: input.guarded.inputFingerprint,
-    publicTotalRub: input.guarded.publicTotalRub,
+    inputFingerprint: input.proof.inputFingerprint,
+    publicTotalRub: input.proof.publicTotalRub,
     createdAt,
     pricingPolicyVersion: input.pricingPolicyVersion ?? PRICING_POLICY_VERSION,
-    pricingPolicyStatus: input.guarded.pricingPolicyStatus,
-    ...(input.guarded.calculationVersion !== undefined
-      ? { calculationVersion: input.guarded.calculationVersion }
+    quoteTrustStatus: input.proof.quoteTrustStatus,
+    ...(input.proof.calculationVersion !== undefined
+      ? { calculationVersion: input.proof.calculationVersion }
       : {}),
-    ...(input.guarded.priceVersion !== undefined
-      ? { priceVersion: input.guarded.priceVersion }
+    ...(input.proof.priceVersion !== undefined
+      ? { priceVersion: input.proof.priceVersion }
       : {}),
   };
 }
@@ -66,7 +73,7 @@ export function attachPreliminaryQuote(
   const nextSnapshot = equivalentExisting
     ? {
         ...existing,
-        pricingPolicyStatus: snapshot.pricingPolicyStatus,
+        quoteTrustStatus: snapshot.quoteTrustStatus,
         pricingPolicyVersion: snapshot.pricingPolicyVersion,
         ...(snapshot.calculationVersion !== undefined
           ? { calculationVersion: snapshot.calculationVersion }
@@ -94,7 +101,7 @@ export function attachPreliminaryQuote(
 
 export interface CreateQuoteAfterPreliminaryCalculationInput {
   memory: OrderMemory;
-  guarded: GuardedPreliminaryPrice;
+  proof: TrustedPreliminaryQuoteProof;
   pricingPolicyVersion?: string;
   createdAt?: string;
 }
@@ -104,7 +111,7 @@ export function createQuoteAfterPreliminaryCalculation(
 ): { memory: OrderMemory; snapshot: PreliminaryQuoteSnapshot } {
   const snapshot = buildPreliminaryQuoteSnapshot({
     memory: input.memory,
-    guarded: input.guarded,
+    proof: input.proof,
     pricingPolicyVersion: input.pricingPolicyVersion,
     createdAt: input.createdAt,
   });

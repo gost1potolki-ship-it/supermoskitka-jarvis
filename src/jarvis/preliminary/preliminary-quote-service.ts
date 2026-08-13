@@ -1,6 +1,9 @@
 import type { OrderMemory, PreliminaryQuoteSnapshot } from '../../domain/index.js';
 
-import type { GuardedPreliminaryPrice } from './guarded-preliminary-price.js';
+import {
+  attachProfitabilityToMemory,
+  type TrustedPreliminaryQuoteProof,
+} from './guarded-preliminary-price.js';
 import { attachPreliminaryQuote, buildPreliminaryQuoteSnapshot } from './preliminary-quote.js';
 import {
   preliminaryQuotePersistSource,
@@ -9,7 +12,7 @@ import {
 
 export interface PersistPreliminaryQuoteInput {
   memory: OrderMemory;
-  guarded: GuardedPreliminaryPrice;
+  proof: TrustedPreliminaryQuoteProof;
   createdAt?: string;
   deliveryType?: 'city' | 'out' | 'pickup';
 }
@@ -30,12 +33,21 @@ export class PreliminaryQuoteService {
     }
     const snapshot = buildPreliminaryQuoteSnapshot({
       memory,
-      guarded: input.guarded,
+      proof: input.proof,
       createdAt,
     });
+    memory = attachPreliminaryQuote(memory, snapshot, createdAt);
+    if (input.deliveryType !== undefined) {
+      memory = attachProfitabilityToMemory(
+        memory,
+        snapshot.publicTotalRub,
+        input.deliveryType,
+        createdAt,
+      );
+    }
     return {
       snapshot,
-      memory: attachPreliminaryQuote(memory, snapshot, createdAt),
+      memory,
     };
   }
 }

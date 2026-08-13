@@ -1,70 +1,116 @@
-# Pricing architecture (Task 11.1)
+# Pricing architecture (Task 11.1.1)
 
 ## Two independent catalogs
 
 Jarvis maintains **two semantic layers** that must never be conflated:
 
-| Layer | Purpose | Mutability in Task 11.1 |
+| Layer | Purpose | Role after Task 11.1.1 |
 | --- | --- | --- |
-| **Legacy Selling Catalog** | Historical commercial calculator — what the client pays under existing product formulas | **Unchanged** |
-| **Actual Cost Catalog** | Owner-confirmed purchase costs — what the company spends today | **Added** (V1) |
+| **Legacy Selling Catalog** | Historical commercial calculator — **authoritative customer price** | Unchanged. `publicTotalRub === Calculation Engine total` |
+| **Actual Cost Catalog** | Owner-confirmed purchase costs | Internal profitability analytics only |
 
-Updating actual costs must **not** silently rewrite legacy selling prices. GRAY / premium configurations may keep higher public prices even when actual material cost is closer to WHITE.
+Updating actual costs must **not** rewrite, raise, or lower customer selling prices.
 
 Actual Cost Catalog is configuration data (`src/calculation/actual-cost/`). It is **not** duplicated per lead in Order Memory.
 
 ---
 
-## FRAME actual cost (BOM)
+## Customer price invariant
 
-For FRAME only, product direct cost is built bottom-up from:
+```text
+FINAL CUSTOMER PRICE = LEGACY CALCULATION ENGINE TOTAL
+publicTotalRub === outcome.total
+```
 
-- frame profile (perimeter, rounded up to whole meters)
-- impost (when height > 1000 mm, width rounded up to whole meters)
+Actual Cost Engine must never:
+
+- raise or lower customer price;
+- apply psychological adjustment (9000 → 8970 is **not active**);
+- substitute the legacy formula;
+- block a quote because actual cost is incomplete.
+
+---
+
+## Profitability analytics (internal)
+
+```text
+LEGACY SELLING ENGINE → customer price → Preliminary Quote
+                      ↘ Actual Cost Engine → Profitability Analytics
+```
+
+When cost basis is **EXACT**:
+
+```text
+grossProfitRub     = sellingTotalRub - actualDirectCostRub
+grossMarginPercent = grossProfitRub / sellingTotalRub × 100
+markupPercent      = grossProfitRub / actualDirectCostRub × 100
+```
+
+Example: cost 4400 / selling 8800 → profit 4400, **margin 50%**, **markup 100%**.
+
+Bands (indicators only — they do not change price or readiness):
+
+| Band | Rule |
+| --- | --- |
+| GREEN | gross margin ≥ 50% |
+| YELLOW | 47% ≤ gross margin < 50% |
+| RED | gross margin < 47% |
+| UNAVAILABLE | exact direct cost cannot be proven |
+
+`PARTIAL` / `UNAVAILABLE` must not invent exact margin or markup.
+
+Implementation: `src/jarvis/pricing/profitability-analytics.ts`.
+
+Psychological pricing is **postponed / not active**.
+
+---
+
+## FRAME actual cost (known BOM)
+
+For FRAME, a **known subtotal** is built from confirmed components:
+
+- frame profile 25 (perimeter, rounded up to whole meters)
+- impost (when height > 1000 mm)
 - mesh (exact m²)
-- corners (4 for standard rectangle)
-- cord (perimeter rounded up)
+- PVC corners (4)
+- cord
 - impost connectors (2 when impost applies)
-- manufacturing labor (from current business rules)
+- manufacturing labor
+
+Missing hardware (handles, Z/plunger quantity, screws) is **never treated as 0** for an EXACT claim → `PARTIAL` + `FRAME_HARDWARE_ACTUAL_COST_UNKNOWN`.
+
+FRAME profile **32** never silently uses profile 25 actual cost → `FRAME_PROFILE_32_ACTUAL_COST_UNKNOWN`.
+
+CUSTOM_RAL painting actual cost is not inferred from the legacy RAL surcharge.
+
+Catalog prices (including screws) may exist without being included in an EXACT BOM.
 
 ### V1 waste reserve
-
-Centralized in `actual-cost-config.ts`:
 
 ```text
 LINEAR_PROFILE_WASTE_RATE = 5%  (profile + impost)
 MESH_WASTE_RATE           = 5%  (mesh)
 ```
 
-5% is a provisional operational reserve; owner can adjust later.
+### Poll-tex / ANTIDUST
+
+Invoice: 432.79 ₽ / linear m net, VAT 22%, width 1.6 m → **330.00 ₽/m²**.
 
 ### Verification fixture
 
-600×1800 mm, WHITE, STANDARD mesh:
-
-```text
-base materials     ≈ 435.80 ₽
-waste              ≈  19.10 ₽
-materials + waste  ≈ 454.90 ₽
-labor (STANDARD)      250 ₽
-product direct cost ≈ 704.90 ₽
-```
+600×1800 mm, WHITE, STANDARD mesh — known materials + labor ≈ 704.90 ₽ (not an EXACT claim).
 
 ---
 
-## ORDER DIRECT COST
-
-Profitability is evaluated on the **whole order**, not product cost alone:
+## ORDER DIRECT COST (analytics)
 
 ```text
-ORDER DIRECT COST =
-  sum(actual FRAME product direct costs)
+known order direct subtotal =
+  sum(known FRAME product subtotals)
 + measurement direct cost
 + delivery direct cost
 + installation direct cost
 ```
-
-### Service direct costs (V1)
 
 | Service | Direct cost |
 | --- | --- |
@@ -72,70 +118,24 @@ ORDER DIRECT COST =
 | City delivery | 1000 ₽ / order |
 | FRAME installation | 500 ₽ × installed FRAME qty |
 
-**Self-pickup** (client measures, picks up, installs): all three service direct costs = 0.
+Self-pickup: all three = 0. Public measurement/install charges are also off on the trusted pickup request.
 
-### Public charges ≠ direct costs
+Regional/out driver payout unknown → profitability `PARTIAL`/`UNAVAILABLE` with `REGIONAL_DELIVERY_DIRECT_COST_UNKNOWN`. **Quote still succeeds** if the legacy engine calculated.
 
-Legacy engine public totals include selling charges (e.g. 800 ₽/frame install). These are **never** used as direct cost for margin analysis.
-
-Regional/out delivery without confirmed driver payout → `DIRECT_COST_BASIS_INCOMPLETE` (fail closed).
+WING / mixed orders: quote succeeds; profitability is not EXACT.
 
 ---
 
-## Commercial pricing policy
+## Quote trust vs economics
 
-Pipeline:
-
-```text
-Legacy Selling Engine  → legacyCommercialTotal
-Actual Cost Engine     → orderDirectCost
-Commercial policy      → finalCustomerPrice
-```
-
-### Normal target — 50% gross margin
-
-```text
-targetPrice50 = ceil(orderDirectCost / 0.50)
-```
-
-### Hard floor — 47% gross margin
-
-```text
-hardFloor47 = ceil(orderDirectCost / 0.53)
-grossMargin = (finalPrice - orderDirectCost) / finalPrice
-```
-
-### Raw commercial price (before psychology)
-
-```text
-rawCommercialPrice = max(legacyCommercialTotal, targetPrice50)
-final = max(rawCommercialPrice, hardFloor47)
-```
-
-Legacy selling price **never reduced** merely because actual cost became cheaper (GRAY / premium preservation).
-
-### Psychological pricing (V1)
-
-If `raw ∈ [N×1000, N×1000 + 50]` → candidate `N×1000 − 30` (e.g. 9000 → 8970).
-
-Applied only when candidate still satisfies the 47% floor. No customer-facing “discount” language.
-
-Implementation: `src/jarvis/pricing/commercial-pricing-policy.ts`.
-
-Trusted quote status for FRAME: `FRAME_COMMERCIAL_PRICING_PASSED`.
-
----
-
-## Non-FRAME products
-
-| Product | Task 11.1 policy |
+| Concern | Field |
 | --- | --- |
-| DOOR | Existing public formula — `EXISTING_PRODUCT_FORMULA` |
-| PLISSE_NET | Existing public formula — `EXISTING_PRODUCT_FORMULA` |
-| WING | No trusted actual cost V1 — fail closed on guarded path |
-| Mixed FRAME + other | Fail closed — no invented overall margin |
+| Customer quote trust | `quoteTrustStatus: TRUSTED_LEGACY_CALCULATION` |
+| Internal economics | `OrderProfitabilitySnapshot` (`EXACT` / `PARTIAL` / `UNAVAILABLE`) |
 
-FRAME BOM and ×2 target policy are **not** applied to DOOR / PLISSE / WING.
+Legacy documents with `marginGuardPassed: true` or Task 11.1 `pricingPolicyStatus` values migrate to `TRUSTED_LEGACY_CALCULATION`. Unknown status → `PersistenceDataError`.
+
+Trusted quotes are created only via `TrustedPreliminaryQuoteProof` (runtime-branded). A raw number + status string cannot become a readiness-qualified quote.
 
 ---
 
@@ -143,25 +143,21 @@ FRAME BOM and ×2 target policy are **not** applied to DOOR / PLISSE / WING.
 
 **Customer / main LLM** may receive:
 
-- `finalCustomerPriceRub`, quote id, current/stale status
+- public selling total, quote id, current/stale state
 
-**Never exposed** to customer LLM:
+**Never** in `SafeToolResult` or `buildOrderMemoryContext()`:
 
-- Actual Cost Catalog, component costs, waste %, service payouts, order direct cost, gross margin, 50%/47% formulas, legacy vs actual delta
-
-Future **Director Channel** may expose full economics breakdown (owner-only).
+- actual/direct cost, known subtotal, profit, margin, markup, band, supplier prices, waste %, labor/measurement/install/delivery payouts, missing internal cost reasons
 
 ---
 
 ## Trusted preliminary input
 
-`TrustedPreliminaryCalculationInput` is the single normalized source for:
+`TrustedPreliminaryCalculationInput` remains the single normalized source for:
 
 - Calculation Engine request (legacy selling)
-- Actual cost calculation
+- Actual cost analytics
 - Quote fingerprint
 - `PreliminaryQuoteSnapshot`
 
-Resolver wins over LLM tool dimensions. See `docs/PRELIMINARY_QUALIFICATION.md` for size/basis rules.
-
-Missing required cost basis → `DIRECT_COST_BASIS_INCOMPLETE` (never `directCost ?? 0`).
+Resolver wins over LLM tool dimensions. Pickup: `installation.enabled = false`, `measurement.includeFee = false`.

@@ -22,6 +22,8 @@ import {
 } from '../src/jarvis/memory/index.js';
 import { KnowledgeSystemPromptProvider } from '../src/knowledge/index.js';
 import {
+  buildCalculationRequestFromTrustedPreliminaryInput,
+  buildTrustedPreliminaryCalculationInput,
   decideMeasurementAction,
   evaluateLeadReadiness,
 } from '../src/jarvis/preliminary/index.js';
@@ -158,9 +160,26 @@ async function main(): Promise<void> {
   console.log(`turn1 status: ${turn1.status}`);
   console.log(`preliminaryQuote: ${memory.preliminaryQuote?.quoteId ?? '(none)'}`);
   console.log(`dims absent in memory: ${dimsAbsent}`);
-  console.log(`pricingPolicyStatus: ${memory.preliminaryQuote?.pricingPolicyStatus ?? '(none)'}`);
+  console.log(`quoteTrustStatus: ${memory.preliminaryQuote?.quoteTrustStatus ?? '(none)'}`);
 
-  if (turn1.status !== 'ai_replied' || !memory.preliminaryQuote || !dimsAbsent) {
+  const trustedAfterQuote = buildTrustedPreliminaryCalculationInput(memory);
+  let legacyTotalMatches = false;
+  if (trustedAfterQuote.ok && memory.preliminaryQuote) {
+    const legacyOutcome = await engine.calculate(
+      buildCalculationRequestFromTrustedPreliminaryInput(trustedAfterQuote.input),
+    );
+    legacyTotalMatches = memory.preliminaryQuote.publicTotalRub === legacyOutcome.total;
+    console.log(`legacy engine total: ${legacyOutcome.total ?? '(none)'}`);
+    console.log(`quote public total: ${memory.preliminaryQuote.publicTotalRub}`);
+    console.log(`legacy total preserved: ${legacyTotalMatches}`);
+  }
+
+  if (
+    turn1.status !== 'ai_replied' ||
+    !memory.preliminaryQuote ||
+    !dimsAbsent ||
+    !legacyTotalMatches
+  ) {
     console.error('SMOKE: FAIL — turn 1');
     process.exitCode = 1;
     return;

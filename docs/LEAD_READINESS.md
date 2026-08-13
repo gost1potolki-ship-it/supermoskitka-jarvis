@@ -15,7 +15,7 @@
 | `NEEDS_INPUT` | DOOR/PLISSE without sizes, or partial dimensions |
 | `NEEDS_SIZE_BASIS` | Sizes present without `measurementBasis` |
 | `QUOTE_MISSING` | No `preliminaryQuote` on memory |
-| `PRICING_POLICY_INCOMPLETE` | Quote missing valid `pricingPolicyStatus` (`FRAME_COMMERCIAL_PRICING_PASSED`, legacy `FRAME_MARGIN_GUARD_PASSED`, or `EXISTING_PRODUCT_FORMULA`) |
+| `PRICING_POLICY_INCOMPLETE` | Quote missing `quoteTrustStatus: TRUSTED_LEGACY_CALCULATION` |
 | `QUOTE_STALE` | Fingerprint changed or acceptance bound to old quote |
 | `PRICE_NOT_ACCEPTED` | `preliminaryPriceAccepted !== true` |
 | `MEASUREMENT_NOT_AGREED` | `measurementAgreed !== true` |
@@ -30,7 +30,7 @@
 | `AWAITING_OWNER_APPROVAL` | Ready but policy `ALWAYS_MANUAL` |
 | `AUTO_ALLOWED` | Ready and policy `AUTO_WHEN_READY` |
 
-`AUTO_ALLOWED` is an internal signal only — no CRM write in Task 11.
+`AUTO_ALLOWED` is an internal signal only — no CRM write in Task 11. Low internal profitability (RED/YELLOW) does **not** block readiness.
 
 ## Measurement draft
 

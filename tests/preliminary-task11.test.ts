@@ -1,4 +1,4 @@
-import { getFactValue, type OrderMemory, type PricingPolicyStatus } from '../src/domain/index.js';
+import { getFactValue, type OrderMemory } from '../src/domain/index.js';
 import {
   CURRENT_BUSINESS_RULES,
   CURRENT_BUSINESS_RULES_VERSION,
@@ -22,6 +22,7 @@ import {
   ESTIMATED_AVERAGE_HEIGHT_MM,
   ESTIMATED_AVERAGE_WIDTH_MM,
   PreliminaryQuoteService,
+  TrustedPreliminaryQuoteProof,
   applyMarginGuard,
   buildMeasurementDraft,
   computeQuoteInputFingerprintFromMemory,
@@ -87,19 +88,14 @@ function memoryWithItem(productType: string, fields: Record<string, unknown> = {
   return memory;
 }
 
-function persistQuote(
-  memory: OrderMemory,
-  publicTotalRub: number,
-  pricingPolicyStatus: PricingPolicyStatus = 'FRAME_MARGIN_GUARD_PASSED',
-) {
+function persistQuote(memory: OrderMemory, publicTotalRub: number) {
   const service = new PreliminaryQuoteService();
   return service.persistAfterPreliminaryCalculation({
     memory,
-    guarded: {
+    proof: TrustedPreliminaryQuoteProof.fromTrustedLegacyCalculation({
       publicTotalRub,
-      pricingPolicyStatus,
       inputFingerprint: computeQuoteInputFingerprintFromMemory(memory),
-    },
+    }),
   });
 }
 
@@ -193,11 +189,11 @@ describe('Task 11 preliminary core', () => {
       expect(result.adjusted).toBe(false);
     });
 
-    it('MARGIN-2 raises public when below floor', () => {
+    it('MARGIN-2 below floor does not change customer price', () => {
       const result = applyMarginGuard({ publicTotalRub: 10000, trustedDirectCostRub: 6000 });
       expect(result.ok).toBe(true);
-      expect(result.publicTotalRub).toBeGreaterThan(10000);
-      expect(result.adjusted).toBe(true);
+      expect(result.publicTotalRub).toBe(10000);
+      expect(result.adjusted).toBe(false);
     });
 
     it('MARGIN-3 never lowers price', () => {
@@ -205,9 +201,10 @@ describe('Task 11 preliminary core', () => {
       expect(result.publicTotalRub).toBe(20000);
     });
 
-    it('MARGIN-4 unavailable direct cost → fail closed', () => {
+    it('MARGIN-4 unavailable direct cost does not block or mutate price', () => {
       const result = applyMarginGuard({ publicTotalRub: 10000, trustedDirectCostRub: undefined });
-      expect(result.ok).toBe(false);
+      expect(result.ok).toBe(true);
+      expect(result.publicTotalRub).toBe(10000);
       expect(result.code).toBe('MARGIN_COST_BASIS_UNAVAILABLE');
     });
 
@@ -400,12 +397,12 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('QUOTE snapshot', () => {
-    it('QUOTE-1 service creates snapshot with pricingPolicyStatus', () => {
+    it('QUOTE-1 service creates snapshot with quoteTrustStatus', () => {
       const { memory, snapshot } = persistQuote(
         memoryWithItem('FRAME', { profileColor: 'WHITE' }),
         20000,
       );
-      expect(snapshot.pricingPolicyStatus).toBe('FRAME_MARGIN_GUARD_PASSED');
+      expect(snapshot.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
       expect(memory.preliminaryQuote?.quoteId).toMatch(/^pq_/);
     });
 
@@ -457,7 +454,7 @@ describe('Task 11 preliminary core', () => {
       const memory = persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 17500).memory;
       const decoded = decodeOrderMemoryDocument(buildOrderMemoryDocument(memory, 1)).memory;
       expect(decoded.preliminaryQuote?.publicTotalRub).toBe(17500);
-      expect(decoded.preliminaryQuote?.pricingPolicyStatus).toBe('FRAME_MARGIN_GUARD_PASSED');
+      expect(decoded.preliminaryQuote?.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
     });
   });
 
