@@ -8,7 +8,7 @@ Customer message
   → strict JSON / evidence / enum validator
   → item resolver (existing IDs / ordinal / CREATE)
   → existing Order Memory apply APIs
-  → compact CURRENT ORDER MEMORY context
+  → compact [INTERNAL ORDER MEMORY DATA] as untrusted user/data message
   → main LLM / calculate_order
 ```
 
@@ -47,7 +47,8 @@ Confidence is diagnostic only. It never overrides these rules.
 
 - UPDATE `targetItemId` must already exist
 - `targetOrdinal` is 1-based and must resolve uniquely
-- CREATE: Jarvis generates `item-N`
+- If both `targetItemId` and `targetOrdinal` are set, they must point to the **same** item (otherwise reject)
+- CREATE: Jarvis generates `item-N` only after ≥1 applicable EXPLICIT fact (no ghost empty items)
 - Invented IDs are rejected
 
 ## Supported fields (Task 09)
@@ -63,6 +64,15 @@ Prices / discounts are never written to Order Memory from extraction.
 ## Memory context
 
 Main LLM sees current values only, not Fact history, source IDs, or OrderChange objects.
+
+Order Memory is **data**, not instructions:
+
+```text
+system → trusted Jarvis instructions only
+user → [INTERNAL ORDER MEMORY DATA] ... [/INTERNAL ORDER MEMORY DATA]
+```
+
+Customer-originated strings inside memory must never be elevated to `role=system`.
 
 ## Live provider
 

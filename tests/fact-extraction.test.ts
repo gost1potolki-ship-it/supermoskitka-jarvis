@@ -844,4 +844,328 @@ describe('Fact extraction apply boundary', () => {
     );
     expect(extractor.requests).toHaveLength(2);
   });
+
+  it('CREATE-GUARD-1 CREATE + facts=[] → item count unchanged', () => {
+    const memory = createOrderMemory({ orderId: 'o1', conversationId: 'c1' });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [{ operation: 'CREATE', facts: [] }],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Нужна сетка.',
+    );
+    expect(result.memory.items).toHaveLength(0);
+    expect(result.diagnostics.issues.some((issue) => issue.code === 'CREATE_WITHOUT_FACTS')).toBe(
+      true,
+    );
+  });
+
+  it('CREATE-GUARD-2 CREATE + only UNCERTAIN fact → item count unchanged', () => {
+    const memory = createOrderMemory({ orderId: 'o1', conversationId: 'c1' });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'CREATE',
+            facts: [
+              {
+                field: 'productType',
+                value: 'FRAME',
+                explicitness: 'UNCERTAIN',
+                evidenceText: 'наверное рамочная',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Наверное рамочная.',
+    );
+    expect(result.memory.items).toHaveLength(0);
+  });
+
+  it('CREATE-GUARD-3 CREATE + only HYPOTHETICAL fact → item count unchanged', () => {
+    const memory = createOrderMemory({ orderId: 'o1', conversationId: 'c1' });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'CREATE',
+            facts: [
+              {
+                field: 'productType',
+                value: 'FRAME',
+                explicitness: 'HYPOTHETICAL',
+                evidenceText: 'если рамочная',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Если рамочная будет дешевле, возьмём.',
+    );
+    expect(result.memory.items).toHaveLength(0);
+  });
+
+  it('CREATE-GUARD-4 CREATE + EXPLICIT fact with invalid evidence → item count unchanged', () => {
+    const memory = createOrderMemory({ orderId: 'o1', conversationId: 'c1' });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'CREATE',
+            facts: [
+              {
+                field: 'productType',
+                value: 'FRAME',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'рамочная',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Нужна сетка.',
+    );
+    expect(result.memory.items).toHaveLength(0);
+  });
+
+  it('CREATE-GUARD-5 CREATE + one valid EXPLICIT fact → exactly one item created', () => {
+    const memory = createOrderMemory({ orderId: 'o1', conversationId: 'c1' });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'CREATE',
+            facts: [
+              {
+                field: 'productType',
+                value: 'FRAME',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'рамочная',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Нужна рамочная.',
+    );
+    expect(result.memory.items).toHaveLength(1);
+    expect(getFactValue(result.memory.items[0]?.productType)).toBe('FRAME');
+  });
+
+  it('CREATE-GUARD-6 generated item id is Jarvis-owned', () => {
+    const memory = createOrderMemory({ orderId: 'o1', conversationId: 'c1' });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'CREATE',
+            targetItemId: 'extractor-owned-id',
+            facts: [
+              {
+                field: 'productType',
+                value: 'WING',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'крыло',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Нужно крыло.',
+    );
+    expect(result.memory.items).toHaveLength(1);
+    expect(result.memory.items[0]?.id).toBe('item-1');
+    expect(result.memory.items[0]?.id).not.toBe('extractor-owned-id');
+  });
+
+  it('TARGET-1 only targetItemId valid → update accepted', () => {
+    let memory = createOrderMemory({
+      orderId: 'o1',
+      conversationId: 'c1',
+      itemIds: ['item-1', 'item-2'],
+    });
+    memory = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'UPDATE',
+            targetItemId: 'item-2',
+            facts: [
+              {
+                field: 'profileColor',
+                value: 'BROWN_8017',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'коричневая',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Вторая коричневая.',
+    ).memory;
+    expect(getFactValue(memory.items[1]?.profileColor)).toBe('BROWN_8017');
+    expect(getFactValue(memory.items[0]?.profileColor)).toBeUndefined();
+  });
+
+  it('TARGET-2 only targetOrdinal valid → update accepted', () => {
+    let memory = createOrderMemory({
+      orderId: 'o1',
+      conversationId: 'c1',
+      itemIds: ['item-1', 'item-2'],
+    });
+    memory = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'UPDATE',
+            targetOrdinal: 1,
+            facts: [
+              {
+                field: 'profileColor',
+                value: 'WHITE',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'белая',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Первая белая.',
+    ).memory;
+    expect(getFactValue(memory.items[0]?.profileColor)).toBe('WHITE');
+  });
+
+  it('TARGET-3 both point to same item → update accepted', () => {
+    let memory = createOrderMemory({
+      orderId: 'o1',
+      conversationId: 'c1',
+      itemIds: ['item-1', 'item-2'],
+    });
+    memory = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'UPDATE',
+            targetItemId: 'item-2',
+            targetOrdinal: 2,
+            facts: [
+              {
+                field: 'profileColor',
+                value: 'GRAY_7016',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'серая',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Вторая серая.',
+    ).memory;
+    expect(getFactValue(memory.items[1]?.profileColor)).toBe('GRAY_7016');
+  });
+
+  it('TARGET-4 both point to different items → reject', () => {
+    const memory = createOrderMemory({
+      orderId: 'o1',
+      conversationId: 'c1',
+      itemIds: ['item-1', 'item-2'],
+    });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'UPDATE',
+            targetItemId: 'item-1',
+            targetOrdinal: 2,
+            facts: [
+              {
+                field: 'profileColor',
+                value: 'WHITE',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'белая',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Нужна белая.',
+    );
+    expect(result.diagnostics.issues.some((issue) => issue.code === 'TARGET_CONFLICT')).toBe(true);
+    expect(getFactValue(result.memory.items[0]?.profileColor)).toBeUndefined();
+    expect(getFactValue(result.memory.items[1]?.profileColor)).toBeUndefined();
+  });
+
+  it('TARGET-5 one valid + one out of range → reject', () => {
+    const memory = createOrderMemory({
+      orderId: 'o1',
+      conversationId: 'c1',
+      itemIds: ['item-1'],
+    });
+    const result = apply(
+      memory,
+      {
+        itemProposals: [
+          {
+            operation: 'UPDATE',
+            targetItemId: 'item-1',
+            targetOrdinal: 9,
+            facts: [
+              {
+                field: 'profileColor',
+                value: 'WHITE',
+                explicitness: 'EXPLICIT',
+                evidenceText: 'белая',
+              },
+            ],
+          },
+        ],
+        customerFacts: [],
+        fulfillmentFacts: [],
+        issues: [],
+      },
+      'Нужна белая.',
+    );
+    expect(result.diagnostics.issues.some((issue) => issue.code === 'TARGET_CONFLICT')).toBe(true);
+    expect(getFactValue(result.memory.items[0]?.profileColor)).toBeUndefined();
+  });
 });

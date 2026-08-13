@@ -251,7 +251,7 @@ export class ConversationOrchestrator {
       ...(memoryContext
         ? ([
             {
-              role: 'system',
+              role: 'user',
               content: memoryContext,
             },
           ] as const)

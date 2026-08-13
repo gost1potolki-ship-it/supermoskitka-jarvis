@@ -30,6 +30,7 @@ import {
 import { evidenceMatchesMessage } from './evidence.js';
 import type {
   ExtractedFieldProposal,
+  ExtractedItemProposal,
   ExtractionIssue,
   FactExtractionRequest,
   FactExtractionResult,
@@ -59,6 +60,13 @@ export interface MemoryApplyDiagnostics {
 export interface MemoryApplyResult {
   memory: OrderMemory;
   diagnostics: MemoryApplyDiagnostics;
+}
+
+interface ApplicableItemFact {
+  field: OrderItemFactField;
+  value: OrderItemFactValue[OrderItemFactField];
+  evidenceText: string;
+  path: string;
 }
 
 function isChannel(value: string): value is Channel {
@@ -241,9 +249,153 @@ function considerField(
   return true;
 }
 
+function collectApplicableItemFacts(
+  facts: readonly ExtractedFieldProposal[],
+  messageText: string,
+  pathPrefix: string,
+  diagnostics: MemoryApplyDiagnostics,
+): ApplicableItemFact[] {
+  const applicable: ApplicableItemFact[] = [];
+  for (let factIndex = 0; factIndex < facts.length; factIndex += 1) {
+    const fact = facts[factIndex]!;
+    const factPath = `${pathPrefix}.facts[${factIndex}]`;
+    if (!considerField(fact, messageText, ITEM_FIELDS, factPath, diagnostics)) {
+      continue;
+    }
+    const field = fact.field as OrderItemFactField;
+    const canonical = canonicalizeItemValue(field, fact.value);
+    if (!canonical.ok) {
+      diagnostics.issues.push({
+        code: 'INVALID_VALUE',
+        message: canonical.reason,
+        path: factPath,
+      });
+      continue;
+    }
+    applicable.push({
+      field,
+      value: canonical.value,
+      evidenceText: fact.evidenceText,
+      path: factPath,
+    });
+  }
+  return applicable;
+}
+
+/**
+ * Fail-closed UPDATE target resolution.
+ * Both targetItemId and targetOrdinal, when present, must point to the same item.
+ */
+function resolveUpdateTarget(
+  memory: OrderMemory,
+  proposal: ExtractedItemProposal,
+  path: string,
+  diagnostics: MemoryApplyDiagnostics,
+): string | null {
+  const hasId = proposal.targetItemId !== undefined && proposal.targetItemId !== '';
+  const hasOrdinal = proposal.targetOrdinal !== undefined;
+
+  if (hasId && hasOrdinal) {
+    const byId = memory.items.find((item) => item.id === proposal.targetItemId);
+    const byOrdinal = memory.items[proposal.targetOrdinal! - 1];
+    if (!byId || !byOrdinal) {
+      diagnostics.issues.push({
+        code: 'TARGET_CONFLICT',
+        message: 'targetItemId and targetOrdinal do not resolve to the same existing item',
+        path,
+      });
+      return null;
+    }
+    if (byId.id !== byOrdinal.id) {
+      diagnostics.issues.push({
+        code: 'TARGET_CONFLICT',
+        message: 'targetItemId and targetOrdinal point to different items',
+        path,
+      });
+      return null;
+    }
+    return byId.id;
+  }
+
+  if (hasId) {
+    if (!memory.items.some((item) => item.id === proposal.targetItemId)) {
+      diagnostics.issues.push({
+        code: 'UNKNOWN_ITEM_ID',
+        message: `Invented targetItemId rejected: ${proposal.targetItemId}`,
+        path,
+      });
+      return null;
+    }
+    return proposal.targetItemId!;
+  }
+
+  if (hasOrdinal) {
+    const item = memory.items[proposal.targetOrdinal! - 1];
+    if (!item) {
+      diagnostics.issues.push({
+        code: 'ORDINAL_OUT_OF_RANGE',
+        message: `Ordinal out of range: ${proposal.targetOrdinal}`,
+        path,
+      });
+      return null;
+    }
+    return item.id;
+  }
+
+  if (memory.items.length === 1) {
+    return memory.items[0]!.id;
+  }
+
+  diagnostics.issues.push({
+    code: 'UNRESOLVED_TARGET',
+    message: 'UPDATE without resolvable target',
+    path,
+  });
+  return null;
+}
+
+function applyApplicableItemFacts(
+  memory: OrderMemory,
+  targetId: string,
+  applicable: readonly ApplicableItemFact[],
+  allProposedFacts: readonly ExtractedFieldProposal[],
+  source: FactSource,
+  diagnostics: MemoryApplyDiagnostics,
+): OrderMemory {
+  let next = memory;
+  for (const fact of applicable) {
+    const applied = applyOrderItemFact(next, {
+      orderItemId: targetId,
+      field: fact.field,
+      value: fact.value as never,
+      source,
+    });
+    next = applied.memory;
+    diagnostics.appliedFields.push(`item:${targetId}.${fact.field}`);
+
+    if (
+      fact.field === 'profileColor' &&
+      fact.value === 'GRAY_7016' &&
+      /7016/.test(fact.evidenceText) &&
+      !allProposedFacts.some((entry) => entry.field === 'ral' && entry.explicitness === 'EXPLICIT')
+    ) {
+      const ralApplied = applyOrderItemFact(next, {
+        orderItemId: targetId,
+        field: 'ral',
+        value: '7016',
+        source,
+      });
+      next = ralApplied.memory;
+      diagnostics.appliedFields.push(`item:${targetId}.ral`);
+    }
+  }
+  return next;
+}
+
 /**
  * Validate extraction proposals and apply EXPLICIT facts via existing memory APIs.
  * Fail closed: invalid proposals are skipped; never invent memory.
+ * CREATE only allocates a new item after at least one applicable EXPLICIT fact exists.
  */
 export function applyValidatedExtraction(
   memory: OrderMemory,
@@ -262,87 +414,47 @@ export function applyValidatedExtraction(
   for (let index = 0; index < extraction.itemProposals.length; index += 1) {
     const proposal = extraction.itemProposals[index]!;
     const path = `itemProposals[${index}]`;
-    let targetId: string | null = null;
+    const applicable = collectApplicableItemFacts(
+      proposal.facts,
+      messageText,
+      path,
+      diagnostics,
+    );
 
     if (proposal.operation === 'CREATE') {
-      targetId = nextItemId(next);
-      next = addOrderItem(next, targetId, source.sourceTimestamp);
-    } else {
-      if (proposal.targetItemId) {
-        if (!next.items.some((item) => item.id === proposal.targetItemId)) {
-          diagnostics.issues.push({
-            code: 'UNKNOWN_ITEM_ID',
-            message: `Invented targetItemId rejected: ${proposal.targetItemId}`,
-            path,
-          });
-          continue;
-        }
-        targetId = proposal.targetItemId;
-      } else if (proposal.targetOrdinal !== undefined) {
-        const item = next.items[proposal.targetOrdinal - 1];
-        if (!item) {
-          diagnostics.issues.push({
-            code: 'ORDINAL_OUT_OF_RANGE',
-            message: `Ordinal out of range: ${proposal.targetOrdinal}`,
-            path,
-          });
-          continue;
-        }
-        targetId = item.id;
-      } else if (next.items.length === 1) {
-        targetId = next.items[0]!.id;
-      } else {
+      if (applicable.length === 0) {
         diagnostics.issues.push({
-          code: 'UNRESOLVED_TARGET',
-          message: 'UPDATE without resolvable target',
+          code: 'CREATE_WITHOUT_FACTS',
+          message: 'CREATE rejected: no applicable EXPLICIT facts',
           path,
         });
         continue;
       }
-    }
-
-    for (let factIndex = 0; factIndex < proposal.facts.length; factIndex += 1) {
-      const fact = proposal.facts[factIndex]!;
-      const factPath = `${path}.facts[${factIndex}]`;
-      if (!considerField(fact, messageText, ITEM_FIELDS, factPath, diagnostics)) {
-        continue;
-      }
-      const field = fact.field as OrderItemFactField;
-      const canonical = canonicalizeItemValue(field, fact.value);
-      if (!canonical.ok) {
-        diagnostics.issues.push({
-          code: 'INVALID_VALUE',
-          message: canonical.reason,
-          path: factPath,
-        });
-        continue;
-      }
-      const applied = applyOrderItemFact(next, {
-        orderItemId: targetId,
-        field,
-        value: canonical.value as never,
+      const targetId = nextItemId(next);
+      next = addOrderItem(next, targetId, source.sourceTimestamp);
+      next = applyApplicableItemFacts(
+        next,
+        targetId,
+        applicable,
+        proposal.facts,
         source,
-      });
-      next = applied.memory;
-      diagnostics.appliedFields.push(`item:${targetId}.${field}`);
-
-      // When color becomes GRAY_7016 and evidence mentions 7016, also store ral if not proposed.
-      if (
-        field === 'profileColor' &&
-        canonical.value === 'GRAY_7016' &&
-        /7016/.test(fact.evidenceText) &&
-        !proposal.facts.some((entry) => entry.field === 'ral' && entry.explicitness === 'EXPLICIT')
-      ) {
-        const ralApplied = applyOrderItemFact(next, {
-          orderItemId: targetId,
-          field: 'ral',
-          value: '7016',
-          source,
-        });
-        next = ralApplied.memory;
-        diagnostics.appliedFields.push(`item:${targetId}.ral`);
-      }
+        diagnostics,
+      );
+      continue;
     }
+
+    const targetId = resolveUpdateTarget(next, proposal, path, diagnostics);
+    if (!targetId) {
+      continue;
+    }
+    next = applyApplicableItemFacts(
+      next,
+      targetId,
+      applicable,
+      proposal.facts,
+      source,
+      diagnostics,
+    );
   }
 
   for (let index = 0; index < extraction.customerFacts.length; index += 1) {

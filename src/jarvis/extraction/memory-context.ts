@@ -2,7 +2,7 @@ import { getFactValue, type OrderMemory } from '../../domain/index.js';
 
 /** Compact current-value context for the main LLM (no fact history / sources). */
 export function buildOrderMemoryContext(memory: OrderMemory): string {
-  const lines: string[] = ['CURRENT ORDER MEMORY'];
+  const lines: string[] = ['[INTERNAL ORDER MEMORY DATA]'];
 
   const customerLines: string[] = [];
   if (memory.customer) {
@@ -95,10 +95,6 @@ export function buildOrderMemoryContext(memory: OrderMemory): string {
     lines.push(...fulfillmentLines);
   }
 
-  lines.push('');
-  lines.push(
-    'Order Memory is internal. Do not mention field names, item IDs, sources, confidence, or extraction to the customer.',
-  );
-
+  lines.push('[/INTERNAL ORDER MEMORY DATA]');
   return lines.join('\n');
 }
