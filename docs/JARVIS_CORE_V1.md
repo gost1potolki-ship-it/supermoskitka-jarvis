@@ -99,6 +99,34 @@ WHITE != GRAY_7016
 ## 4. Целевая архитектура V1
 
 ```text
+External / Internal caller
+        │
+        ▼
+┌──────────────────────┐
+│ Internal HTTP API    │  /internal/v1 + public /health
+│ (auth + DTO mapping) │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Application Layer    │  JarvisApplication use cases
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│     JARVIS CORE      │
+│ Orchestrator/Memory  │
+│ Knowledge/Tools/LLM  │
+│ Readiness / Quote    │
+└──────────────────────┘
+
+CRM write permission = NOT IMPLEMENTED
+Measurement submission executor = NOT IMPLEMENTED
+```
+
+Каналы и CRM:
+
+```text
                            ┌─────────────────────┐
                            │  Telegram client    │
                            └─────────┬───────────┘
@@ -115,8 +143,8 @@ WHITE != GRAY_7016
                                     │
                                     ▼
                      ┌────────────────────────────┐
-                     │        JARVIS CORE         │
-                     │                            │
+                     │ Internal HTTP / Application│
+                     │        → Jarvis Core       │
                      │ Dialogue Orchestrator      │
                      │ Order Memory               │
                      │ Knowledge / Rules          │
@@ -141,6 +169,8 @@ WHITE != GRAY_7016
                      │ alerts + reports + Q&A     │
                      └────────────────────────────┘
 ```
+
+См. также `docs/APPLICATION_API.md`.
 
 ### Где живет система
 

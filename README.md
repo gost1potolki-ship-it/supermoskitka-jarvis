@@ -13,6 +13,8 @@ HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separ
 - `docs/FACT_EXTRACTION.md` — Fact Extraction + live Order Memory
 - `docs/PRELIMINARY_QUALIFICATION.md` — preliminary price, margin guard, quote snapshot
 - `docs/LEAD_READINESS.md` — readiness gates and measurement action policy
+- `docs/APPLICATION_API.md` — internal Application/HTTP API boundary (`/internal/v1`)
+- `docs/openapi.internal.v1.yaml` — OpenAPI for internal v1
 - `docs/PERSISTENCE.md` — Firestore persistence for Conversation / Order Memory
 
 ## Requirements
@@ -40,6 +42,7 @@ npm install
 | `npm run smoke:odirouter:calculation` | Live OdiRouter calculation tool smoke (DEV price snapshot; not in `npm test`) |
 | `npm run smoke:odirouter:facts` | Live OdiRouter fact extraction + Order Memory smoke (not in `npm test`) |
 | `npm run smoke:odirouter:readiness` | Live OdiRouter preliminary readiness smoke (not in `npm test`) |
+| `npm run smoke:api:odirouter` | Live HTTP Application API smoke via OdiRouter (not in `npm test`) |
 | `npm run smoke:firestore:persistence` | Live Firestore persistence smoke (`jarvis_v1_*` only; not in `npm test`) |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run the compiled server |
@@ -91,3 +94,4 @@ Environment variables (see `.env.example`):
 - `GEMINI_API_KEY` / `GEMINI_MODEL` — optional until Gemini provider is used (see `docs/GEMINI_PROVIDER.md`)
 - `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` — optional until DeepSeek provider is used (see `docs/DEEPSEEK_PROVIDER.md`)
 - `ODIROUTER_API_KEY` / `ODIROUTER_MODEL` / `ODIROUTER_BASE_URL` — optional until OdiRouter provider is used (see `docs/ODIROUTER_PROVIDER.md`)
+- `JARVIS_INTERNAL_API_KEY` — required for `/internal/v1/**` (see `docs/APPLICATION_API.md`)
