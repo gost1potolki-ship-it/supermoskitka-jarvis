@@ -1,6 +1,7 @@
 import { config } from './app/config.js';
 import { createLogger } from './app/logger.js';
 import { createApp } from './app/server.js';
+import { tryCreateProductionJarvisApplication } from './application/index.js';
 
 const logger = createLogger(config.logLevel);
 const internalApiKey = process.env.JARVIS_INTERNAL_API_KEY?.trim() || undefined;
@@ -11,10 +12,19 @@ if (!internalApiKey) {
   });
 }
 
+const application = internalApiKey
+  ? tryCreateProductionJarvisApplication({ logger })
+  : undefined;
+
+if (internalApiKey && !application) {
+  logger.warn('internal_api.runtime_incomplete', {
+    hint: 'Internal API key is set but Firestore/OdiRouter runtime is incomplete; /internal/v1 returns 503',
+  });
+}
+
 const app = createApp(logger, {
   internalApiKey,
-  // Process entry keeps health public. Full Jarvis composition for live traffic
-  // is provided by smoke/test harnesses or a future runtime bootstrap.
+  ...(application ? { application } : {}),
 });
 
 const server = app.listen(config.port, () => {
@@ -22,6 +32,7 @@ const server = app.listen(config.port, () => {
     port: config.port,
     nodeEnv: config.nodeEnv,
     internalApiConfigured: Boolean(internalApiKey),
+    jarvisApplicationWired: Boolean(application),
   });
 });
 

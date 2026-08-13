@@ -95,3 +95,5 @@ Environment variables (see `.env.example`):
 - `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` / `DEEPSEEK_BASE_URL` — optional until DeepSeek provider is used (see `docs/DEEPSEEK_PROVIDER.md`)
 - `ODIROUTER_API_KEY` / `ODIROUTER_MODEL` / `ODIROUTER_BASE_URL` — optional until OdiRouter provider is used (see `docs/ODIROUTER_PROVIDER.md`)
 - `JARVIS_INTERNAL_API_KEY` — required for `/internal/v1/**` (see `docs/APPLICATION_API.md`)
+- `JARVIS_FIRESTORE_PROJECT_ID` (+ optional SA credentials) — required for production Application wiring with persistence
+- Production `npm start` wires Firestore + OdiRouter into `JarvisApplication` when config is complete; otherwise `/health` stays up and `/internal/v1` returns controlled `503` (no silent InMemory fallback). See `docs/APPLICATION_API.md`.

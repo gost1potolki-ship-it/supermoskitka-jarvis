@@ -15,6 +15,7 @@ export type {
   LlmToolResponse,
 } from './tool-calling-types.js';
 export { FakeLlmProvider } from './fake-llm-provider.js';
+export { ScriptedLlmProvider } from './scripted-llm-provider.js';
 export {
   FakeToolCallingLlmProvider,
   fakeCalculateOrderCall,

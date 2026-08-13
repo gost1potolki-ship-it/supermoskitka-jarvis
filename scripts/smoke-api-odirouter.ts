@@ -1,5 +1,5 @@
 /**
- * Live HTTP application API smoke via OdiRouter.
+ * Live HTTP application API smoke via OdiRouter (in-memory stores).
  * Not part of `npm test`. Requires:
  *   ODIROUTER_API_KEY
  *   ODIROUTER_MODEL
@@ -12,11 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 import { config as loadEnv } from 'dotenv';
 
-import { JarvisApplication } from '../src/application/index.js';
+import { composeJarvisApplication } from '../src/application/index.js';
 import { createApp } from '../src/app/server.js';
 import { createLogger } from '../src/app/logger.js';
-import { ConversationOrchestrator } from '../src/jarvis/conversation/index.js';
-import { KnowledgeSystemPromptProvider } from '../src/knowledge/index.js';
 import {
   OdiRouterConfigError,
   OdiRouterLlmProvider,
@@ -55,22 +53,14 @@ async function main(): Promise<void> {
     path.dirname(fileURLToPath(import.meta.url)),
     '../knowledge',
   );
-  const conversationStore = new InMemoryConversationStore();
-  const orderMemoryStore = new InMemoryOrderMemoryStore();
-  const llm = new OdiRouterLlmProvider(config);
-  const orchestrator = new ConversationOrchestrator(
-    conversationStore,
-    llm,
-    new KnowledgeSystemPromptProvider(knowledgeRoot),
-    { orderMemoryStore },
-  );
-  const application = new JarvisApplication({
-    conversationStore,
-    orderMemoryStore,
-    orchestrator,
+  const composed = composeJarvisApplication({
+    conversationStore: new InMemoryConversationStore(),
+    orderMemoryStore: new InMemoryOrderMemoryStore(),
+    llm: new OdiRouterLlmProvider(config),
+    knowledgeRoot,
   });
   const app = createApp(createLogger('error'), {
-    application,
+    application: composed.application,
     internalApiKey: apiKey,
   });
 

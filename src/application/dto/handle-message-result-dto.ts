@@ -5,5 +5,7 @@ export interface HandleCustomerMessageResultDto {
   conversationMode: ConversationMode;
   customerMessageId: string;
   duplicate: boolean;
+  /** True when a previously persisted incomplete customer turn was resumed. */
+  resumed?: boolean;
   aiReply: { messageId: string; text: string } | null;
 }

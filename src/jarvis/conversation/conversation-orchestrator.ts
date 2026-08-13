@@ -42,6 +42,11 @@ export interface IncomingCustomerMessageInput {
   externalMessageId?: string;
 }
 
+export interface ContinuePersistedCustomerTurnInput {
+  conversationId: string;
+  messageId: string;
+}
+
 export interface PriceIntegrityDiagnostics {
   accepted: boolean;
   reason: PriceIntegrityReason;
@@ -174,6 +179,34 @@ export class ConversationOrchestrator {
         : {}),
     });
 
+    return this.processPersistedCustomerTurn(conversation, customerMessage);
+  }
+
+  /**
+   * Resume processing for an already-persisted CUSTOMER message (incomplete AI turn recovery).
+   * Does not append the customer message again.
+   */
+  async continuePersistedCustomerTurn(
+    input: ContinuePersistedCustomerTurnInput,
+  ): Promise<HandleIncomingMessageResult> {
+    const conversation = await this.store.getConversation(input.conversationId);
+    if (!conversation) {
+      throw new ConversationNotFoundError(input.conversationId);
+    }
+
+    const messages = await this.store.getMessages(input.conversationId);
+    const customerMessage = messages.find((message) => message.messageId === input.messageId);
+    if (!customerMessage || customerMessage.sender !== 'CUSTOMER') {
+      throw new InvalidOperationError('Persisted customer message not found for resume');
+    }
+
+    return this.processPersistedCustomerTurn(conversation, customerMessage);
+  }
+
+  private async processPersistedCustomerTurn(
+    conversation: Conversation,
+    customerMessage: Message,
+  ): Promise<HandleIncomingMessageResult> {
     if (conversation.mode === 'HUMAN') {
       return {
         status: 'human_owned',
@@ -235,7 +268,6 @@ export class ConversationOrchestrator {
         try {
           memory = await this.orderMemoryStore.save(applied.memory);
         } catch (persistError) {
-          // Customer message is already stored; do not pretend OrderMemory updated.
           factExtraction.failed = true;
           factExtraction.errorMessage =
             persistError instanceof Error
@@ -254,7 +286,6 @@ export class ConversationOrchestrator {
         factExtraction.failed = true;
         factExtraction.errorMessage =
           error instanceof Error ? error.message : 'Fact extraction failed';
-        // Memory remains unchanged (do not save partial invalid state).
       }
 
       orderMemory = memory;

@@ -45,6 +45,24 @@ Rules:
 
 There is no development default key. Tokens are compared with a timing-safe equality check and are never logged or returned in error bodies.
 
+Missing `JARVIS_INTERNAL_API_KEY` **or** incomplete production runtime (Firestore / OdiRouter) → `/internal/v1/**` returns `503 INTERNAL_API_NOT_CONFIGURED`. `GET /health` stays up.
+
+## Production runtime composition
+
+`npm start` wires:
+
+```text
+JARVIS_INTERNAL_API_KEY
++ Firestore (jarvis_v1_conversations / jarvis_v1_order_memories)
++ OdiRouter LLM
++ Knowledge / FactExtractor / Calculation Tool
+→ JarvisApplication → createApp
+```
+
+There is **no silent InMemory fallback** in production. InMemory stores remain for tests/smoke harnesses only.
+
+Shared wiring helper: `composeJarvisApplication` / `tryCreateProductionJarvisApplication`.
+
 ## Endpoints
 
 | Method | Path | Auth |
@@ -130,8 +148,24 @@ HUMAN mode response `200`:
 
 ### Message idempotency
 
-- Same `conversationId + messageId + text` → `200`, `duplicate=true`, no reprocessing.
-- Same `messageId` with different text → `409 MESSAGE_ID_CONFLICT`.
+Canonical identity:
+
+```text
+conversationId + messageId + text
+```
+
+Semantics:
+
+| Case | Result |
+| --- | --- |
+| Completed AI turn (CUSTOMER + AI reply) | `200 duplicate=true`, existing `aiReply`, no LLM/extractor |
+| HUMAN turn | `200 duplicate=true`, `aiReply=null`, no LLM/extractor |
+| Incomplete AI turn (CUSTOMER persisted, AI missing, mode=AI) | resume same customer turn via orchestrator (no second CUSTOMER append); `duplicate=true`, optional `resumed=true`, then `aiReply` |
+| Same messageId, different text | `409 MESSAGE_ID_CONFLICT` |
+
+Single-process single-flight: concurrent identical POSTs in one Node process share one in-flight promise (`conversationId + messageId`). Map entries are cleared in `finally`.
+
+**Not implemented:** multi-worker / distributed idempotency (Redis lease). Firestore duplicate-message persistence remains a second defense after restart within one process.
 
 ## Order state (internal)
 

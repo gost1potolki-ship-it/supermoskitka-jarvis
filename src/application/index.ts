@@ -1,6 +1,20 @@
 export { ApplicationError, type ApplicationErrorCode } from './application-errors.js';
-export { JarvisApplication, type CreateConversationInput, type HandleCustomerMessageInput, type JarvisApplicationDeps } from './jarvis-application.js';
+export {
+  JarvisApplication,
+  type CreateConversationInput,
+  type HandleCustomerMessageInput,
+  type JarvisApplicationDeps,
+} from './jarvis-application.js';
 export { UuidIdGenerator, type IdGenerator } from './id-generator.js';
+export {
+  composeJarvisApplication,
+  type ComposeJarvisApplicationInput,
+  type ComposedJarvisApplication,
+} from './compose-jarvis-application.js';
+export {
+  tryCreateProductionJarvisApplication,
+  type TryCreateProductionJarvisApplicationOptions,
+} from './create-production-jarvis-application.js';
 
 export type { ConversationDto } from './dto/conversation-dto.js';
 export type { MessageDto, MessageDtoSender } from './dto/message-dto.js';

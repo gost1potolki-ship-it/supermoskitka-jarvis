@@ -93,6 +93,10 @@ function mapProviderError(error: unknown): ApplicationError | undefined {
   return undefined;
 }
 
+function flightKey(conversationId: string, messageId: string): string {
+  return `${conversationId}::${messageId}`;
+}
+
 export class JarvisApplication {
   private readonly conversationStore: ConversationStore;
   private readonly orderMemoryStore: OrderMemoryStore;
@@ -100,6 +104,7 @@ export class JarvisApplication {
   private readonly idGenerator: IdGenerator;
   private readonly measurementActionPolicy: MeasurementActionPolicy | undefined;
   private readonly now: () => string;
+  private readonly inFlight = new Map<string, Promise<HandleCustomerMessageResultDto>>();
 
   constructor(deps: JarvisApplicationDeps) {
     this.conversationStore = deps.conversationStore;
@@ -178,54 +183,88 @@ export class JarvisApplication {
       throw ApplicationError.validation('text must be a non-empty string');
     }
 
+    const key = flightKey(input.conversationId, input.messageId);
+    const existingFlight = this.inFlight.get(key);
+    if (existingFlight) {
+      return existingFlight;
+    }
+
+    const flight = this.handleCustomerMessageSerialized(input).finally(() => {
+      this.inFlight.delete(key);
+    });
+    this.inFlight.set(key, flight);
+    return flight;
+  }
+
+  private async handleCustomerMessageSerialized(
+    input: HandleCustomerMessageInput,
+  ): Promise<HandleCustomerMessageResultDto> {
     const conversation = await this.requireConversation(input.conversationId);
     const existingMessages = await this.conversationStore.getMessages(input.conversationId);
     const existing = existingMessages.find((message) => message.messageId === input.messageId);
+
     if (existing) {
       if (existing.sender !== 'CUSTOMER') {
-        throw ApplicationError.messageIdConflict('Message id already used by a non-customer message');
+        throw ApplicationError.messageIdConflict(
+          'Message id already used by a non-customer message',
+        );
       }
       if (existing.text !== input.text) {
         throw ApplicationError.messageIdConflict();
       }
-      const ai = findAiReplyAfterCustomer(existingMessages, existing.messageId);
-      return {
-        conversationId: conversation.conversationId,
-        conversationMode: conversation.mode,
-        customerMessageId: existing.messageId,
-        duplicate: true,
-        aiReply: ai ? { messageId: ai.messageId, text: ai.text } : null,
-      };
-    }
 
-    try {
-      const result = await this.orchestrator.handleIncomingMessage({
-        conversationId: input.conversationId,
-        messageId: input.messageId,
-        text: input.text,
-        createdAt: input.createdAt,
-      });
-
-      if (result.status === 'human_owned') {
+      if (conversation.mode === 'HUMAN') {
         return {
-          conversationId: result.conversation.conversationId,
+          conversationId: conversation.conversationId,
           conversationMode: 'HUMAN',
-          customerMessageId: result.customerMessage.messageId,
-          duplicate: false,
+          customerMessageId: existing.messageId,
+          duplicate: true,
           aiReply: null,
         };
       }
 
-      return {
-        conversationId: result.conversation.conversationId,
-        conversationMode: 'AI',
-        customerMessageId: result.customerMessage.messageId,
-        duplicate: false,
-        aiReply: {
-          messageId: result.aiMessage.messageId,
-          text: result.replyText,
-        },
-      };
+      const existingAi = findAiReplyAfterCustomer(existingMessages, existing.messageId);
+      if (existingAi) {
+        return {
+          conversationId: conversation.conversationId,
+          conversationMode: 'AI',
+          customerMessageId: existing.messageId,
+          duplicate: true,
+          aiReply: {
+            messageId: existingAi.messageId,
+            text: existingAi.text,
+          },
+        };
+      }
+
+      // Incomplete AI turn: resume without re-appending CUSTOMER.
+      return this.mapOrchestratorResult(
+        await this.runOrchestrator(() =>
+          this.orchestrator.continuePersistedCustomerTurn({
+            conversationId: input.conversationId,
+            messageId: input.messageId,
+          }),
+        ),
+        { duplicate: true, resumed: true },
+      );
+    }
+
+    return this.mapOrchestratorResult(
+      await this.runOrchestrator(() =>
+        this.orchestrator.handleIncomingMessage({
+          conversationId: input.conversationId,
+          messageId: input.messageId,
+          text: input.text,
+          createdAt: input.createdAt,
+        }),
+      ),
+      { duplicate: false },
+    );
+  }
+
+  private async runOrchestrator<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
     } catch (error) {
       const mapped = mapProviderError(error);
       if (mapped) {
@@ -242,6 +281,34 @@ export class JarvisApplication {
       }
       throw error;
     }
+  }
+
+  private mapOrchestratorResult(
+    result: Awaited<ReturnType<ConversationOrchestrator['handleIncomingMessage']>>,
+    flags: { duplicate: boolean; resumed?: boolean },
+  ): HandleCustomerMessageResultDto {
+    if (result.status === 'human_owned') {
+      return {
+        conversationId: result.conversation.conversationId,
+        conversationMode: 'HUMAN',
+        customerMessageId: result.customerMessage.messageId,
+        duplicate: flags.duplicate,
+        ...(flags.resumed ? { resumed: true } : {}),
+        aiReply: null,
+      };
+    }
+
+    return {
+      conversationId: result.conversation.conversationId,
+      conversationMode: 'AI',
+      customerMessageId: result.customerMessage.messageId,
+      duplicate: flags.duplicate,
+      ...(flags.resumed ? { resumed: true } : {}),
+      aiReply: {
+        messageId: result.aiMessage.messageId,
+        text: result.replyText,
+      },
+    };
   }
 
   async getConversationOrderState(conversationId: string): Promise<ConversationOrderStateDto> {

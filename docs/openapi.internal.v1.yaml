@@ -7,6 +7,7 @@ info:
     CRM measurement submission is intentionally out of scope.
 servers:
   - url: /
+    description: Same origin as the Jarvis process
 security:
   - bearerAuth: []
 paths:
@@ -14,6 +15,7 @@ paths:
     get:
       security: []
       summary: Public health check
+      operationId: getHealth
       responses:
         '200':
           description: Service is up
@@ -21,6 +23,7 @@ paths:
             application/json:
               schema:
                 type: object
+                additionalProperties: false
                 required: [status, service]
                 properties:
                   status:
@@ -29,34 +32,43 @@ paths:
                   service:
                     type: string
                     enum: [supermoskitka-jarvis]
+
   /internal/v1/conversations:
     post:
       summary: Create conversation
+      operationId: createConversation
       requestBody:
         required: false
         content:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               properties:
                 channel:
                   type: string
+                  description: Optional channel label (e.g. telegram)
                 customerId:
                   type: string
+                  description: Optional external customer identifier
       responses:
         '201':
-          description: Created
+          description: Conversation created (does not create CRM leads or measurements)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConversationDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '503':
           $ref: '#/components/responses/NotConfigured'
+
   /internal/v1/conversations/{conversationId}:
     get:
       summary: Get conversation
+      operationId: getConversation
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       responses:
@@ -72,9 +84,11 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/NotConfigured'
+
   /internal/v1/conversations/{conversationId}/messages:
     get:
       summary: List transcript messages
+      operationId: listConversationMessages
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       responses:
@@ -84,6 +98,7 @@ paths:
             application/json:
               schema:
                 type: object
+                additionalProperties: false
                 required: [messages]
                 properties:
                   messages:
@@ -94,8 +109,15 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
     post:
       summary: Ingress customer message
+      operationId: handleCustomerMessage
+      description: >
+        Persists the customer message and, when mode is AI, runs the application
+        turn. Idempotent for the same conversationId + messageId + text
+        (duplicate=true). Same messageId with different text returns 409.
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       requestBody:
@@ -104,10 +126,12 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [messageId, text]
               properties:
                 messageId:
                   type: string
+                  description: Channel-stable message id used for idempotency
                 text:
                   type: string
                 createdAt:
@@ -120,19 +144,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HandleCustomerMessageResultDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: Message id conflict
+          description: Message id conflict or persistence conflict
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream LLM/provider unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /internal/v1/conversations/{conversationId}/mode:
     post:
       summary: Set AI/HUMAN mode
+      operationId: setConversationMode
+      description: >
+        Switches ownership without clearing transcript, Order Memory, or quote.
+        HUMAN mode persists customer messages but does not call FactExtractor / LLM.
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       requestBody:
@@ -141,6 +182,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [mode]
               properties:
                 mode:
@@ -154,7 +196,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConversationDto'
         '400':
-          description: Invalid mode
+          description: Invalid mode (MODE_INVALID / VALIDATION_ERROR)
           content:
             application/json:
               schema:
@@ -163,14 +205,21 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
+
   /internal/v1/conversations/{conversationId}/order-state:
     get:
       summary: Internal order/lead state
+      operationId: getConversationOrderState
+      description: >
+        Compact internal DTO for future CRM adapters. Never returns supplier/BOM
+        dumps, trusted proof internals, system prompts, or measurement payouts.
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       responses:
         '200':
-          description: Compact internal DTO
+          description: Compact internal order-state DTO
           content:
             application/json:
               schema:
@@ -179,14 +228,21 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
+
   /internal/v1/conversations/{conversationId}/measurement-action:
     get:
       summary: Measurement action decision (+ safe draft when ready)
+      operationId: getMeasurementAction
+      description: >
+        Uses readiness + measurement action policy. AUTO_ALLOWED is an internal
+        decision signal only — Jarvis V1 does not write CRM measurements.
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       responses:
         '200':
-          description: Decision
+          description: Measurement action decision (optional safe draft when not NOT_READY)
           content:
             application/json:
               schema:
@@ -195,11 +251,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/NotConfigured'
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+      description: Shared JARVIS_INTERNAL_API_KEY bearer token
+
   parameters:
     ConversationId:
       name: conversationId
@@ -207,28 +268,43 @@ components:
       required: true
       schema:
         type: string
+
   responses:
     Unauthorized:
-      description: Missing or invalid bearer token
+      description: Missing or invalid bearer token (UNAUTHORIZED)
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     NotConfigured:
-      description: JARVIS_INTERNAL_API_KEY is not configured
+      description: JARVIS_INTERNAL_API_KEY or application runtime is not configured (INTERNAL_API_NOT_CONFIGURED)
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     NotFound:
-      description: Conversation not found
+      description: Conversation not found (CONVERSATION_NOT_FOUND)
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Validation or invalid input (VALIDATION_ERROR / MODE_INVALID)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Unexpected internal error (INTERNAL_ERROR)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
     ConversationDto:
       type: object
+      additionalProperties: false
       required: [conversationId, mode, channel, createdAt, updatedAt]
       properties:
         conversationId:
@@ -242,8 +318,10 @@ components:
           type: string
         updatedAt:
           type: string
+
     MessageDto:
       type: object
+      additionalProperties: false
       required: [messageId, sender, text, createdAt]
       properties:
         messageId:
@@ -255,8 +333,20 @@ components:
           type: string
         createdAt:
           type: string
+
+    AiReplyDto:
+      type: object
+      additionalProperties: false
+      required: [messageId, text]
+      properties:
+        messageId:
+          type: string
+        text:
+          type: string
+
     HandleCustomerMessageResultDto:
       type: object
+      additionalProperties: false
       required: [conversationId, conversationMode, customerMessageId, duplicate, aiReply]
       properties:
         conversationId:
@@ -268,40 +358,254 @@ components:
           type: string
         duplicate:
           type: boolean
+          description: True when the same conversationId + messageId + text was already processed
+        resumed:
+          type: boolean
+          description: True when a previously persisted incomplete customer turn was resumed
         aiReply:
           nullable: true
-          type: object
-          properties:
-            messageId:
-              type: string
-            text:
-              type: string
+          allOf:
+            - $ref: '#/components/schemas/AiReplyDto'
+          description: Null in HUMAN mode or when no AI reply was produced
+
+    CustomerStateDto:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        customerType:
+          type: string
+
+    OrderItemStateDto:
+      type: object
+      additionalProperties: false
+      required: [localItemId]
+      properties:
+        localItemId:
+          type: string
+        productType:
+          type: string
+        quantity:
+          type: number
+        widthMm:
+          type: number
+        heightMm:
+          type: number
+        measurementBasis:
+          type: string
+        mesh:
+          type: string
+        profile:
+          type: string
+        profileColor:
+          type: string
+        ral:
+          type: string
+        finish:
+          type: string
+        fastening:
+          type: string
+        opening:
+          type: string
+        comment:
+          type: string
+
+    PreliminaryQuoteStateDto:
+      type: object
+      additionalProperties: false
+      required: [quoteId, publicTotalRub, current, accepted]
+      properties:
+        quoteId:
+          type: string
+        publicTotalRub:
+          type: number
+        current:
+          type: boolean
+        accepted:
+          type: boolean
+
+    ReadinessDto:
+      type: object
+      additionalProperties: false
+      required: [status, missingCodes]
+      properties:
+        status:
+          type: string
+          enum: [NOT_READY, READY_FOR_MEASUREMENT]
+        missingCodes:
+          type: array
+          items:
+            type: string
+            enum:
+              - NEEDS_INPUT
+              - NEEDS_SIZE_BASIS
+              - PRODUCT_MISSING
+              - PRICE_NOT_ACCEPTED
+              - MEASUREMENT_NOT_AGREED
+              - QUOTE_MISSING
+              - QUOTE_STALE
+              - PRICING_POLICY_INCOMPLETE
+              - CONTACT_MISSING
+              - ADDRESS_MISSING
+
+    MeasurementActionSummaryDto:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [NOT_READY, AUTO_ALLOWED, AWAITING_OWNER_APPROVAL]
+
+    ProfitabilitySummaryDto:
+      type: object
+      additionalProperties: false
+      required: [costBasisStatus, profitabilityBand]
+      properties:
+        costBasisStatus:
+          type: string
+          enum: [EXACT, PARTIAL, UNAVAILABLE]
+        grossProfitRub:
+          type: number
+          description: Present only when costBasisStatus is EXACT
+        grossMarginPercent:
+          type: number
+          description: Present only when costBasisStatus is EXACT
+        markupPercent:
+          type: number
+          description: Present only when costBasisStatus is EXACT
+        profitabilityBand:
+          type: string
+          enum: [GREEN, YELLOW, RED, UNAVAILABLE]
+
     ConversationOrderStateDto:
       type: object
-      required: [conversationId, memoryRevision, customer, items, readiness, measurementAction]
+      additionalProperties: false
+      required:
+        - conversationId
+        - memoryRevision
+        - customer
+        - items
+        - readiness
+        - measurementAction
       properties:
         conversationId:
           type: string
         memoryRevision:
           type: integer
         customer:
-          type: object
+          $ref: '#/components/schemas/CustomerStateDto'
         items:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/OrderItemStateDto'
         preliminaryQuote:
-          type: object
+          $ref: '#/components/schemas/PreliminaryQuoteStateDto'
         measurementAgreed:
           type: boolean
         readiness:
-          type: object
+          $ref: '#/components/schemas/ReadinessDto'
         measurementAction:
-          type: object
+          $ref: '#/components/schemas/MeasurementActionSummaryDto'
         profitability:
-          type: object
+          $ref: '#/components/schemas/ProfitabilitySummaryDto'
+
+    FulfillmentDraftDto:
+      type: object
+      additionalProperties: false
+      properties:
+        installationRequested:
+          type: boolean
+        pickupRequested:
+          type: boolean
+        deliveryRequested:
+          type: boolean
+        deliveryType:
+          type: string
+        deliveryKm:
+          type: number
+
+    MeasurementDraftItemDto:
+      type: object
+      additionalProperties: false
+      required: [localItemId]
+      properties:
+        localItemId:
+          type: string
+        productType:
+          type: string
+        quantity:
+          type: number
+        widthMm:
+          type: number
+        heightMm:
+          type: number
+        measurementBasis:
+          type: string
+        mesh:
+          type: string
+        profile:
+          type: string
+        profileColor:
+          type: string
+        ral:
+          type: string
+        finish:
+          type: string
+        fastening:
+          type: string
+        opening:
+          type: string
+
+    MeasurementDraftQuoteDto:
+      type: object
+      additionalProperties: false
+      required: [quoteId, publicTotalRub]
+      properties:
+        quoteId:
+          type: string
+        publicTotalRub:
+          type: number
+
+    MeasurementDraftCustomerDto:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+
+    MeasurementDraftDto:
+      type: object
+      additionalProperties: false
+      required: [conversationId, memoryRevision, customer, items, fulfillment]
+      properties:
+        conversationId:
+          type: string
+        memoryRevision:
+          type: integer
+        customer:
+          $ref: '#/components/schemas/MeasurementDraftCustomerDto'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasurementDraftItemDto'
+        fulfillment:
+          $ref: '#/components/schemas/FulfillmentDraftDto'
+        preliminaryQuote:
+          $ref: '#/components/schemas/MeasurementDraftQuoteDto'
+
     MeasurementActionDto:
       type: object
+      additionalProperties: false
       required: [conversationId, kind, readiness]
       properties:
         conversationId:
@@ -310,19 +614,35 @@ components:
           type: string
           enum: [NOT_READY, AUTO_ALLOWED, AWAITING_OWNER_APPROVAL]
         readiness:
-          type: object
+          $ref: '#/components/schemas/ReadinessDto'
         draft:
-          type: object
+          description: Safe draft when kind is not NOT_READY; no internal economics
+          allOf:
+            - $ref: '#/components/schemas/MeasurementDraftDto'
+
     ErrorResponse:
       type: object
+      additionalProperties: false
       required: [error]
       properties:
         error:
           type: object
+          additionalProperties: false
           required: [code, message, requestId]
           properties:
             code:
               type: string
+              enum:
+                - UNAUTHORIZED
+                - INTERNAL_API_NOT_CONFIGURED
+                - VALIDATION_ERROR
+                - CONVERSATION_NOT_FOUND
+                - MESSAGE_ID_CONFLICT
+                - DUPLICATE_MESSAGE
+                - MODE_INVALID
+                - PERSISTENCE_CONFLICT
+                - PROVIDER_UNAVAILABLE
+                - INTERNAL_ERROR
             message:
               type: string
             requestId:

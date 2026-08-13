@@ -1,5 +1,6 @@
 export {
   ConversationOrchestrator,
+  type ContinuePersistedCustomerTurnInput,
   type ConversationOrchestratorOptions,
   type FactExtractionDiagnostics,
   type HandleIncomingMessageResult,

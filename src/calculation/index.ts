@@ -90,3 +90,5 @@ export {
   isDoor32CurrentPricingGap,
   isSupportedProductType,
 } from './validation.js';
+
+export { CURRENT_PRICE_CATALOG } from './current-selling-price-catalog.js';
