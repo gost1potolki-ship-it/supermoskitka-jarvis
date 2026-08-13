@@ -2,12 +2,23 @@ import type {
   CalculationEngine,
   CalculationOutcome,
 } from '../../calculation/index.js';
+import type { OrderMemory } from '../../domain/index.js';
 import type { LlmToolCall } from '../../llm/tool-calling-types.js';
+import {
+  buildCalculationRequestFromTrustedPreliminaryInput,
+  buildTrustedPreliminaryCalculationInput,
+  llmDimensionsConflictWithTrusted,
+} from '../preliminary/trusted-preliminary-calculation.js';
+import {
+  createGuardedPreliminaryPrice,
+  type GuardedPreliminaryPrice,
+} from '../preliminary/guarded-preliminary-price.js';
 import { applyMarginGuard } from '../preliminary/margin-guard.js';
 import {
   buildCalculationRequestFromTrustedInput,
   parseTrustedCalculationToolInput,
   type CalculationMode,
+  type TrustedCalculationToolInput,
 } from '../pricing/index.js';
 
 import {
@@ -20,6 +31,8 @@ export interface CalculationToolExecuteMeta {
   mode?: CalculationMode;
   outcome?: CalculationOutcome;
   guardedTotal?: number | null;
+  guardedPrice?: GuardedPreliminaryPrice;
+  deliveryType?: 'city' | 'out' | 'pickup';
 }
 
 export function projectSafeCalculationOutcome(
@@ -64,19 +77,20 @@ export function projectSafeCalculationOutcome(
   };
 }
 
-function applyPreliminaryMarginGuard(
+function failPreliminaryGuard(): SafeToolResult {
+  return {
+    status: 'tool_error',
+    message:
+      'The preliminary price cannot be completed safely right now. Ask the customer to wait or connect them with a manager.',
+  };
+}
+
+function applyLegacyPreliminaryMarginGuard(
   outcome: CalculationOutcome,
 ): { ok: true; total: number } | { ok: false; result: SafeToolResult } {
   const publicTotalRub = outcome.total;
   if (publicTotalRub === null || !Number.isFinite(publicTotalRub)) {
-    return {
-      ok: false,
-      result: {
-        status: 'tool_error',
-        message:
-          'The preliminary price cannot be completed safely right now. Ask the customer to wait or connect them with a manager.',
-      },
-    };
+    return { ok: false, result: failPreliminaryGuard() };
   }
 
   const guarded = applyMarginGuard({
@@ -85,17 +99,23 @@ function applyPreliminaryMarginGuard(
   });
 
   if (!guarded.ok) {
-    return {
-      ok: false,
-      result: {
-        status: 'tool_error',
-        message:
-          'The preliminary price cannot be completed safely right now. Ask the customer to wait or connect them with a manager.',
-      },
-    };
+    return { ok: false, result: failPreliminaryGuard() };
   }
 
   return { ok: true, total: guarded.publicTotalRub };
+}
+
+function trustedBuildFailure(code: string, missingFields?: string[]): SafeToolResult {
+  if (code === 'NEEDS_INPUT' || code === 'NEEDS_SIZE_BASIS') {
+    return {
+      status: 'needs_input',
+      missingFields: missingFields ?? [code === 'NEEDS_SIZE_BASIS' ? 'measurementBasis' : 'items'],
+      warnings: [],
+      message:
+        'Missing required fields. Ask the customer for missingFields. Do not invent values or prices.',
+    };
+  }
+  return failPreliminaryGuard();
 }
 
 /**
@@ -119,8 +139,13 @@ export function parseCalculationRequestArguments(
 export class CalculationTool {
   readonly definition = createCalculateOrderToolDefinition();
   lastExecuteMeta: CalculationToolExecuteMeta | undefined;
+  private orderMemoryContext: OrderMemory | undefined;
 
   constructor(private readonly engine: CalculationEngine) {}
+
+  setOrderMemoryContext(memory: OrderMemory | undefined): void {
+    this.orderMemoryContext = memory;
+  }
 
   async execute(call: LlmToolCall): Promise<SafeToolResult> {
     this.lastExecuteMeta = undefined;
@@ -137,19 +162,26 @@ export class CalculationTool {
       return trusted.result;
     }
 
-    const built = buildCalculationRequestFromTrustedInput(trusted.input);
-    if (!built.ok) {
-      return built.result;
-    }
-
     try {
+      if (
+        trusted.input.mode === 'PRELIMINARY_ALL_IN' &&
+        this.orderMemoryContext !== undefined
+      ) {
+        return this.executePreliminaryAllInFromMemory(trusted.input);
+      }
+
+      const built = buildCalculationRequestFromTrustedInput(trusted.input);
+      if (!built.ok) {
+        return built.result;
+      }
+
       const outcome = await this.engine.calculate(built.request);
 
       if (
         trusted.input.mode === 'PRELIMINARY_ALL_IN' &&
         outcome.status === 'calculated'
       ) {
-        const margin = applyPreliminaryMarginGuard(outcome);
+        const margin = applyLegacyPreliminaryMarginGuard(outcome);
         if (!margin.ok) {
           return margin.result;
         }
@@ -173,5 +205,48 @@ export class CalculationTool {
         message: 'Calculation tool failed.',
       };
     }
+  }
+
+  private async executePreliminaryAllInFromMemory(
+    toolInput: TrustedCalculationToolInput,
+  ): Promise<SafeToolResult> {
+    const memory = this.orderMemoryContext!;
+    const built = buildTrustedPreliminaryCalculationInput(memory, toolInput.delivery);
+    if (!built.ok) {
+      return trustedBuildFailure(built.code, built.missingFields);
+    }
+
+    void llmDimensionsConflictWithTrusted(memory, toolInput.items);
+
+    const request = buildCalculationRequestFromTrustedPreliminaryInput(built.input);
+    const outcome = await this.engine.calculate(request);
+
+    if (outcome.status !== 'calculated') {
+      return projectSafeCalculationOutcome(outcome, toolInput.mode);
+    }
+
+    const guardedPrice = createGuardedPreliminaryPrice({
+      memory,
+      outcome,
+      deliveryType: built.input.delivery.type,
+    });
+
+    if (!guardedPrice.ok) {
+      return failPreliminaryGuard();
+    }
+
+    this.lastExecuteMeta = {
+      mode: toolInput.mode,
+      outcome,
+      guardedTotal: guardedPrice.guarded.publicTotalRub,
+      guardedPrice: guardedPrice.guarded,
+      deliveryType: built.input.delivery.type,
+    };
+
+    return projectSafeCalculationOutcome(
+      outcome,
+      toolInput.mode,
+      guardedPrice.guarded.publicTotalRub,
+    );
   }
 }

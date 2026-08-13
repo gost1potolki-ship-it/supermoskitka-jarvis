@@ -360,6 +360,8 @@ export class ConversationOrchestrator {
       );
     }
 
+    this.toolRuntime.setOrderMemoryContext(orderMemory);
+
     const messages: LlmToolConversationMessage[] = [...initialMessages];
     let toolCallsExecuted = 0;
     let completedToolRound = false;
@@ -454,11 +456,14 @@ export class ConversationOrchestrator {
         conversationId,
       });
 
+    if (!meta?.guardedPrice) {
+      return;
+    }
+
     const persisted = this.preliminaryQuoteService.persistAfterPreliminaryCalculation({
       memory,
-      publicTotalRub: result.total,
-      calculationVersion: meta?.outcome?.calculationVersion,
-      priceVersion: meta?.outcome?.priceVersion,
+      guarded: meta.guardedPrice,
+      deliveryType: meta.deliveryType,
     });
 
     try {

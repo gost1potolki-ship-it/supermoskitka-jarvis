@@ -255,6 +255,7 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
     'publicTotalRub',
     'createdAt',
     'pricingPolicyVersion',
+    'pricingPolicyStatus',
     'marginGuardPassed',
     'calculationVersion',
     'priceVersion',
@@ -264,17 +265,31 @@ function decodePreliminaryQuoteSnapshot(value: unknown, path: string): Prelimina
       fail(`Unknown PreliminaryQuoteSnapshot field at ${path}.${key}`);
     }
   }
-  const marginGuardPassed = value.marginGuardPassed;
-  if (marginGuardPassed !== true) {
-    fail(`Invalid marginGuardPassed at ${path}`);
+
+  let pricingPolicyStatus: PreliminaryQuoteSnapshot['pricingPolicyStatus'];
+  if (value.pricingPolicyStatus !== undefined) {
+    const status = value.pricingPolicyStatus;
+    if (
+      status !== 'FRAME_COMMERCIAL_PRICING_PASSED' &&
+      status !== 'FRAME_MARGIN_GUARD_PASSED' &&
+      status !== 'EXISTING_PRODUCT_FORMULA'
+    ) {
+      fail(`Invalid pricingPolicyStatus at ${path}`);
+    }
+    pricingPolicyStatus = status;
+  } else if (value.marginGuardPassed === true) {
+    pricingPolicyStatus = 'FRAME_MARGIN_GUARD_PASSED';
+  } else {
+    fail(`Invalid pricingPolicyStatus at ${path}`);
   }
+
   const snapshot: PreliminaryQuoteSnapshot = {
     quoteId: requireString(value.quoteId, `${path}.quoteId`),
     inputFingerprint: requireString(value.inputFingerprint, `${path}.inputFingerprint`),
     publicTotalRub: requireNumber(value.publicTotalRub, `${path}.publicTotalRub`),
     createdAt: requireString(value.createdAt, `${path}.createdAt`),
     pricingPolicyVersion: requireString(value.pricingPolicyVersion, `${path}.pricingPolicyVersion`),
-    marginGuardPassed: true,
+    pricingPolicyStatus,
   };
   const calculationVersion = optionalString(value.calculationVersion, `${path}.calculationVersion`);
   if (calculationVersion !== undefined) {

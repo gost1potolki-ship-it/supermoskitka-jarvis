@@ -56,7 +56,7 @@ export {
   FULFILLMENT_FACT_FIELDS,
 } from './order-sections.js';
 
-export type { PreliminaryQuoteSnapshot } from './preliminary-quote.js';
+export type { PreliminaryQuoteSnapshot, PricingPolicyStatus } from './preliminary-quote.js';
 export { PRICING_POLICY_VERSION } from './preliminary-quote.js';
 
 export type {

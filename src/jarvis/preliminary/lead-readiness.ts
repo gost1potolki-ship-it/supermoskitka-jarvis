@@ -1,7 +1,11 @@
 import { getFactValue, type LeadReadiness, type OrderMemory } from '../../domain/index.js';
 
-import { computeQuoteInputFingerprintFromMemory } from './quote-fingerprint.js';
+import {
+  computeQuoteInputFingerprintFromMemory,
+  computeQuoteInputFingerprintFromTrustedCalculation,
+} from './quote-fingerprint.js';
 import { resolvePreliminaryInputs } from './preliminary-input.js';
+import { buildTrustedPreliminaryCalculationInput } from './trusted-preliminary-calculation.js';
 
 export function evaluateLeadReadiness(memory: OrderMemory): LeadReadiness {
   const blockingCodes = new Set<LeadReadiness['blockingCodes'][number]>();
@@ -29,7 +33,17 @@ export function evaluateLeadReadiness(memory: OrderMemory): LeadReadiness {
   if (!memory.preliminaryQuote) {
     blockingCodes.add('QUOTE_MISSING');
   } else {
-    const currentFingerprint = computeQuoteInputFingerprintFromMemory(memory);
+    if (
+      memory.preliminaryQuote.pricingPolicyStatus !== 'FRAME_COMMERCIAL_PRICING_PASSED' &&
+      memory.preliminaryQuote.pricingPolicyStatus !== 'FRAME_MARGIN_GUARD_PASSED' &&
+      memory.preliminaryQuote.pricingPolicyStatus !== 'EXISTING_PRODUCT_FORMULA'
+    ) {
+      blockingCodes.add('PRICING_POLICY_INCOMPLETE');
+    }
+    const trustedBuild = buildTrustedPreliminaryCalculationInput(memory);
+    const currentFingerprint = trustedBuild.ok
+      ? computeQuoteInputFingerprintFromTrustedCalculation(memory, trustedBuild.input)
+      : computeQuoteInputFingerprintFromMemory(memory);
     if (memory.preliminaryQuote.inputFingerprint !== currentFingerprint) {
       blockingCodes.add('QUOTE_STALE');
     }

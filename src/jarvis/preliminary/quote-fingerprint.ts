@@ -4,6 +4,7 @@ import {
   resolvePreliminaryInputs,
   type ResolvedPreliminaryItemInput,
 } from './preliminary-input.js';
+import type { TrustedPreliminaryCalculationInput } from './trusted-preliminary-calculation.js';
 
 export interface QuoteFingerprintInput {
   items: readonly ResolvedPreliminaryItemInput[];
@@ -38,7 +39,52 @@ function stableValue(value: unknown): unknown {
   return value;
 }
 
-export function buildQuoteFingerprintInputFromMemory(memory: OrderMemory): QuoteFingerprintInput {
+function canonicalPreliminaryFulfillment(
+  memory: OrderMemory,
+  deliveryType?: 'city' | 'out' | 'pickup',
+): QuoteFingerprintInput['fulfillment'] {
+  const resolvedType =
+    deliveryType ??
+    (getFactValue(memory.fulfillment?.deliveryType) as 'city' | 'out' | 'pickup' | undefined) ??
+    (getFactValue(memory.fulfillment?.pickupRequested) === true ? 'pickup' : undefined);
+
+  if (resolvedType === 'pickup') {
+    return {
+      pickupRequested: true,
+      deliveryType: 'pickup',
+    };
+  }
+
+  if (resolvedType === 'city') {
+    return {
+      deliveryRequested: true,
+      installationRequested: true,
+      deliveryType: 'city',
+    };
+  }
+
+  if (resolvedType === 'out') {
+    return {
+      deliveryRequested: true,
+      installationRequested: true,
+      deliveryType: 'out',
+      deliveryKm: getFactValue(memory.fulfillment?.deliveryKm),
+    };
+  }
+
+  return {
+    installationRequested: getFactValue(memory.fulfillment?.installationRequested),
+    pickupRequested: getFactValue(memory.fulfillment?.pickupRequested),
+    deliveryRequested: getFactValue(memory.fulfillment?.deliveryRequested),
+    deliveryType: getFactValue(memory.fulfillment?.deliveryType),
+    deliveryKm: getFactValue(memory.fulfillment?.deliveryKm),
+  };
+}
+
+export function buildQuoteFingerprintInputFromMemory(
+  memory: OrderMemory,
+  options?: { deliveryType?: 'city' | 'out' | 'pickup' },
+): QuoteFingerprintInput {
   const resolved = resolvePreliminaryInputs(memory);
   return {
     items: resolved.items.map((item) => ({
@@ -52,13 +98,49 @@ export function buildQuoteFingerprintInputFromMemory(memory: OrderMemory): Quote
     customer: {
       address: getFactValue(memory.customer?.address),
     },
-    fulfillment: {
-      installationRequested: getFactValue(memory.fulfillment?.installationRequested),
-      pickupRequested: getFactValue(memory.fulfillment?.pickupRequested),
-      deliveryRequested: getFactValue(memory.fulfillment?.deliveryRequested),
-      deliveryType: getFactValue(memory.fulfillment?.deliveryType),
-      deliveryKm: getFactValue(memory.fulfillment?.deliveryKm),
+    fulfillment: canonicalPreliminaryFulfillment(memory, options?.deliveryType),
+  };
+}
+
+export function buildQuoteFingerprintInputFromTrustedCalculation(
+  memory: OrderMemory,
+  trustedInput: TrustedPreliminaryCalculationInput,
+): QuoteFingerprintInput {
+  const resolved = resolvePreliminaryInputs(memory);
+  const items = trustedInput.items.map((calcItem) => {
+    const resolvedItem = resolved.items.find((item) => item.itemId === calcItem.itemId);
+    const sizeSource = resolvedItem?.size.source ?? 'ESTIMATED_AVERAGE';
+    const base: ResolvedPreliminaryItemInput = {
+      itemId: calcItem.itemId,
+      productType: calcItem.productType,
+      quantity: calcItem.quantity ?? 1,
+      size: {
+        source: sizeSource,
+        widthMm: calcItem.widthMm,
+        heightMm: calcItem.heightMm,
+      },
+      meshType: calcItem.meshType,
+      profileColor: resolvedItem?.profileColor,
+      profileType:
+        calcItem.productType === 'FRAME' ? calcItem.frameProfile : resolvedItem?.profileType,
+      fastening:
+        calcItem.productType === 'FRAME'
+          ? calcItem.fastening
+          : calcItem.productType === 'WING'
+            ? calcItem.fastening
+            : resolvedItem?.fastening,
+      openingType:
+        calcItem.productType === 'PLISSE_NET' ? calcItem.openingType : resolvedItem?.openingType,
+    };
+    return base;
+  });
+
+  return {
+    items,
+    customer: {
+      address: getFactValue(memory.customer?.address),
     },
+    fulfillment: canonicalPreliminaryFulfillment(memory, trustedInput.delivery.type),
   };
 }
 
@@ -66,6 +148,18 @@ export function computeQuoteInputFingerprint(input: QuoteFingerprintInput): stri
   return JSON.stringify(stableValue(input));
 }
 
-export function computeQuoteInputFingerprintFromMemory(memory: OrderMemory): string {
-  return computeQuoteInputFingerprint(buildQuoteFingerprintInputFromMemory(memory));
+export function computeQuoteInputFingerprintFromTrustedCalculation(
+  memory: OrderMemory,
+  trustedInput: TrustedPreliminaryCalculationInput,
+): string {
+  return computeQuoteInputFingerprint(
+    buildQuoteFingerprintInputFromTrustedCalculation(memory, trustedInput),
+  );
+}
+
+export function computeQuoteInputFingerprintFromMemory(
+  memory: OrderMemory,
+  options?: { deliveryType?: 'city' | 'out' | 'pickup' },
+): string {
+  return computeQuoteInputFingerprint(buildQuoteFingerprintInputFromMemory(memory, options));
 }

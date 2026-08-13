@@ -33,8 +33,8 @@ Jarvis Core V1 — единое серверное AI-ядро, которое:
 - Jarvis может назвать **предварительную цену под ключ** через `PRELIMINARY_ALL_IN` и Calculation Engine.
 - Для FRAME/WING без размеров расчёт использует средний типовой размер **800×1600** только внутри движка; в Order Memory размеры клиента **не подменяются**.
 - Согласие на цену (`preliminaryPriceAccepted`) и согласие на замер (`measurementAgreed`) — **разные факты**.
-- После расчёта сохраняется `PreliminaryQuoteSnapshot` (публичная сумма + fingerprint); себестоимость и маржа клиенту и LLM **не раскрываются**.
-- Минимальная маржа **47%**: при нарушении публичная сумма только **повышается** (см. `docs/PRELIMINARY_QUALIFICATION.md`).
+- После расчёта сохраняется `PreliminaryQuoteSnapshot` (публичная сумма + fingerprint + `pricingPolicyStatus`); себестоимость и маржа клиенту и LLM **не раскрываются**.
+- Task 11.1: **два каталога** — Legacy Selling (коммерческий калькулятор без изменений) и Actual Cost (закупочная себестоимость FRAME BOM). Коммерческая политика: target 50%, hard floor 47%, psych adjustment — см. `docs/PRICING_ARCHITECTURE.md`.
 
 ### 2.2 Exterior color trust
 

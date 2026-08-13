@@ -1,5 +1,5 @@
 /**
- * Live smoke: OdiRouter preliminary readiness path.
+ * Live smoke: OdiRouter preliminary readiness path (Task 11.1).
  * Requires ODIROUTER_API_KEY + ODIROUTER_MODEL when running full scenario.
  */
 import { randomUUID } from 'node:crypto';
@@ -14,9 +14,17 @@ import {
   SuperMoskitkaCalculationEngine,
 } from '../src/calculation/index.js';
 import { ConversationOrchestrator } from '../src/jarvis/conversation/index.js';
-import { FakeFactExtractor, emptyExtraction } from '../src/jarvis/extraction/index.js';
+import { LlmFactExtractor } from '../src/jarvis/extraction/index.js';
+import {
+  applyCustomerFact,
+  applyOrderItemFact,
+  createOrderMemory,
+} from '../src/jarvis/memory/index.js';
 import { KnowledgeSystemPromptProvider } from '../src/knowledge/index.js';
-import { evaluateLeadReadiness } from '../src/jarvis/preliminary/index.js';
+import {
+  decideMeasurementAction,
+  evaluateLeadReadiness,
+} from '../src/jarvis/preliminary/index.js';
 import { CalculationTool, ToolRuntime } from '../src/jarvis/tools/index.js';
 import {
   OdiRouterConfigError,
@@ -30,6 +38,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 loadEnv();
+
+const SOURCE = {
+  sourceMessageId: 'smoke-preseed',
+  sourceChannel: 'telegram' as const,
+  sourceTimestamp: new Date().toISOString(),
+};
+
+const TURN_1 =
+  'Сколько будет стоить под ключ три рамочные сетки белые стандартное полотно с замером и доставкой по городу?';
+const TURN_2 = 'Да, всё устраивает, записывайте на замер.';
 
 async function main(): Promise<void> {
   let config;
@@ -65,7 +83,7 @@ async function main(): Promise<void> {
     new KnowledgeSystemPromptProvider(knowledgeRoot),
     {
       toolRuntime,
-      factExtractor: new FakeFactExtractor([emptyExtraction()]),
+      factExtractor: new LlmFactExtractor(llm),
       orderMemoryStore: memoryStore,
     },
   );
@@ -81,35 +99,105 @@ async function main(): Promise<void> {
     updatedAt: now,
   });
 
+  let memory = createOrderMemory({
+    orderId: conversationId,
+    conversationId,
+    itemIds: ['item-1'],
+    now,
+  });
+  memory = applyCustomerFact(memory, {
+    field: 'phone',
+    value: '+79990001122',
+    source: SOURCE,
+  }).memory;
+  memory = applyCustomerFact(memory, {
+    field: 'address',
+    value: 'Москва, ул. Смоковая 1',
+    source: SOURCE,
+  }).memory;
+  memory = applyOrderItemFact(memory, {
+    orderItemId: 'item-1',
+    field: 'productType',
+    value: 'FRAME',
+    source: SOURCE,
+  }).memory;
+  memory = applyOrderItemFact(memory, {
+    orderItemId: 'item-1',
+    field: 'quantity',
+    value: 3,
+    source: SOURCE,
+  }).memory;
+  memory = applyOrderItemFact(memory, {
+    orderItemId: 'item-1',
+    field: 'meshType',
+    value: 'STANDARD',
+    source: SOURCE,
+  }).memory;
+  memory = applyOrderItemFact(memory, {
+    orderItemId: 'item-1',
+    field: 'profileColor',
+    value: 'WHITE',
+    source: SOURCE,
+  }).memory;
+  await memoryStore.save(memory);
+
   console.log('provider: odirouter');
   console.log(`model: ${config.model}`);
 
-  const turn = await orchestrator.handleIncomingMessage({
+  const turn1 = await orchestrator.handleIncomingMessage({
     conversationId,
     messageId: randomUUID(),
-    text: 'Сколько стоит одна рамочная сетка белая под ключ с замером?',
+    text: TURN_1,
   });
 
-  const memory = await memoryStore.get(conversationId);
-  const readiness = memory ? evaluateLeadReadiness(memory) : null;
-
-  console.log(`turn status: ${turn.status}`);
-  console.log(`items: ${memory?.items.length ?? 0}`);
-  console.log(`preliminaryQuote: ${memory?.preliminaryQuote?.quoteId ?? '(none)'}`);
-  console.log(`readiness: ${readiness?.status ?? '(none)'}`);
-  if (readiness && readiness.blockingCodes.length > 0) {
-    console.log(`blocking: ${readiness.blockingCodes.join(', ')}`);
-  }
-
-  const item = memory?.items[0];
-  const avgNotStored =
+  memory = (await memoryStore.get(conversationId))!;
+  const item = memory.items[0];
+  const dimsAbsent =
     getFactValue(item?.widthMm) === undefined && getFactValue(item?.heightMm) === undefined;
 
-  if (turn.status === 'ai_replied' && avgNotStored) {
+  console.log(`turn1 status: ${turn1.status}`);
+  console.log(`preliminaryQuote: ${memory.preliminaryQuote?.quoteId ?? '(none)'}`);
+  console.log(`dims absent in memory: ${dimsAbsent}`);
+  console.log(`pricingPolicyStatus: ${memory.preliminaryQuote?.pricingPolicyStatus ?? '(none)'}`);
+
+  if (turn1.status !== 'ai_replied' || !memory.preliminaryQuote || !dimsAbsent) {
+    console.error('SMOKE: FAIL — turn 1');
+    process.exitCode = 1;
+    return;
+  }
+
+  const turn2 = await orchestrator.handleIncomingMessage({
+    conversationId,
+    messageId: randomUUID(),
+    text: TURN_2,
+  });
+
+  memory = (await memoryStore.get(conversationId))!;
+  const readiness = evaluateLeadReadiness(memory);
+  const action = decideMeasurementAction(memory, 'AUTO_WHEN_READY');
+
+  console.log(`turn2 status: ${turn2.status}`);
+  console.log(`preliminaryPriceAccepted: ${getFactValue(memory.commercial?.preliminaryPriceAccepted)}`);
+  console.log(`measurementAgreed: ${getFactValue(memory.commercial?.measurementAgreed)}`);
+  console.log(`readiness: ${readiness.status}`);
+  console.log(`action: ${action}`);
+
+  const pass =
+    turn2.status === 'ai_replied' &&
+    memory.preliminaryQuote !== undefined &&
+    getFactValue(memory.commercial?.preliminaryPriceAccepted) === true &&
+    getFactValue(memory.commercial?.measurementAgreed) === true &&
+    readiness.status === 'READY_FOR_MEASUREMENT' &&
+    action === 'AUTO_ALLOWED';
+
+  if (pass) {
     console.log('SMOKE: PASS');
     return;
   }
 
+  if (readiness.blockingCodes.length > 0) {
+    console.log(`blocking: ${readiness.blockingCodes.join(', ')}`);
+  }
   console.error('SMOKE: FAIL');
   process.exitCode = 1;
 }

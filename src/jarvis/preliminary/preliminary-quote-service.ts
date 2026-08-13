@@ -1,15 +1,17 @@
 import type { OrderMemory, PreliminaryQuoteSnapshot } from '../../domain/index.js';
 
+import type { GuardedPreliminaryPrice } from './guarded-preliminary-price.js';
 import { attachPreliminaryQuote, buildPreliminaryQuoteSnapshot } from './preliminary-quote.js';
-import { computeQuoteInputFingerprintFromMemory } from './quote-fingerprint.js';
+import {
+  preliminaryQuotePersistSource,
+  syncPreliminaryFulfillmentFacts,
+} from './sync-preliminary-fulfillment.js';
 
 export interface PersistPreliminaryQuoteInput {
   memory: OrderMemory;
-  publicTotalRub: number;
-  calculationVersion?: string;
-  priceVersion?: string;
-  pricingPolicyVersion?: string;
+  guarded: GuardedPreliminaryPrice;
   createdAt?: string;
+  deliveryType?: 'city' | 'out' | 'pickup';
 }
 
 export class PreliminaryQuoteService {
@@ -17,19 +19,23 @@ export class PreliminaryQuoteService {
     memory: OrderMemory;
     snapshot: PreliminaryQuoteSnapshot;
   } {
-    const fingerprint = computeQuoteInputFingerprintFromMemory(input.memory);
+    const createdAt = input.createdAt ?? new Date().toISOString();
+    let memory = input.memory;
+    if (input.deliveryType !== undefined) {
+      memory = syncPreliminaryFulfillmentFacts(
+        memory,
+        input.deliveryType,
+        preliminaryQuotePersistSource(createdAt),
+      );
+    }
     const snapshot = buildPreliminaryQuoteSnapshot({
-      memory: input.memory,
-      publicTotalRub: input.publicTotalRub,
-      inputFingerprint: fingerprint,
-      calculationVersion: input.calculationVersion,
-      priceVersion: input.priceVersion,
-      pricingPolicyVersion: input.pricingPolicyVersion,
-      createdAt: input.createdAt,
+      memory,
+      guarded: input.guarded,
+      createdAt,
     });
     return {
       snapshot,
-      memory: attachPreliminaryQuote(input.memory, snapshot, input.createdAt),
+      memory: attachPreliminaryQuote(memory, snapshot, createdAt),
     };
   }
 }

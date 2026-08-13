@@ -1,3 +1,4 @@
+import type { OrderMemory } from '../../domain/index.js';
 import type { LlmToolCall, LlmToolDefinition } from '../../llm/tool-calling-types.js';
 
 import type { CalculationTool } from './calculation-tool.js';
@@ -19,6 +20,10 @@ export class ToolRuntime {
       };
     }
     return this.calculationTool.execute(call);
+  }
+
+  setOrderMemoryContext(memory: OrderMemory | undefined): void {
+    this.calculationTool.setOrderMemoryContext(memory);
   }
 
   getLastCalculationMeta() {

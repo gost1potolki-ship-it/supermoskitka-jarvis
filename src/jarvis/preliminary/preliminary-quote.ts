@@ -6,16 +6,13 @@ import {
   type PreliminaryQuoteSnapshot,
 } from '../../domain/index.js';
 
-import { computeQuoteInputFingerprintFromMemory } from './quote-fingerprint.js';
+import type { GuardedPreliminaryPrice } from './guarded-preliminary-price.js';
 
 export interface BuildPreliminaryQuoteSnapshotInput {
   memory: OrderMemory;
-  publicTotalRub: number;
+  guarded: GuardedPreliminaryPrice;
   pricingPolicyVersion?: string;
-  calculationVersion?: string;
-  priceVersion?: string;
   createdAt?: string;
-  inputFingerprint?: string;
 }
 
 export function generatePreliminaryQuoteId(
@@ -34,18 +31,24 @@ export function buildPreliminaryQuoteSnapshot(
   input: BuildPreliminaryQuoteSnapshotInput,
 ): PreliminaryQuoteSnapshot {
   const createdAt = input.createdAt ?? new Date().toISOString();
-  const inputFingerprint =
-    input.inputFingerprint ?? computeQuoteInputFingerprintFromMemory(input.memory);
 
   return {
-    quoteId: generatePreliminaryQuoteId(inputFingerprint, input.publicTotalRub, createdAt),
-    inputFingerprint,
-    publicTotalRub: input.publicTotalRub,
+    quoteId: generatePreliminaryQuoteId(
+      input.guarded.inputFingerprint,
+      input.guarded.publicTotalRub,
+      createdAt,
+    ),
+    inputFingerprint: input.guarded.inputFingerprint,
+    publicTotalRub: input.guarded.publicTotalRub,
     createdAt,
     pricingPolicyVersion: input.pricingPolicyVersion ?? PRICING_POLICY_VERSION,
-    marginGuardPassed: true,
-    ...(input.calculationVersion !== undefined ? { calculationVersion: input.calculationVersion } : {}),
-    ...(input.priceVersion !== undefined ? { priceVersion: input.priceVersion } : {}),
+    pricingPolicyStatus: input.guarded.pricingPolicyStatus,
+    ...(input.guarded.calculationVersion !== undefined
+      ? { calculationVersion: input.guarded.calculationVersion }
+      : {}),
+    ...(input.guarded.priceVersion !== undefined
+      ? { priceVersion: input.guarded.priceVersion }
+      : {}),
   };
 }
 
@@ -54,28 +57,45 @@ export function attachPreliminaryQuote(
   snapshot: PreliminaryQuoteSnapshot,
   now: string = new Date().toISOString(),
 ): OrderMemory {
+  const existing = memory.preliminaryQuote;
+  const equivalentExisting =
+    existing !== undefined &&
+    existing.inputFingerprint === snapshot.inputFingerprint &&
+    existing.publicTotalRub === snapshot.publicTotalRub;
+
+  const nextSnapshot = equivalentExisting
+    ? {
+        ...existing,
+        pricingPolicyStatus: snapshot.pricingPolicyStatus,
+        pricingPolicyVersion: snapshot.pricingPolicyVersion,
+        ...(snapshot.calculationVersion !== undefined
+          ? { calculationVersion: snapshot.calculationVersion }
+          : {}),
+        ...(snapshot.priceVersion !== undefined ? { priceVersion: snapshot.priceVersion } : {}),
+      }
+    : snapshot;
+
   const acceptedStillValid =
     memory.acceptedPreliminaryQuoteId !== undefined &&
-    memory.acceptedPreliminaryQuoteId === memory.preliminaryQuote?.quoteId &&
-    memory.preliminaryQuote.inputFingerprint === snapshot.inputFingerprint;
+    memory.acceptedPreliminaryQuoteId === nextSnapshot.quoteId &&
+    existing?.inputFingerprint === nextSnapshot.inputFingerprint;
 
   return {
     ...memory,
-    preliminaryQuote: snapshot,
+    preliminaryQuote: nextSnapshot,
     acceptedPreliminaryQuoteId: acceptedStillValid
       ? memory.acceptedPreliminaryQuoteId
-      : undefined,
+      : equivalentExisting
+        ? memory.acceptedPreliminaryQuoteId
+        : undefined,
     updatedAt: now,
   };
 }
 
 export interface CreateQuoteAfterPreliminaryCalculationInput {
   memory: OrderMemory;
-  publicTotalRub: number;
+  guarded: GuardedPreliminaryPrice;
   pricingPolicyVersion?: string;
-  calculationVersion?: string;
-  priceVersion?: string;
-  inputFingerprint?: string;
   createdAt?: string;
 }
 
@@ -84,11 +104,8 @@ export function createQuoteAfterPreliminaryCalculation(
 ): { memory: OrderMemory; snapshot: PreliminaryQuoteSnapshot } {
   const snapshot = buildPreliminaryQuoteSnapshot({
     memory: input.memory,
-    publicTotalRub: input.publicTotalRub,
+    guarded: input.guarded,
     pricingPolicyVersion: input.pricingPolicyVersion,
-    calculationVersion: input.calculationVersion,
-    priceVersion: input.priceVersion,
-    inputFingerprint: input.inputFingerprint,
     createdAt: input.createdAt,
   });
   return {

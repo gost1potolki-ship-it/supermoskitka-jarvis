@@ -13,24 +13,40 @@ Jarvis can quote a **preliminary all-in price** before measurement while keeping
 
 Customer dimensions in Order Memory stay exactly as stated. Calculation may use adjusted sizes internally for `LIGHT_OPENING`.
 
-## Margin guard (47% floor)
+## Margin guard and commercial pricing (Task 11.1)
+
+Dual-catalog architecture: see **`docs/PRICING_ARCHITECTURE.md`**.
+
+Legacy selling total comes from the unchanged Calculation Engine. Actual order direct cost uses FRAME BOM + service direct costs. Commercial policy:
 
 ```text
-margin = (publicTotal - trustedDirectCost) / publicTotal
-if margin < 0.47 → publicTotal = ceil(trustedDirectCost / 0.53)
+rawCommercialPrice = max(legacyCommercialTotal, ceil(orderDirectCost / 0.50))
+finalPrice         = max(rawCommercialPrice, hardFloor47) + optional psych adjustment
+hardFloor47        = ceil(orderDirectCost / 0.53)
 ```
 
-- `trustedDirectCost` = sum(item materials+labor [+ RAL painting]) + measurementFee + installTotal + deliveryCost
-- Never lower public price
-- If direct cost unavailable → `MARGIN_COST_BASIS_UNAVAILABLE` (fail closed)
-- Margin and direct cost are **never** shown to the customer or LLM tool JSON
+- Service **direct** costs (not public selling charges): measurement 1000, city delivery 1000, install 500×FRAME qty; all zero on self-pickup.
+- Regional/out delivery → fail closed (`DIRECT_COST_BASIS_INCOMPLETE`).
+- Margin and direct cost are **never** shown to the customer or LLM tool JSON.
+
+## Product pricing strategies (Task 11.1)
+
+| Order mix | Strategy | Quote status |
+| --- | --- | --- |
+| FRAME only | Actual BOM + commercial policy (50% target, 47% floor, psych) | `FRAME_COMMERCIAL_PRICING_PASSED` |
+| DOOR / PLISSE_NET only | Engine public total unchanged | `EXISTING_PRODUCT_FORMULA` |
+| WING only / mixed FRAME+other | Fail closed on guarded path | no quote |
+
+Legacy v1 quotes with `marginGuardPassed: true` decode as `FRAME_MARGIN_GUARD_PASSED` (still valid for readiness).
 
 ## Preliminary quote snapshot
 
-After a successful `PRELIMINARY_ALL_IN` calculation with margin guard passed, Jarvis stores:
+After a successful guarded `PRELIMINARY_ALL_IN` calculation, Jarvis stores:
 
-- `quoteId`, `inputFingerprint`, `publicTotalRub`, `pricingPolicyVersion`, `marginGuardPassed: true`
+- `quoteId`, `inputFingerprint`, `publicTotalRub`, `pricingPolicyVersion`, `pricingPolicyStatus`
 - Optional `calculationVersion`, `priceVersion`
+
+Legacy Firestore docs with `marginGuardPassed: true` decode as `FRAME_MARGIN_GUARD_PASSED`.
 
 Fingerprint covers price-relevant fields (products, resolved sizes, mesh, color, fulfillment) — not customer name.
 

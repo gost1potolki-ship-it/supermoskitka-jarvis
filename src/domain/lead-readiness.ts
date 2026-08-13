@@ -8,6 +8,7 @@ export type LeadReadinessCode =
   | 'MEASUREMENT_NOT_AGREED'
   | 'QUOTE_MISSING'
   | 'QUOTE_STALE'
+  | 'PRICING_POLICY_INCOMPLETE'
   | 'CONTACT_MISSING'
   | 'ADDRESS_MISSING';
 

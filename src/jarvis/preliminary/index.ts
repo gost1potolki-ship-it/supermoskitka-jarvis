@@ -12,8 +12,10 @@ export {
 
 export {
   buildQuoteFingerprintInputFromMemory,
+  buildQuoteFingerprintInputFromTrustedCalculation,
   computeQuoteInputFingerprint,
   computeQuoteInputFingerprintFromMemory,
+  computeQuoteInputFingerprintFromTrustedCalculation,
   type QuoteFingerprintInput,
 } from './quote-fingerprint.js';
 
@@ -49,3 +51,45 @@ export {
 } from './measurement-draft.js';
 
 export { PreliminaryQuoteService } from './preliminary-quote-service.js';
+
+export {
+  buildCalculationRequestFromTrustedPreliminaryInput,
+  buildTrustedPreliminaryCalculationInput,
+  llmDimensionsConflictWithTrusted,
+  type TrustedPreliminaryBuildCode,
+  type TrustedPreliminaryBuildResult,
+  type TrustedPreliminaryCalculationInput,
+} from './trusted-preliminary-calculation.js';
+
+export { mapMemoryItemToCalculationItemInput } from './memory-to-calculation-item.js';
+
+export {
+  CITY_DELIVERY_DIRECT_COST_RUB,
+  INSTALLATION_DIRECT_COST_PER_FRAME_RUB,
+  MEASUREMENT_DIRECT_COST_RUB,
+  computeFrameOrderDirectCost,
+  type FrameOrderDirectCostBreakdown,
+  type FrameOrderDirectCostInput,
+  type FrameOrderDirectCostResult,
+} from './frame-order-direct-cost.js';
+
+export {
+  computeFrameActualOrderDirectCost,
+  type FrameActualOrderCostBreakdown,
+  type FrameActualOrderCostInput,
+  type FrameActualOrderCostResult,
+} from './frame-actual-order-cost.js';
+
+export {
+  resolveOrderPricingStrategy,
+  type ProductPricingStrategy,
+  type ProductPricingStrategyKind,
+} from './product-pricing-strategy.js';
+
+export {
+  createGuardedPreliminaryPrice,
+  type CreateGuardedPreliminaryPriceInput,
+  type CreateGuardedPreliminaryPriceResult,
+  type GuardedPreliminaryPrice,
+  type GuardedPreliminaryPriceCode,
+} from './guarded-preliminary-price.js';

@@ -1,4 +1,4 @@
-import { getFactValue, type OrderMemory } from '../src/domain/index.js';
+import { getFactValue, type OrderMemory, type PricingPolicyStatus } from '../src/domain/index.js';
 import {
   CURRENT_BUSINESS_RULES,
   CURRENT_BUSINESS_RULES_VERSION,
@@ -87,6 +87,22 @@ function memoryWithItem(productType: string, fields: Record<string, unknown> = {
   return memory;
 }
 
+function persistQuote(
+  memory: OrderMemory,
+  publicTotalRub: number,
+  pricingPolicyStatus: PricingPolicyStatus = 'FRAME_MARGIN_GUARD_PASSED',
+) {
+  const service = new PreliminaryQuoteService();
+  return service.persistAfterPreliminaryCalculation({
+    memory,
+    guarded: {
+      publicTotalRub,
+      pricingPolicyStatus,
+      inputFingerprint: computeQuoteInputFingerprintFromMemory(memory),
+    },
+  });
+}
+
 function extractionRequest(memory: OrderMemory, text: string): FactExtractionRequest {
   return {
     conversationId: memory.conversationId,
@@ -113,8 +129,8 @@ describe('Task 11 preliminary core', () => {
     });
 
     it('SIZE-2 WING without sizes → ESTIMATED_AVERAGE', () => {
-      const size = resolveItemCalculationSize(memoryWithItem('WING').items[0]!);
-      expect(size.source).toBe('ESTIMATED_AVERAGE');
+      const size = resolveItemCalculationSize(memoryWithItem('WING').items[0]!).source;
+      expect(size).toBe('ESTIMATED_AVERAGE');
     });
 
     it('SIZE-3 DOOR without sizes → NEEDS_INPUT', () => {
@@ -274,12 +290,8 @@ describe('Task 11 preliminary core', () => {
 
   describe('ACCEPT commercial facts', () => {
     it('ACCEPT-1 preliminaryPriceAccepted=true binds quote id', () => {
-      const service = new PreliminaryQuoteService();
-      let memory = memoryWithItem('FRAME');
-      const quoted = service.persistAfterPreliminaryCalculation({
-        memory,
-        publicTotalRub: 18500,
-      });
+      let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
+      const quoted = persistQuote(memory, 18500);
       memory = quoted.memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
@@ -290,7 +302,7 @@ describe('Task 11 preliminary core', () => {
     });
 
     it('ACCEPT-2 preliminaryPriceAccepted=false clears binding', () => {
-      let memory = memoryWithItem('FRAME');
+      let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,
@@ -388,15 +400,12 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('QUOTE snapshot', () => {
-    it('QUOTE-1 service creates snapshot with marginGuardPassed', () => {
-      const service = new PreliminaryQuoteService();
-      const { memory, snapshot } = service.persistAfterPreliminaryCalculation({
-        memory: memoryWithItem('FRAME'),
-        publicTotalRub: 20000,
-        calculationVersion: 'calc-v',
-        priceVersion: 'price-v',
-      });
-      expect(snapshot.marginGuardPassed).toBe(true);
+    it('QUOTE-1 service creates snapshot with pricingPolicyStatus', () => {
+      const { memory, snapshot } = persistQuote(
+        memoryWithItem('FRAME', { profileColor: 'WHITE' }),
+        20000,
+      );
+      expect(snapshot.pricingPolicyStatus).toBe('FRAME_MARGIN_GUARD_PASSED');
       expect(memory.preliminaryQuote?.quoteId).toMatch(/^pq_/);
     });
 
@@ -420,12 +429,8 @@ describe('Task 11 preliminary core', () => {
     });
 
     it('QUOTE-4 new quote clears stale acceptance binding', () => {
-      const service = new PreliminaryQuoteService();
-      let memory = memoryWithItem('FRAME');
-      memory = service.persistAfterPreliminaryCalculation({
-        memory,
-        publicTotalRub: 18000,
-      }).memory;
+      let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
+      memory = persistQuote(memory, 18000).memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,
@@ -437,43 +442,32 @@ describe('Task 11 preliminary core', () => {
         value: 'ANTIMOSHKA',
         source: { ...SOURCE, sourceMessageId: 'msg-3' },
       }).memory;
-      memory = service.persistAfterPreliminaryCalculation({
-        memory,
-        publicTotalRub: 19000,
-      }).memory;
+      memory = persistQuote(memory, 19000).memory;
       expect(memory.acceptedPreliminaryQuoteId).toBeUndefined();
     });
 
     it('QUOTE-5 memory context shows quote public total not direct cost', () => {
-      const service = new PreliminaryQuoteService();
-      const memory = service.persistAfterPreliminaryCalculation({
-        memory: memoryWithItem('FRAME'),
-        publicTotalRub: 18500,
-      }).memory;
+      const memory = persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 18500).memory;
       const context = buildOrderMemoryContext(memory);
       expect(context).toContain('publicTotalRub=18500');
       expect(context).not.toMatch(/directCost|margin|trustedDirect/i);
     });
 
     it('QUOTE-6 codec round-trip preliminary quote', () => {
-      const service = new PreliminaryQuoteService();
-      const memory = service.persistAfterPreliminaryCalculation({
-        memory: memoryWithItem('FRAME'),
-        publicTotalRub: 17500,
-      }).memory;
+      const memory = persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 17500).memory;
       const decoded = decodeOrderMemoryDocument(buildOrderMemoryDocument(memory, 1)).memory;
       expect(decoded.preliminaryQuote?.publicTotalRub).toBe(17500);
-      expect(decoded.preliminaryQuote?.marginGuardPassed).toBe(true);
+      expect(decoded.preliminaryQuote?.pricingPolicyStatus).toBe('FRAME_MARGIN_GUARD_PASSED');
     });
   });
 
   describe('READY readiness', () => {
     function readyMemory(): OrderMemory {
-      const service = new PreliminaryQuoteService();
       let memory = memoryWithItem('FRAME', {
         widthMm: 1000,
         heightMm: 1500,
         measurementBasis: 'PRODUCT_SIZE',
+        profileColor: 'WHITE',
       });
       memory = applyCustomerFact(memory, {
         field: 'phone',
@@ -485,10 +479,7 @@ describe('Task 11 preliminary core', () => {
         value: 'Москва, ул. Тестовая 1',
         source: SOURCE,
       }).memory;
-      memory = service.persistAfterPreliminaryCalculation({
-        memory,
-        publicTotalRub: 20000,
-      }).memory;
+      memory = persistQuote(memory, 20000).memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,
@@ -512,7 +503,6 @@ describe('Task 11 preliminary core', () => {
     });
 
     it('READY-3 missing price acceptance', () => {
-      const service = new PreliminaryQuoteService();
       let memory = readyMemory();
       memory = {
         ...memory,
@@ -520,10 +510,7 @@ describe('Task 11 preliminary core', () => {
           measurementAgreed: memory.commercial?.measurementAgreed,
         },
       };
-      memory = service.persistAfterPreliminaryCalculation({
-        memory,
-        publicTotalRub: 20000,
-      }).memory;
+      memory = persistQuote(memory, 20000).memory;
       expect(evaluateLeadReadiness(memory).blockingCodes).toContain('PRICE_NOT_ACCEPTED');
     });
 
@@ -658,11 +645,11 @@ describe('Task 11 preliminary core', () => {
 });
 
 function readyFixture(): OrderMemory {
-  const service = new PreliminaryQuoteService();
   let memory = memoryWithItem('FRAME', {
     widthMm: 1000,
     heightMm: 1500,
     measurementBasis: 'PRODUCT_SIZE',
+    profileColor: 'WHITE',
   });
   memory = applyCustomerFact(memory, {
     field: 'phone',
@@ -674,10 +661,7 @@ function readyFixture(): OrderMemory {
     value: 'Москва',
     source: SOURCE,
   }).memory;
-  memory = service.persistAfterPreliminaryCalculation({
-    memory,
-    publicTotalRub: 20000,
-  }).memory;
+  memory = persistQuote(memory, 20000).memory;
   memory = applyCommercialFact(memory, {
     field: 'preliminaryPriceAccepted',
     value: true,

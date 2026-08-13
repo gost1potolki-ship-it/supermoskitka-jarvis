@@ -209,15 +209,10 @@ export class SuperMoskitkaCalculationEngine implements CalculationEngine {
       totalsPrices,
     );
 
-    const itemsDirectCost = itemResults.reduce(
+    const trustedDirectCostRub = itemResults.reduce(
       (sum, item) => sum + (item.directCost ?? 0),
       0,
     );
-    const trustedDirectCostRub =
-      itemsDirectCost +
-      totals.measurementFee +
-      totals.installTotal +
-      totals.deliveryCost;
 
     return {
       status: 'calculated',
