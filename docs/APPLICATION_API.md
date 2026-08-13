@@ -161,9 +161,9 @@ Semantics:
 | Completed AI turn (CUSTOMER + AI reply) | `200 duplicate=true`, existing `aiReply`, no LLM/extractor |
 | HUMAN turn | `200 duplicate=true`, `aiReply=null`, no LLM/extractor |
 | Incomplete AI turn (CUSTOMER persisted, AI missing, mode=AI) | resume same customer turn via orchestrator (no second CUSTOMER append); `duplicate=true`, optional `resumed=true`, then `aiReply` |
-| Same messageId, different text | `409 MESSAGE_ID_CONFLICT` |
+| Same messageId, different text | `409 MESSAGE_ID_CONFLICT` (including concurrent in-flight requests) |
 
-Single-process single-flight: concurrent identical POSTs in one Node process share one in-flight promise (`conversationId + messageId`). Map entries are cleared in `finally`.
+Single-process single-flight: concurrent POSTs with the same `conversationId + messageId + text` share one in-flight promise. If the same `messageId` arrives concurrently with a **different** text, the second request fails immediately with `409 MESSAGE_ID_CONFLICT` without waiting for the first. Map entries are cleared in `finally`.
 
 **Not implemented:** multi-worker / distributed idempotency (Redis lease). Firestore duplicate-message persistence remains a second defense after restart within one process.
 

@@ -97,6 +97,11 @@ function flightKey(conversationId: string, messageId: string): string {
   return `${conversationId}::${messageId}`;
 }
 
+interface InFlightMessage {
+  text: string;
+  promise: Promise<HandleCustomerMessageResultDto>;
+}
+
 export class JarvisApplication {
   private readonly conversationStore: ConversationStore;
   private readonly orderMemoryStore: OrderMemoryStore;
@@ -104,7 +109,7 @@ export class JarvisApplication {
   private readonly idGenerator: IdGenerator;
   private readonly measurementActionPolicy: MeasurementActionPolicy | undefined;
   private readonly now: () => string;
-  private readonly inFlight = new Map<string, Promise<HandleCustomerMessageResultDto>>();
+  private readonly inFlight = new Map<string, InFlightMessage>();
 
   constructor(deps: JarvisApplicationDeps) {
     this.conversationStore = deps.conversationStore;
@@ -186,14 +191,20 @@ export class JarvisApplication {
     const key = flightKey(input.conversationId, input.messageId);
     const existingFlight = this.inFlight.get(key);
     if (existingFlight) {
-      return existingFlight;
+      // Exact comparison matches persisted duplicate conflict semantics.
+      if (existingFlight.text !== input.text) {
+        throw ApplicationError.messageIdConflict();
+      }
+      return existingFlight.promise;
     }
 
-    const flight = this.handleCustomerMessageSerialized(input).finally(() => {
-      this.inFlight.delete(key);
+    const promise = this.handleCustomerMessageSerialized(input).finally(() => {
+      if (this.inFlight.get(key)?.promise === promise) {
+        this.inFlight.delete(key);
+      }
     });
-    this.inFlight.set(key, flight);
-    return flight;
+    this.inFlight.set(key, { text: input.text, promise });
+    return promise;
   }
 
   private async handleCustomerMessageSerialized(

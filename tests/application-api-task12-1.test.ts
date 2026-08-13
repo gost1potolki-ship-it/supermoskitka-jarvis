@@ -43,12 +43,15 @@ const KNOWLEDGE_ROOT = path.resolve(
 class GatedLlmProvider implements LlmProvider {
   readonly requests: LlmRequest[] = [];
   private readonly gate: Promise<void>;
+  private readonly onEntered: (() => void) | undefined;
 
   constructor(
     private readonly responseText: string,
     gate: Promise<void>,
+    onEntered?: () => void,
   ) {
     this.gate = gate;
+    this.onEntered = onEntered;
   }
 
   async generate(request: LlmRequest): Promise<LlmResponse> {
@@ -56,6 +59,7 @@ class GatedLlmProvider implements LlmProvider {
       conversationId: request.conversationId,
       messages: request.messages.map((message) => ({ ...message })),
     });
+    this.onEntered?.();
     await this.gate;
     return { text: this.responseText };
   }
@@ -262,6 +266,66 @@ describe('Task 12.1 runtime + retriable idempotency', () => {
 
     const messages = await conversationStore.getMessages(conversationId);
     expect(messages.filter((m) => m.sender === 'CUSTOMER')).toHaveLength(1);
+    expect(messages.filter((m) => m.sender === 'AI')).toHaveLength(1);
+  });
+
+  it('concurrent same messageId different text → immediate 409', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let entered!: () => void;
+    const enteredGate = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const llm = new GatedLlmProvider('Ответ первого текста', gate, entered);
+    const conversationStore = new InMemoryConversationStore();
+    const orderMemoryStore = new InMemoryOrderMemoryStore();
+    const composed = composeJarvisApplication({
+      conversationStore,
+      orderMemoryStore,
+      llm,
+      systemPromptProvider: new FakeSystemPromptProvider('SYSTEM'),
+      includeCalculationTools: false,
+      includeFactExtractor: false,
+    });
+    const app = createApp(createLogger('error'), {
+      application: composed.application,
+      internalApiKey: TEST_INTERNAL_API_KEY,
+    });
+    const created = await request(app)
+      .post('/internal/v1/conversations')
+      .set('Authorization', `Bearer ${TEST_INTERNAL_API_KEY}`)
+      .send({});
+    const conversationId = created.body.conversationId as string;
+
+    // Force supertest to start the request immediately (thenable).
+    const first = Promise.resolve(
+      request(app)
+        .post(`/internal/v1/conversations/${conversationId}/messages`)
+        .set('Authorization', `Bearer ${TEST_INTERNAL_API_KEY}`)
+        .send({ messageId: 'conflict-concurrent', text: 'первый текст' }),
+    );
+    await enteredGate;
+    expect(llm.requests).toHaveLength(1);
+
+    const conflict = await request(app)
+      .post(`/internal/v1/conversations/${conversationId}/messages`)
+      .set('Authorization', `Bearer ${TEST_INTERNAL_API_KEY}`)
+      .send({ messageId: 'conflict-concurrent', text: 'другой текст' });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.error.code).toBe('MESSAGE_ID_CONFLICT');
+    expect(llm.requests).toHaveLength(1);
+
+    release();
+    const firstResult = await first;
+    expect(firstResult.status).toBe(200);
+    expect(firstResult.body.aiReply?.text).toBe('Ответ первого текста');
+    expect(llm.requests).toHaveLength(1);
+
+    const messages = await conversationStore.getMessages(conversationId);
+    expect(messages.filter((m) => m.sender === 'CUSTOMER')).toHaveLength(1);
+    expect(messages.filter((m) => m.sender === 'CUSTOMER')[0]?.text).toBe('первый текст');
     expect(messages.filter((m) => m.sender === 'AI')).toHaveLength(1);
   });
 
