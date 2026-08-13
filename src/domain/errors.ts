@@ -33,3 +33,39 @@ export class InvalidOperationError extends Error {
     this.name = 'InvalidOperationError';
   }
 }
+
+export class PersistenceConfigError extends Error {
+  readonly code = 'PERSISTENCE_CONFIG_ERROR' as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'PersistenceConfigError';
+  }
+}
+
+export class PersistenceDataError extends Error {
+  readonly code = 'PERSISTENCE_DATA_ERROR' as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'PersistenceDataError';
+  }
+}
+
+export class PersistenceConflictError extends Error {
+  readonly code = 'PERSISTENCE_CONFLICT' as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'PersistenceConflictError';
+  }
+}
+
+export class PersistenceSizeLimitError extends Error {
+  readonly code = 'PERSISTENCE_SIZE_LIMIT' as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'PersistenceSizeLimitError';
+  }
+}

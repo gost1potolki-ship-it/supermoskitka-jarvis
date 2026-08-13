@@ -9,4 +9,6 @@ export interface Conversation {
   mode: ConversationMode;
   createdAt: string;
   updatedAt: string;
+  /** Persistence revision (Task 10). Undefined until first save. */
+  revision?: number;
 }

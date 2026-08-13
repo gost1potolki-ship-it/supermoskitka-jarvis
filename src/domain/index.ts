@@ -10,6 +10,10 @@ export {
   ConversationNotFoundError,
   InvalidOperationError,
   MessageAlreadyExistsError,
+  PersistenceConfigError,
+  PersistenceConflictError,
+  PersistenceDataError,
+  PersistenceSizeLimitError,
 } from './errors.js';
 
 export type { Fact, FactSource, FactVersion } from './fact.js';

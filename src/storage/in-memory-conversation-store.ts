@@ -4,6 +4,7 @@ import {
   ConversationNotFoundError,
   InvalidOperationError,
   MessageAlreadyExistsError,
+  PersistenceConflictError,
 } from '../domain/errors.js';
 import type { Message } from '../domain/message.js';
 
@@ -27,7 +28,7 @@ export class InMemoryConversationStore implements ConversationStore {
       throw new ConversationAlreadyExistsError(conversation.conversationId);
     }
 
-    const stored: Conversation = { ...conversation };
+    const stored: Conversation = { ...conversation, revision: 1 };
     this.conversations.set(stored.conversationId, stored);
     this.messagesByConversation.set(stored.conversationId, []);
     return { ...stored };
@@ -39,11 +40,22 @@ export class InMemoryConversationStore implements ConversationStore {
   }
 
   async saveConversation(conversation: Conversation): Promise<Conversation> {
-    if (!this.conversations.has(conversation.conversationId)) {
+    const existing = this.conversations.get(conversation.conversationId);
+    if (!existing) {
       throw new ConversationNotFoundError(conversation.conversationId);
     }
 
-    const stored: Conversation = { ...conversation };
+    const currentRevision = existing.revision ?? 0;
+    if (conversation.revision !== undefined && conversation.revision !== currentRevision) {
+      throw new PersistenceConflictError(
+        `Conversation revision conflict for ${conversation.conversationId}`,
+      );
+    }
+
+    const stored: Conversation = {
+      ...conversation,
+      revision: currentRevision + 1,
+    };
     this.conversations.set(stored.conversationId, stored);
     return { ...stored };
   }
@@ -70,6 +82,16 @@ export class InMemoryConversationStore implements ConversationStore {
     list.push(stored);
     list.sort(compareMessages);
     this.messageIds.add(stored.messageId);
+
+    const conversation = this.conversations.get(message.conversationId);
+    if (conversation) {
+      this.conversations.set(message.conversationId, {
+        ...conversation,
+        revision: (conversation.revision ?? 0) + 1,
+        updatedAt: message.createdAt,
+      });
+    }
+
     return { ...stored };
   }
 

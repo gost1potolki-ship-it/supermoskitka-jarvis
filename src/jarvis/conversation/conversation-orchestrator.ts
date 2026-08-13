@@ -214,6 +214,7 @@ export class ConversationOrchestrator {
           memorySnapshot: structuredClone(memory),
           recentContext: toExtractionContext(history),
         });
+        const memoryBeforeApply = structuredClone(memory);
         const applied = applyValidatedExtraction(memory, extraction, {
           conversationId: conversation.conversationId,
           currentMessage: {
@@ -225,11 +226,27 @@ export class ConversationOrchestrator {
           memorySnapshot: memory,
           recentContext: toExtractionContext(history),
         });
-        memory = applied.memory;
         factExtraction.appliedFields = applied.diagnostics.appliedFields;
         factExtraction.issues = applied.diagnostics.issues;
         factExtraction.skipped = applied.diagnostics.skipped;
-        await this.orderMemoryStore.save(memory);
+        try {
+          memory = await this.orderMemoryStore.save(applied.memory);
+        } catch (persistError) {
+          // Customer message is already stored; do not pretend OrderMemory updated.
+          factExtraction.failed = true;
+          factExtraction.errorMessage =
+            persistError instanceof Error
+              ? persistError.message
+              : 'Order memory persistence failed';
+          factExtraction.issues = [
+            ...factExtraction.issues,
+            {
+              code: 'persistence_failed',
+              message: 'Order memory persistence failed; continuing without updated memory.',
+            },
+          ];
+          memory = memoryBeforeApply;
+        }
       } catch (error) {
         factExtraction.failed = true;
         factExtraction.errorMessage =

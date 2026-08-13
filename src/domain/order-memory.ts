@@ -13,6 +13,8 @@ export interface OrderMemory {
   fulfillment?: FulfillmentFacts;
   createdAt: string;
   updatedAt: string;
+  /** Persistence revision (Task 10). Undefined until first save. */
+  revision?: number;
 }
 
 export function getOrderItem(memory: OrderMemory, orderItemId: string): OrderItem | undefined {

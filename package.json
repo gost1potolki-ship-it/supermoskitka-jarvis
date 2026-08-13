@@ -19,6 +19,7 @@
     "smoke:odirouter": "tsx scripts/smoke-odirouter.ts",
     "smoke:odirouter:calculation": "tsx scripts/smoke-odirouter-calculation.ts",
     "smoke:odirouter:facts": "tsx scripts/smoke-odirouter-facts.ts",
+    "smoke:firestore:persistence": "tsx scripts/smoke-firestore-persistence.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -28,6 +29,7 @@
     "@google/genai": "^2.16.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "firebase-admin": "^13.10.0",
     "openai": "^7.4.0",
     "yaml": "^2.9.0"
   },

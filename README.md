@@ -11,6 +11,7 @@ HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separ
 - `docs/ODIROUTER_PROVIDER.md` — OdiRouter gateway provider (`LlmProvider` adapter)
 - `docs/TOOL_CALLING.md` — provider-neutral tool calling + `calculate_order`
 - `docs/FACT_EXTRACTION.md` — Fact Extraction + live Order Memory
+- `docs/PERSISTENCE.md` — Firestore persistence for Conversation / Order Memory
 
 ## Requirements
 
@@ -36,6 +37,7 @@ npm install
 | `npm run smoke:odirouter` | Manual live OdiRouter smoke (requires API key + model id; not in `npm test`) |
 | `npm run smoke:odirouter:calculation` | Live OdiRouter calculation tool smoke (DEV price snapshot; not in `npm test`) |
 | `npm run smoke:odirouter:facts` | Live OdiRouter fact extraction + Order Memory smoke (not in `npm test`) |
+| `npm run smoke:firestore:persistence` | Live Firestore persistence smoke (`jarvis_v1_*` only; not in `npm test`) |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run the compiled server |
 
