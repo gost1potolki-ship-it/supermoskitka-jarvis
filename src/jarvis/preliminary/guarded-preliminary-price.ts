@@ -1,8 +1,4 @@
-import type {
-  CalculationEngine,
-  CalculationOutcome,
-  CalculationRequest,
-} from '../../calculation/index.js';
+import type { CalculationEngine, CalculationOutcome } from '../../calculation/index.js';
 import type { QuoteTrustStatus } from '../../domain/index.js';
 import type { OrderMemory } from '../../domain/index.js';
 
@@ -81,8 +77,6 @@ export interface CalculateTrustedPreliminaryQuoteInput {
   engine: CalculationEngine;
   memory: OrderMemory;
   trustedInput: TrustedPreliminaryCalculationInput;
-  /** Optional override; defaults to request derived from trustedInput. */
-  request?: CalculationRequest;
 }
 
 export type CalculateTrustedPreliminaryQuoteResult =
@@ -115,8 +109,7 @@ export async function calculateTrustedPreliminaryQuote(
     return { ok: false, code: 'TRUSTED_INPUT_REQUIRED' };
   }
 
-  const request =
-    input.request ?? buildCalculationRequestFromTrustedPreliminaryInput(trustedInput);
+  const request = buildCalculationRequestFromTrustedPreliminaryInput(trustedInput);
   const outcome = await engine.calculate(request);
 
   if (outcome.status !== 'calculated' || outcome.total === null || !Number.isFinite(outcome.total)) {

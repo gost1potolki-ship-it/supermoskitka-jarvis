@@ -15,9 +15,13 @@ import {
 } from '../src/jarvis/memory/index.js';
 import {
   TrustedPreliminaryQuoteProof,
+  buildCalculationRequestFromTrustedPreliminaryInput,
   buildPreliminaryQuoteSnapshot,
   buildTrustedPreliminaryCalculationInput,
   calculateTrustedPreliminaryQuote,
+  computeQuoteInputFingerprintFromTrustedCalculation,
+  ESTIMATED_AVERAGE_HEIGHT_MM,
+  ESTIMATED_AVERAGE_WIDTH_MM,
   PreliminaryQuoteService,
 } from '../src/jarvis/preliminary/index.js';
 import { CalculationTool } from '../src/jarvis/tools/index.js';
@@ -185,5 +189,52 @@ describe('Task 11.1.3 final trusted quote provenance', () => {
       deliveryType: 'city',
     });
     expect(persisted.snapshot.publicTotalRub).toBe(tool.lastExecuteMeta?.outcome?.total);
+  });
+
+  it('TRUST-FINAL-6 coordinator always derives engine request from trustedInput', async () => {
+    const memory = frameMemory();
+    const cityBuilt = buildTrustedPreliminaryCalculationInput(memory, { type: 'city' });
+    expect(cityBuilt.ok).toBe(true);
+    if (!cityBuilt.ok) {
+      return;
+    }
+
+    const cityEngine = new FixedTotalCalculationEngine(15200);
+    const cityCalculated = await calculateTrustedPreliminaryQuote({
+      engine: cityEngine,
+      memory,
+      trustedInput: cityBuilt.input,
+    });
+    expect(cityCalculated.ok).toBe(true);
+    expect(cityEngine.lastRequest).toEqual(
+      buildCalculationRequestFromTrustedPreliminaryInput(cityBuilt.input),
+    );
+    expect(cityEngine.lastRequest?.items[0]?.widthMm).toBe(ESTIMATED_AVERAGE_WIDTH_MM);
+    expect(cityEngine.lastRequest?.items[0]?.heightMm).toBe(ESTIMATED_AVERAGE_HEIGHT_MM);
+    expect(cityCalculated.proof?.inputFingerprint).toBe(
+      computeQuoteInputFingerprintFromTrustedCalculation(memory, cityBuilt.input),
+    );
+    expect(cityCalculated.proof?.publicTotalRub).toBe(cityCalculated.outcome.total);
+
+    const pickupBuilt = buildTrustedPreliminaryCalculationInput(memory, { type: 'pickup' });
+    expect(pickupBuilt.ok).toBe(true);
+    if (!pickupBuilt.ok) {
+      return;
+    }
+    const pickupEngine = new FixedTotalCalculationEngine(9000);
+    const pickupCalculated = await calculateTrustedPreliminaryQuote({
+      engine: pickupEngine,
+      memory,
+      trustedInput: pickupBuilt.input,
+    });
+    expect(pickupCalculated.ok).toBe(true);
+    expect(pickupEngine.lastRequest).toEqual(
+      buildCalculationRequestFromTrustedPreliminaryInput(pickupBuilt.input),
+    );
+    expect(pickupEngine.lastRequest?.installation?.enabled).toBe(false);
+    expect(pickupEngine.lastRequest?.measurement?.includeFee).toBe(false);
+    expect(pickupCalculated.proof?.inputFingerprint).toBe(
+      computeQuoteInputFingerprintFromTrustedCalculation(memory, pickupBuilt.input),
+    );
   });
 });

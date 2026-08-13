@@ -6,9 +6,12 @@ import type {
 
 /** Test fake: returns a fixed selling total from engine.calculate(). */
 export class FixedTotalCalculationEngine implements CalculationEngine {
+  lastRequest: CalculationRequest | undefined;
+
   constructor(private readonly totalRub: number) {}
 
-  async calculate(_request: CalculationRequest): Promise<CalculationOutcome> {
+  async calculate(request: CalculationRequest): Promise<CalculationOutcome> {
+    this.lastRequest = request;
     return {
       status: 'calculated',
       items: [],
