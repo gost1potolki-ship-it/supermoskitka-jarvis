@@ -5,6 +5,7 @@ import type {
 } from '../../calculation/index.js';
 
 import type { CalculationMode } from './pricing-types.js';
+import { parseTrustedCalculationItem } from './trusted-item-parser.js';
 import type { SafeToolResult } from '../tools/tool-types.js';
 
 /** Facts LLM may extract — no raw monetary authority. */
@@ -17,30 +18,6 @@ export interface TrustedCalculationToolInput {
     distanceKm?: number;
   };
 }
-
-const FORBIDDEN_ROOT_KEYS = new Set([
-  'discount',
-  'payment',
-  'installation',
-  'measurement',
-  'customAmount',
-  'manualPrice',
-  'priceOverride',
-  'laborOverride',
-  'markupOverride',
-]);
-
-const FORBIDDEN_NESTED_KEYS = new Set([
-  'overrideAmount',
-  'amount',
-  'percent',
-  'surcharge',
-  'manualPrice',
-  'priceOverride',
-  'customAmount',
-  'laborOverride',
-  'markupOverride',
-]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -59,41 +36,6 @@ function reject(message = 'Calculation arguments are invalid.'): {
   };
 }
 
-function assertNoForbiddenKeys(value: unknown, path: string): string | null {
-  if (Array.isArray(value)) {
-    for (let index = 0; index < value.length; index += 1) {
-      const nested = assertNoForbiddenKeys(value[index], `${path}[${index}]`);
-      if (nested) {
-        return nested;
-      }
-    }
-    return null;
-  }
-  if (!isRecord(value)) {
-    return null;
-  }
-  for (const key of Object.keys(value)) {
-    const atRoot = path === '';
-    if (atRoot && FORBIDDEN_ROOT_KEYS.has(key)) {
-      return `Forbidden field: ${key}`;
-    }
-    if (!atRoot && FORBIDDEN_NESTED_KEYS.has(key)) {
-      return `Forbidden field: ${path}.${key}`;
-    }
-    if (key === 'overrideAmount' || key === 'discount' || key === 'manualPrice') {
-      return `Forbidden field: ${path ? `${path}.` : ''}${key}`;
-    }
-    const nested = assertNoForbiddenKeys(
-      value[key],
-      path ? `${path}.${key}` : key,
-    );
-    if (nested) {
-      return nested;
-    }
-  }
-  return null;
-}
-
 /**
  * Strict parse of AI-facing calculate_order arguments.
  * Unknown / monetary authority fields → invalid_arguments.
@@ -110,11 +52,6 @@ export function parseTrustedCalculationToolInput(
 
   if (!isRecord(parsed)) {
     return reject();
-  }
-
-  const forbidden = assertNoForbiddenKeys(parsed, '');
-  if (forbidden) {
-    return reject(forbidden);
   }
 
   const allowedRoot = new Set(['mode', 'customerType', 'items', 'delivery']);
@@ -142,6 +79,15 @@ export function parseTrustedCalculationToolInput(
     return reject();
   }
 
+  const items: CalculationItemInput[] = [];
+  for (let index = 0; index < parsed.items.length; index += 1) {
+    const parsedItem = parseTrustedCalculationItem(parsed.items[index], `items[${index}]`);
+    if (!parsedItem.ok) {
+      return reject(parsedItem.error);
+    }
+    items.push(parsedItem.item);
+  }
+
   let delivery: TrustedCalculationToolInput['delivery'];
   if (parsed.delivery !== undefined) {
     if (!isRecord(parsed.delivery)) {
@@ -157,6 +103,13 @@ export function parseTrustedCalculationToolInput(
     if (type !== 'city' && type !== 'out' && type !== 'pickup') {
       return reject('Invalid delivery.type.');
     }
+    if (
+      parsed.delivery.distanceKm !== undefined &&
+      (typeof parsed.delivery.distanceKm !== 'number' ||
+        !Number.isFinite(parsed.delivery.distanceKm))
+    ) {
+      return reject('Invalid delivery.distanceKm.');
+    }
     delivery = {
       type,
       ...(typeof parsed.delivery.distanceKm === 'number'
@@ -170,7 +123,7 @@ export function parseTrustedCalculationToolInput(
     input: {
       mode,
       customerType,
-      items: parsed.items as CalculationItemInput[],
+      items,
       ...(delivery !== undefined ? { delivery } : {}),
     },
   };

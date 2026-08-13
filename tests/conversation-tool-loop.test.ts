@@ -372,4 +372,196 @@ describe('ConversationOrchestrator tool loop', () => {
       expect(result.priceIntegrity?.accepted).toBe(true);
     }
   });
+
+  it('NOPRICE-1 needs_input + invented price → fallback without money, candidate not persisted', async () => {
+    const store = new InMemoryConversationStore();
+    await seed(store);
+    const engine = createTrackingEngine();
+    const incomplete = {
+      mode: 'PRELIMINARY_ALL_IN',
+      customerType: 'retail',
+      items: VALID_FRAME_ARGS.items,
+    };
+    const llm = new FakeToolCallingLlmProvider([
+      {
+        type: 'tool_calls',
+        toolCalls: [fakeCalculateOrderCall('ni', incomplete)],
+      },
+      {
+        type: 'text',
+        text: 'Уточните расстояние, ориентировочно 4 500 ₽.',
+      },
+    ]);
+    const orchestrator = new ConversationOrchestrator(
+      store,
+      llm,
+      new FakeSystemPromptProvider('SYS'),
+      { toolRuntime: new ToolRuntime(new CalculationTool(engine)) },
+    );
+
+    const result = await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'm1',
+      text: 'Сколько под ключ?',
+    });
+
+    expect(result.status).toBe('ai_replied');
+    if (result.status === 'ai_replied') {
+      expect(result.replyText).not.toMatch(/₽|руб/i);
+      expect(result.replyText).not.toContain('4500');
+      expect(result.replyText).not.toContain('4 500');
+      expect(result.priceIntegrity?.accepted).toBe(false);
+      expect(result.priceIntegrity?.turnKind).toBe('needs_input');
+    }
+    const ai = (await store.getMessages('conv-1')).find((message) => message.sender === 'AI');
+    expect(ai?.text).not.toMatch(/₽|руб/i);
+    expect(ai?.text).not.toContain('4 500');
+  });
+
+  it('NOPRICE-2 needs_input without money → accepted unchanged', async () => {
+    const store = new InMemoryConversationStore();
+    await seed(store);
+    const engine = createTrackingEngine();
+    const incomplete = {
+      mode: 'PRELIMINARY_ALL_IN',
+      customerType: 'retail',
+      items: VALID_FRAME_ARGS.items,
+    };
+    const llm = new FakeToolCallingLlmProvider([
+      {
+        type: 'tool_calls',
+        toolCalls: [fakeCalculateOrderCall('ni2', incomplete)],
+      },
+      { type: 'text', text: 'Уточните расстояние.' },
+    ]);
+    const orchestrator = new ConversationOrchestrator(
+      store,
+      llm,
+      new FakeSystemPromptProvider('SYS'),
+      { toolRuntime: new ToolRuntime(new CalculationTool(engine)) },
+    );
+
+    const result = await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'm1',
+      text: 'цена под ключ',
+    });
+
+    expect(result.status).toBe('ai_replied');
+    if (result.status === 'ai_replied') {
+      expect(result.replyText).toBe('Уточните расстояние.');
+      expect(result.priceIntegrity?.accepted).toBe(true);
+    }
+  });
+
+  it('NOPRICE-3 unsupported + invented price → fallback without money', async () => {
+    const store = new InMemoryConversationStore();
+    await seed(store);
+    const engine = createTrackingEngine();
+    const unsupportedDoor = {
+      mode: 'PRODUCT_ONLY',
+      customerType: 'retail',
+      items: [
+        {
+          itemId: 'door-32',
+          productType: 'DOOR',
+          widthMm: 900,
+          heightMm: 2100,
+          quantity: 1,
+          meshType: 'STANDARD',
+          color: { kind: 'WHITE' },
+          doorProfile: '32',
+          hingesCount: 3,
+        },
+      ],
+    };
+    const llm = new FakeToolCallingLlmProvider([
+      {
+        type: 'tool_calls',
+        toolCalls: [fakeCalculateOrderCall('unsup', unsupportedDoor)],
+      },
+      { type: 'text', text: 'Такой вариант около 7 000 рублей.' },
+    ]);
+    const orchestrator = new ConversationOrchestrator(
+      store,
+      llm,
+      new FakeSystemPromptProvider('SYS'),
+      { toolRuntime: new ToolRuntime(new CalculationTool(engine)) },
+    );
+
+    const result = await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'm1',
+      text: 'дверь 32?',
+    });
+
+    expect(result.status).toBe('ai_replied');
+    if (result.status === 'ai_replied') {
+      expect(result.replyText).not.toMatch(/₽|руб/i);
+      expect(result.priceIntegrity?.turnKind).toBe('unsupported');
+    }
+  });
+
+  it('NOPRICE-4 invalid_arguments + invented price → fallback without money', async () => {
+    const store = new InMemoryConversationStore();
+    await seed(store);
+    const engine = createTrackingEngine();
+    const llm = new FakeToolCallingLlmProvider([
+      {
+        type: 'tool_calls',
+        toolCalls: [
+          { id: 'bad', name: 'calculate_order', argumentsJson: '{broken' },
+        ],
+      },
+      { type: 'text', text: 'Ориентировочно 3200 руб.' },
+    ]);
+    const orchestrator = new ConversationOrchestrator(
+      store,
+      llm,
+      new FakeSystemPromptProvider('SYS'),
+      { toolRuntime: new ToolRuntime(new CalculationTool(engine)) },
+    );
+
+    const result = await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'm1',
+      text: 'цена?',
+    });
+
+    expect(engine.calls).toHaveLength(0);
+    expect(result.status).toBe('ai_replied');
+    if (result.status === 'ai_replied') {
+      expect(result.replyText).not.toMatch(/₽|руб/i);
+      expect(result.priceIntegrity?.turnKind).toBe('failed');
+      expect(result.priceIntegrity?.accepted).toBe(false);
+    }
+  });
+
+  it('NOPRICE-5 no calculate_order → ordinary text unchanged', async () => {
+    const store = new InMemoryConversationStore();
+    await seed(store);
+    const engine = createTrackingEngine();
+    const llm = new FakeToolCallingLlmProvider([
+      { type: 'text', text: 'Можем обсудить варианты от 1 000 ₽ без расчёта.' },
+    ]);
+    const orchestrator = new ConversationOrchestrator(
+      store,
+      llm,
+      new FakeSystemPromptProvider('SYS'),
+      { toolRuntime: new ToolRuntime(new CalculationTool(engine)) },
+    );
+
+    const result = await orchestrator.handleIncomingMessage({
+      conversationId: 'conv-1',
+      messageId: 'm1',
+      text: 'расскажите про сетки',
+    });
+
+    expect(engine.calls).toHaveLength(0);
+    expect(result.status).toBe('ai_replied');
+    if (result.status === 'ai_replied') {
+      expect(result.replyText).toBe('Можем обсудить варианты от 1 000 ₽ без расчёта.');
+      expect(result.priceIntegrity).toBeUndefined();
+    }
+  });
 });

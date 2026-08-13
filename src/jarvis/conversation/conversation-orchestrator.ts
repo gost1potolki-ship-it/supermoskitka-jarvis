@@ -11,6 +11,7 @@ import type { SystemPromptProvider } from '../system-prompt-provider.js';
 import {
   PriceIntegrityGuard,
   type CalculationMode,
+  type CalculationTurnState,
   type PriceIntegrityReason,
 } from '../pricing/index.js';
 import {
@@ -33,9 +34,10 @@ export interface IncomingCustomerMessageInput {
 export interface PriceIntegrityDiagnostics {
   accepted: boolean;
   reason: PriceIntegrityReason;
-  authoritativeTotal: number;
-  mode: CalculationMode;
   candidateText: string;
+  turnKind: CalculationTurnState['kind'];
+  authoritativeTotal?: number;
+  mode?: CalculationMode;
 }
 
 export type HandleIncomingMessageResult =
@@ -60,29 +62,29 @@ export interface ConversationOrchestratorOptions {
   priceIntegrityGuard?: PriceIntegrityGuard;
 }
 
-interface AuthoritativeCalculation {
-  total: number;
-  mode: CalculationMode;
-}
-
 interface ToolAwareTurnResult {
   replyText: string;
   priceIntegrity?: PriceIntegrityDiagnostics;
 }
 
-function readAuthoritativeFromToolResult(
-  result: SafeToolResult,
-): AuthoritativeCalculation | null {
-  if (result.status !== 'calculated') {
-    return null;
+function toTurnState(result: SafeToolResult): CalculationTurnState {
+  if (result.status === 'calculated') {
+    if (
+      typeof result.total === 'number' &&
+      Number.isInteger(result.total) &&
+      (result.mode === 'PRODUCT_ONLY' || result.mode === 'PRELIMINARY_ALL_IN')
+    ) {
+      return { kind: 'calculated', total: result.total, mode: result.mode };
+    }
+    return { kind: 'failed' };
   }
-  if (typeof result.total !== 'number' || !Number.isInteger(result.total)) {
-    return null;
+  if (result.status === 'needs_input') {
+    return { kind: 'needs_input' };
   }
-  if (result.mode !== 'PRODUCT_ONLY' && result.mode !== 'PRELIMINARY_ALL_IN') {
-    return null;
+  if (result.status === 'unsupported') {
+    return { kind: 'unsupported' };
   }
-  return { total: result.total, mode: result.mode };
+  return { kind: 'failed' };
 }
 
 export class ConversationOrchestrator {
@@ -221,7 +223,7 @@ export class ConversationOrchestrator {
     const messages: LlmToolConversationMessage[] = [...initialMessages];
     let toolCallsExecuted = 0;
     let completedToolRound = false;
-    let authoritative: AuthoritativeCalculation | null = null;
+    let turnState: CalculationTurnState = { kind: 'none' };
 
     for (let round = 0; round < this.maxToolRounds; round += 1) {
       const response = await this.llm.generateWithTools({
@@ -236,21 +238,23 @@ export class ConversationOrchestrator {
         if (candidateText === '') {
           throw new InvalidOperationError('LLM returned an empty response');
         }
-        if (!authoritative) {
+        const guarded = this.priceIntegrityGuard.enforceForTurn(candidateText, turnState);
+        if (!guarded) {
           return { replyText: candidateText };
         }
-        const guarded = this.priceIntegrityGuard.enforce(candidateText, {
-          mode: authoritative.mode,
-          authoritativeTotal: authoritative.total,
-        });
         return {
           replyText: guarded.outgoingText,
           priceIntegrity: {
             accepted: guarded.accepted,
             reason: guarded.reason,
-            authoritativeTotal: authoritative.total,
-            mode: authoritative.mode,
             candidateText: guarded.candidateText,
+            turnKind: turnState.kind,
+            ...(turnState.kind === 'calculated'
+              ? {
+                  authoritativeTotal: turnState.total,
+                  mode: turnState.mode,
+                }
+              : {}),
           },
         };
       }
@@ -272,10 +276,8 @@ export class ConversationOrchestrator {
       for (const call of response.toolCalls) {
         toolCallsExecuted += 1;
         const result = await this.toolRuntime.executeToolCall(call);
-        const nextAuthoritative = readAuthoritativeFromToolResult(result);
-        if (nextAuthoritative) {
-          authoritative = nextAuthoritative;
-        }
+        // Last calculate_order outcome wins (including clearing prior calculated total).
+        turnState = toTurnState(result);
         messages.push({
           role: 'tool',
           toolCallId: call.id,

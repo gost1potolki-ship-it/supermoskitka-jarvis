@@ -94,4 +94,42 @@ describe('PriceIntegrityGuard', () => {
     expect(extractCurrencyAmounts('1000×1500 и ещё текст')).toEqual([]);
     expect(extractCurrencyAmounts('1 790 руб.')).toEqual([1790]);
   });
+
+  it('NOPRICE needs_input with invented amount → fallback without money', () => {
+    const result = guard.enforceForTurn('Уточните расстояние, ориентировочно 4 500 ₽.', {
+      kind: 'needs_input',
+    });
+    expect(result?.accepted).toBe(false);
+    expect(result?.reason).toBe('price_not_allowed');
+    expect(result?.outgoingText).not.toMatch(/₽|руб/i);
+    expect(result?.outgoingText).not.toContain('4500');
+    expect(result?.outgoingText).not.toContain('4 500');
+  });
+
+  it('NOPRICE needs_input without money → accepted', () => {
+    const result = guard.enforceForTurn('Уточните расстояние.', { kind: 'needs_input' });
+    expect(result?.accepted).toBe(true);
+    expect(result?.outgoingText).toBe('Уточните расстояние.');
+  });
+
+  it('NOPRICE unsupported with invented price → fallback without money', () => {
+    const result = guard.enforceForTurn('Такой вариант около 7 000 рублей.', {
+      kind: 'unsupported',
+    });
+    expect(result?.accepted).toBe(false);
+    expect(result?.outgoingText).not.toMatch(/₽|руб/i);
+    expect(result?.outgoingText).toBe(
+      'Автоматический расчёт этой конфигурации сейчас недоступен.',
+    );
+  });
+
+  it('NOPRICE failed/tool error with price → fallback without money', () => {
+    const result = guard.enforceForTurn('Получится примерно 3200 руб.', { kind: 'failed' });
+    expect(result?.accepted).toBe(false);
+    expect(result?.outgoingText).not.toMatch(/₽|руб/i);
+  });
+
+  it('NOPRICE no tool outcome → guard skipped', () => {
+    expect(guard.enforceForTurn('Любой текст с 1 000 ₽.', { kind: 'none' })).toBeNull();
+  });
 });

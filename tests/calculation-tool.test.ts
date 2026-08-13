@@ -336,4 +336,183 @@ describe('Neutral calculation tool contract', () => {
       expect(built.request.discount).toEqual({ percent: 0 });
     }
   });
+
+  it('STRICT-ITEM-1 FRAME + unknown unitPrice → invalid_arguments', async () => {
+    const tool = new CalculationTool(createEngine());
+    const result = await tool.execute({
+      id: 'strict-1',
+      name: CALCULATE_ORDER_TOOL_NAME,
+      argumentsJson: JSON.stringify({
+        mode: 'PRODUCT_ONLY',
+        customerType: 'retail',
+        items: [
+          {
+            itemId: 'x',
+            productType: 'FRAME',
+            quantity: 1,
+            widthMm: 1000,
+            heightMm: 1500,
+            meshType: 'STANDARD',
+            color: { kind: 'WHITE' },
+            fastening: 'Z_METAL',
+            frameProfile: '25',
+            cornerType: 'PLASTIC',
+            handleType: 'PLASTIC',
+            unitPrice: 1,
+          },
+        ],
+      }),
+    });
+    expect(result.status).toBe('invalid_arguments');
+  });
+
+  it('STRICT-ITEM-2 FRAME + unknown foo → invalid_arguments', async () => {
+    const parsed = parseTrustedCalculationToolInput(
+      JSON.stringify({
+        ...VALID_PRODUCT_ONLY,
+        items: [{ ...VALID_PRODUCT_ONLY.items[0], foo: true }],
+      }),
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  it('STRICT-ITEM-3 WING + FRAME-only field → invalid_arguments', () => {
+    const parsed = parseTrustedCalculationToolInput(
+      JSON.stringify({
+        mode: 'PRODUCT_ONLY',
+        customerType: 'retail',
+        items: [
+          {
+            itemId: 'wing-1',
+            productType: 'WING',
+            widthMm: 1000,
+            heightMm: 1500,
+            quantity: 1,
+            meshType: 'STANDARD',
+            color: { kind: 'WHITE' },
+            fastening: 'WING_FLAGS',
+            frameProfile: '25',
+          },
+        ],
+      }),
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  it('STRICT-ITEM-4 DOOR + unknown field → invalid_arguments', () => {
+    const parsed = parseTrustedCalculationToolInput(
+      JSON.stringify({
+        mode: 'PRODUCT_ONLY',
+        customerType: 'retail',
+        items: [
+          {
+            itemId: 'door-1',
+            productType: 'DOOR',
+            widthMm: 900,
+            heightMm: 2100,
+            quantity: 1,
+            meshType: 'STANDARD',
+            color: { kind: 'WHITE' },
+            doorProfile: '42',
+            hingesCount: 3,
+            unitPrice: 99,
+          },
+        ],
+      }),
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  it('STRICT-ITEM-5 PLISSE_NET + unknown field → invalid_arguments', () => {
+    const parsed = parseTrustedCalculationToolInput(
+      JSON.stringify({
+        mode: 'PRODUCT_ONLY',
+        customerType: 'retail',
+        items: [
+          {
+            itemId: 'plisse-1',
+            productType: 'PLISSE_NET',
+            widthMm: 1000,
+            heightMm: 2000,
+            quantity: 1,
+            meshType: 'STANDARD',
+            color: { kind: 'WHITE' },
+            openingType: 'SIDE',
+            thresholdType: 'STANDARD',
+            handlesCount: 1,
+            markupOverride: 10,
+          },
+        ],
+      }),
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  it('STRICT-ITEM-6 unknown productType → invalid_arguments', () => {
+    const parsed = parseTrustedCalculationToolInput(
+      JSON.stringify({
+        mode: 'PRODUCT_ONLY',
+        customerType: 'retail',
+        items: [{ itemId: 'x', productType: 'INSIDE_INSERT', quantity: 1 }],
+      }),
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  it('STRICT-ITEM-7 valid existing FRAME tool request → still accepted', () => {
+    expect(parseTrustedCalculationToolInput(JSON.stringify(VALID_PRODUCT_ONLY)).ok).toBe(true);
+  });
+
+  it('STRICT-ITEM-8 unknown nested color field → invalid_arguments', () => {
+    const parsed = parseTrustedCalculationToolInput(
+      JSON.stringify({
+        ...VALID_PRODUCT_ONLY,
+        items: [
+          {
+            ...VALID_PRODUCT_ONLY.items[0],
+            color: { kind: 'CUSTOM_RAL', ral: '7016', finish: 'MATTE', glossLevel: 90 },
+          },
+        ],
+      }),
+    );
+    expect(parsed.ok).toBe(false);
+  });
+
+  it('ALL-IN success: PRELIMINARY_ALL_IN calculates via server-side policy', async () => {
+    const tool = new CalculationTool(createEngine());
+    const productOnly = await tool.execute({
+      id: 'po',
+      name: CALCULATE_ORDER_TOOL_NAME,
+      argumentsJson: JSON.stringify(VALID_PRODUCT_ONLY),
+    });
+    const allIn = await tool.execute({
+      id: 'ai',
+      name: CALCULATE_ORDER_TOOL_NAME,
+      argumentsJson: JSON.stringify({
+        ...VALID_PRODUCT_ONLY,
+        mode: 'PRELIMINARY_ALL_IN',
+        delivery: { type: 'city' },
+      }),
+    });
+
+    expect(productOnly.status).toBe('calculated');
+    expect(allIn.status).toBe('calculated');
+    expect(allIn.mode).toBe('PRELIMINARY_ALL_IN');
+    expect(typeof allIn.total).toBe('number');
+    expect(allIn.total!).toBeGreaterThan(productOnly.total!);
+
+    const built = buildCalculationRequestFromTrustedInput({
+      mode: 'PRELIMINARY_ALL_IN',
+      customerType: 'retail',
+      items: VALID_PRODUCT_ONLY.items as never,
+      delivery: { type: 'city' },
+    });
+    expect(built.ok).toBe(true);
+    if (built.ok) {
+      expect(built.request.installation).toEqual({ enabled: true });
+      expect(built.request.measurement).toEqual({ includeFee: true });
+      expect(built.request.delivery).toEqual({ type: 'city' });
+      expect(built.request.discount).toEqual({ percent: 0 });
+    }
+  });
 });
