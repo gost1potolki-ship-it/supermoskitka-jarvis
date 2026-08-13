@@ -34,8 +34,12 @@ export interface LlmToolRequest {
   conversationId: string;
   messages: LlmToolConversationMessage[];
   tools: LlmToolDefinition[];
-  /** Defaults to auto. Use none after tools executed to force a final text answer. */
-  toolChoice?: 'auto' | 'none';
+  /**
+   * Defaults to auto.
+   * Use none after tools executed to force a final text answer.
+   * Use { name } to force a specific tool (e.g. extract_order_facts).
+   */
+  toolChoice?: 'auto' | 'none' | { name: string };
 }
 
 export type LlmToolResponse =

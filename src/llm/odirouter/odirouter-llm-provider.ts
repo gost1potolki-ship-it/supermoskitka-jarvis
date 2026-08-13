@@ -66,13 +66,17 @@ export class OdiRouterLlmProvider implements LlmProvider {
     const messages = mapToolConversationToOdiRouter(request.messages);
     const tools = mapNeutralToolsToOdiRouter(request.tools);
     const toolChoice = request.toolChoice ?? 'auto';
+    const mappedToolChoice =
+      typeof toolChoice === 'object'
+        ? { type: 'function' as const, function: { name: toolChoice.name } }
+        : toolChoice;
 
     try {
       const output = await this.client.createChatCompletion({
         model: this.model,
         messages,
         tools,
-        tool_choice: toolChoice,
+        tool_choice: mappedToolChoice,
       });
 
       const toolCalls = output.toolCalls ?? [];

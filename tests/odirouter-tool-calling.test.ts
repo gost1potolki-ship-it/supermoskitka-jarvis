@@ -69,6 +69,25 @@ describe('OdiRouter tool calling mapping', () => {
     expect(client.calls[0]?.tool_choice).toBe('none');
   });
 
+  it('ODI-TOOL-2c forced toolChoice { name } maps to OpenAI function tool_choice', async () => {
+    const client = new FakeOdiToolClient();
+    client.next = { text: 'ok', toolCalls: [] };
+    const provider = new OdiRouterLlmProvider(
+      { apiKey: 'k', model: 'm', baseUrl: 'https://api.odirouter.ai/v1' },
+      client,
+    );
+    await provider.generateWithTools({
+      conversationId: 'c1',
+      messages: [{ role: 'user', content: 'extract' }],
+      tools: [createCalculateOrderToolDefinition()],
+      toolChoice: { name: 'extract_order_facts' },
+    });
+    expect(client.calls[0]?.tool_choice).toEqual({
+      type: 'function',
+      function: { name: 'extract_order_facts' },
+    });
+  });
+
   it('ODI-TOOL-3 tool_calls response mapped to neutral calls', async () => {
     const client = new FakeOdiToolClient();
     client.next = {

@@ -1,6 +1,7 @@
 export {
   ConversationOrchestrator,
   type ConversationOrchestratorOptions,
+  type FactExtractionDiagnostics,
   type HandleIncomingMessageResult,
   type IncomingCustomerMessageInput,
   type PriceIntegrityDiagnostics,

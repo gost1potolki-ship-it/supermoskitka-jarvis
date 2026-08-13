@@ -18,6 +18,7 @@
     "models:odirouter": "tsx scripts/list-odirouter-models.ts",
     "smoke:odirouter": "tsx scripts/smoke-odirouter.ts",
     "smoke:odirouter:calculation": "tsx scripts/smoke-odirouter-calculation.ts",
+    "smoke:odirouter:facts": "tsx scripts/smoke-odirouter-facts.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

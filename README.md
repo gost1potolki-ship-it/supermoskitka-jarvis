@@ -10,6 +10,7 @@ HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separ
 - `docs/DEEPSEEK_PROVIDER.md` — DeepSeek API provider (`LlmProvider` adapter)
 - `docs/ODIROUTER_PROVIDER.md` — OdiRouter gateway provider (`LlmProvider` adapter)
 - `docs/TOOL_CALLING.md` — provider-neutral tool calling + `calculate_order`
+- `docs/FACT_EXTRACTION.md` — Fact Extraction + live Order Memory
 
 ## Requirements
 
@@ -34,6 +35,7 @@ npm install
 | `npm run models:odirouter` | List OdiRouter text LLM catalog ids (requires API key; not in `npm test`) |
 | `npm run smoke:odirouter` | Manual live OdiRouter smoke (requires API key + model id; not in `npm test`) |
 | `npm run smoke:odirouter:calculation` | Live OdiRouter calculation tool smoke (DEV price snapshot; not in `npm test`) |
+| `npm run smoke:odirouter:facts` | Live OdiRouter fact extraction + Order Memory smoke (not in `npm test`) |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run the compiled server |
 

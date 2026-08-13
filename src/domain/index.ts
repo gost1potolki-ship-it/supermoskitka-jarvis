@@ -29,3 +29,16 @@ export { ORDER_ITEM_FACT_FIELDS, createEmptyOrderItem } from './order-item.js';
 
 export type { OrderMemory } from './order-memory.js';
 export { getOrderItem } from './order-memory.js';
+
+export type {
+  CustomerFactField,
+  CustomerFacts,
+  CustomerFactValue,
+  FulfillmentFactField,
+  FulfillmentFacts,
+  FulfillmentFactValue,
+} from './order-sections.js';
+export {
+  CUSTOMER_FACT_FIELDS,
+  FULFILLMENT_FACT_FIELDS,
+} from './order-sections.js';

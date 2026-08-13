@@ -3,11 +3,21 @@ import { randomUUID } from 'node:crypto';
 import type { Conversation } from '../../domain/conversation.js';
 import { ConversationNotFoundError, InvalidOperationError } from '../../domain/errors.js';
 import type { Message } from '../../domain/message.js';
+import type { OrderMemory } from '../../domain/order-memory.js';
 import { isToolCallingLlmProvider, type LlmProvider } from '../../llm/llm-provider.js';
 import type { LlmToolConversationMessage } from '../../llm/tool-calling-types.js';
 import type { ConversationStore } from '../../storage/conversation-store.js';
+import type { OrderMemoryStore } from '../../storage/order-memory-store.js';
 
 import type { SystemPromptProvider } from '../system-prompt-provider.js';
+import {
+  applyValidatedExtraction,
+  buildOrderMemoryContext,
+  type FactExtractionContextMessage,
+  type FactExtractor,
+  type MemoryApplyDiagnostics,
+} from '../extraction/index.js';
+import { createOrderMemory } from '../memory/index.js';
 import {
   PriceIntegrityGuard,
   type CalculationMode,
@@ -40,6 +50,15 @@ export interface PriceIntegrityDiagnostics {
   mode?: CalculationMode;
 }
 
+export interface FactExtractionDiagnostics {
+  called: boolean;
+  failed: boolean;
+  appliedFields: string[];
+  issues: MemoryApplyDiagnostics['issues'];
+  skipped: MemoryApplyDiagnostics['skipped'];
+  errorMessage?: string;
+}
+
 export type HandleIncomingMessageResult =
   | {
       status: 'ai_replied';
@@ -48,6 +67,8 @@ export type HandleIncomingMessageResult =
       aiMessage: Message;
       replyText: string;
       priceIntegrity?: PriceIntegrityDiagnostics;
+      factExtraction?: FactExtractionDiagnostics;
+      orderMemory?: OrderMemory;
     }
   | {
       status: 'human_owned';
@@ -60,6 +81,8 @@ export interface ConversationOrchestratorOptions {
   maxToolRounds?: number;
   maxToolCallsPerTurn?: number;
   priceIntegrityGuard?: PriceIntegrityGuard;
+  factExtractor?: FactExtractor;
+  orderMemoryStore?: OrderMemoryStore;
 }
 
 interface ToolAwareTurnResult {
@@ -87,11 +110,26 @@ function toTurnState(result: SafeToolResult): CalculationTurnState {
   return { kind: 'failed' };
 }
 
+function toExtractionContext(messages: readonly Message[]): FactExtractionContextMessage[] {
+  return messages.map((message) => ({
+    role:
+      message.sender === 'CUSTOMER'
+        ? 'customer'
+        : message.sender === 'AI'
+          ? 'ai'
+          : 'human',
+    text: message.text,
+    messageId: message.messageId,
+  }));
+}
+
 export class ConversationOrchestrator {
   private readonly toolRuntime: ToolRuntime | undefined;
   private readonly maxToolRounds: number;
   private readonly maxToolCallsPerTurn: number;
   private readonly priceIntegrityGuard: PriceIntegrityGuard;
+  private readonly factExtractor: FactExtractor | undefined;
+  private readonly orderMemoryStore: OrderMemoryStore | undefined;
 
   constructor(
     private readonly store: ConversationStore,
@@ -103,6 +141,8 @@ export class ConversationOrchestrator {
     this.maxToolRounds = options.maxToolRounds ?? MAX_TOOL_ROUNDS;
     this.maxToolCallsPerTurn = options.maxToolCallsPerTurn ?? MAX_TOOL_CALLS_PER_TURN;
     this.priceIntegrityGuard = options.priceIntegrityGuard ?? new PriceIntegrityGuard();
+    this.factExtractor = options.factExtractor;
+    this.orderMemoryStore = options.orderMemoryStore;
   }
 
   async handleIncomingMessage(
@@ -139,6 +179,68 @@ export class ConversationOrchestrator {
       };
     }
 
+    let factExtraction: FactExtractionDiagnostics | undefined;
+    let orderMemory: OrderMemory | undefined;
+    let memoryContext: string | undefined;
+
+    if (this.factExtractor && this.orderMemoryStore) {
+      const existing = await this.orderMemoryStore.get(conversation.conversationId);
+      let memory =
+        existing ??
+        createOrderMemory({
+          orderId: conversation.conversationId,
+          conversationId: conversation.conversationId,
+          now: customerMessage.createdAt,
+        });
+
+      const history = await this.store.getMessages(conversation.conversationId);
+      factExtraction = {
+        called: true,
+        failed: false,
+        appliedFields: [],
+        issues: [],
+        skipped: [],
+      };
+
+      try {
+        const extraction = await this.factExtractor.extract({
+          conversationId: conversation.conversationId,
+          currentMessage: {
+            id: customerMessage.messageId,
+            text: customerMessage.text,
+            channel: conversation.channel,
+            timestamp: customerMessage.createdAt,
+          },
+          memorySnapshot: structuredClone(memory),
+          recentContext: toExtractionContext(history),
+        });
+        const applied = applyValidatedExtraction(memory, extraction, {
+          conversationId: conversation.conversationId,
+          currentMessage: {
+            id: customerMessage.messageId,
+            text: customerMessage.text,
+            channel: conversation.channel,
+            timestamp: customerMessage.createdAt,
+          },
+          memorySnapshot: memory,
+          recentContext: toExtractionContext(history),
+        });
+        memory = applied.memory;
+        factExtraction.appliedFields = applied.diagnostics.appliedFields;
+        factExtraction.issues = applied.diagnostics.issues;
+        factExtraction.skipped = applied.diagnostics.skipped;
+        await this.orderMemoryStore.save(memory);
+      } catch (error) {
+        factExtraction.failed = true;
+        factExtraction.errorMessage =
+          error instanceof Error ? error.message : 'Fact extraction failed';
+        // Memory remains unchanged (do not save partial invalid state).
+      }
+
+      orderMemory = memory;
+      memoryContext = buildOrderMemoryContext(memory);
+    }
+
     const history = await this.store.getMessages(conversation.conversationId);
     const systemPrompt = await this.systemPromptProvider.getSystemPrompt();
     const baseMessages: LlmToolConversationMessage[] = [
@@ -146,6 +248,14 @@ export class ConversationOrchestrator {
         role: 'system',
         content: systemPrompt,
       },
+      ...(memoryContext
+        ? ([
+            {
+              role: 'system',
+              content: memoryContext,
+            },
+          ] as const)
+        : []),
       ...mapMessagesToLlm(history),
     ];
 
@@ -177,6 +287,8 @@ export class ConversationOrchestrator {
       ...(turn.priceIntegrity !== undefined
         ? { priceIntegrity: turn.priceIntegrity }
         : {}),
+      ...(factExtraction !== undefined ? { factExtraction } : {}),
+      ...(orderMemory !== undefined ? { orderMemory } : {}),
     };
   }
 
@@ -276,7 +388,6 @@ export class ConversationOrchestrator {
       for (const call of response.toolCalls) {
         toolCallsExecuted += 1;
         const result = await this.toolRuntime.executeToolCall(call);
-        // Last calculate_order outcome wins (including clearing prior calculated total).
         turnState = toTurnState(result);
         messages.push({
           role: 'tool',

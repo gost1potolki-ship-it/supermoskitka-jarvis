@@ -33,7 +33,13 @@ export interface OdiRouterChatCompletionInput {
   model: string;
   messages: OdiRouterChatMessage[];
   tools?: OdiRouterToolDefinition[];
-  tool_choice?: 'auto' | 'none';
+  tool_choice?:
+    | 'auto'
+    | 'none'
+    | {
+        type: 'function';
+        function: { name: string };
+      };
 }
 
 export interface OdiRouterChatCompletionOutput {
