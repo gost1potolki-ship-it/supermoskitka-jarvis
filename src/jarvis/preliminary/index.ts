@@ -88,11 +88,10 @@ export {
 export {
   TrustedPreliminaryQuoteProof,
   attachProfitabilityToMemory,
-  createGuardedPreliminaryPrice,
-  createTrustedPreliminaryQuoteProof,
+  calculateTrustedPreliminaryQuote,
   isTrustedPreliminaryQuoteProof,
-  type CreateTrustedPreliminaryQuoteInput,
-  type CreateTrustedPreliminaryQuoteResult,
+  type CalculateTrustedPreliminaryQuoteInput,
+  type CalculateTrustedPreliminaryQuoteResult,
   type TrustedPreliminaryQuoteFailureCode,
 } from './guarded-preliminary-price.js';
 

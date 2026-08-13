@@ -34,12 +34,12 @@ import {
   buildTrustedPreliminaryCalculationInput,
   computeFrameOrderDirectCost,
   computeOrderProfitabilitySnapshot,
-  createTrustedPreliminaryQuoteProof,
   decideMeasurementAction,
   evaluateLeadReadiness,
   type TrustedPreliminaryQuoteProof,
 } from '../src/jarvis/preliminary/index.js';
 import { persistTestQuote } from './helpers/persist-test-quote.js';
+import { createProofViaFakeEngine } from './helpers/create-proof-via-fake-engine.js';
 import { CalculationTool, projectSafeCalculationOutcome } from '../src/jarvis/tools/index.js';
 import { fakeCalculateOrderCall } from '../src/llm/index.js';
 import { CURRENT_PRICE_CATALOG } from './fixtures/calculation-prices-current.js';
@@ -75,20 +75,12 @@ function calculatedOutcome(total: number): CalculationOutcome {
   };
 }
 
-function proofForMemory(
+async function proofForMemory(
   memory: OrderMemory,
   total: number,
   deliveryType: 'city' | 'out' | 'pickup' = 'city',
 ) {
-  const built = buildTrustedPreliminaryCalculationInput(memory, { type: deliveryType });
-  if (!built.ok) {
-    return { ok: false as const, code: built.code };
-  }
-  return createTrustedPreliminaryQuoteProof({
-    memory,
-    outcome: calculatedOutcome(total),
-    trustedInput: built.input,
-  });
+  return createProofViaFakeEngine(memory, total, deliveryType);
 }
 
 function frameMemory(fields: Record<string, unknown> = {}, quantity = 1): OrderMemory {
@@ -137,7 +129,7 @@ function frameMemory(fields: Record<string, unknown> = {}, quantity = 1): OrderM
 
 describe('Task 11.1.1 profitability analytics without selling mutation', () => {
   describe('PROFIT math', () => {
-    it('PROFIT-1 50% margin / 100% markup is GREEN', () => {
+    it('PROFIT-1 50% margin / 100% markup is GREEN', async () => {
       const snapshot = computeOrderProfitability({
         sellingTotalRub: 8800,
         actualDirectCostRub: 4400,
@@ -150,7 +142,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       expect(snapshot.profitabilityBand).toBe('GREEN');
     });
 
-    it('PROFIT-2 yellow band keeps customer price', () => {
+    it('PROFIT-2 yellow band keeps customer price', async () => {
       const snapshot = computeOrderProfitability({
         sellingTotalRub: 8500,
         actualDirectCostRub: 4500,
@@ -164,7 +156,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       expect(snapshot.sellingTotalRub).toBe(8500);
     });
 
-    it('PROFIT-3 red band does not invalidate quote', () => {
+    it('PROFIT-3 red band does not invalidate quote', async () => {
       const snapshot = computeOrderProfitability({
         sellingTotalRub: 8000,
         actualDirectCostRub: 4500,
@@ -174,14 +166,14 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       expect(snapshot.grossMarginPercent).toBe(43.75);
       expect(snapshot.profitabilityBand).toBe('RED');
       expect(snapshot.sellingTotalRub).toBe(8000);
-      const quote = proofForMemory(frameMemory(), 8000);
+      const quote = await proofForMemory(frameMemory(), 8000);
       expect(quote.ok).toBe(true);
       if (quote.ok) {
         expect(quote.proof.publicTotalRub).toBe(8000);
       }
     });
 
-    it('PROFIT-4 high-margin legacy is not reduced', () => {
+    it('PROFIT-4 high-margin legacy is not reduced', async () => {
       const snapshot = computeOrderProfitability({
         sellingTotalRub: 15200,
         actualDirectCostRub: 5750,
@@ -190,7 +182,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       });
       expect(snapshot.sellingTotalRub).toBe(15200);
       expect(snapshot.profitabilityBand).toBe('GREEN');
-      const quote = proofForMemory(frameMemory(), 15200);
+      const quote = await proofForMemory(frameMemory(), 15200);
       expect(quote.ok).toBe(true);
       if (quote.ok) {
         expect(quote.proof.publicTotalRub).toBe(15200);
@@ -199,24 +191,24 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
   });
 
   describe('PRICE-IMMUTABLE', () => {
-    it('PRICE-IMMUTABLE-1 legacy 8500 stays 8500', () => {
-      const created = proofForMemory(frameMemory(), 8500);
+    it('PRICE-IMMUTABLE-1 legacy 8500 stays 8500', async () => {
+      const created = await proofForMemory(frameMemory(), 8500);
       expect(created.ok).toBe(true);
       if (created.ok) {
         expect(created.proof.publicTotalRub).toBe(8500);
       }
     });
 
-    it('PRICE-IMMUTABLE-2 legacy 9000 is not 8970', () => {
-      const created = proofForMemory(frameMemory(), 9000);
+    it('PRICE-IMMUTABLE-2 legacy 9000 is not 8970', async () => {
+      const created = await proofForMemory(frameMemory(), 9000);
       expect(created.ok).toBe(true);
       if (created.ok) {
         expect(created.proof.publicTotalRub).toBe(9000);
       }
     });
 
-    it('PRICE-IMMUTABLE-3 legacy 9050 is not 8970', () => {
-      const created = proofForMemory(frameMemory(), 9050);
+    it('PRICE-IMMUTABLE-3 legacy 9050 is not 8970', async () => {
+      const created = await proofForMemory(frameMemory(), 9050);
       expect(created.ok).toBe(true);
       if (created.ok) {
         expect(created.proof.publicTotalRub).toBe(9050);
@@ -265,7 +257,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       }
     });
 
-    it('psychological pricing is not active', () => {
+    it('psychological pricing is not active', async () => {
       expect(PSYCHOLOGICAL_PRICING_ACTIVE).toBe(false);
     });
   });
@@ -482,7 +474,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       );
     });
 
-    it('INCOMPLETE-4 FRAME 32 never falls back to actual 25 profile cost', () => {
+    it('INCOMPLETE-4 FRAME 32 never falls back to actual 25 profile cost', async () => {
       const bom25 = calculateFrameBomCost({
         widthMm: 800,
         heightMm: 1600,
@@ -507,7 +499,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
         MISSING_COST_REASON.FRAME_PROFILE_32_ACTUAL_COST_UNKNOWN,
       );
       const memory = frameMemory({ profileType: '32' });
-      const created = proofForMemory(memory, 12000);
+      const created = await proofForMemory(memory, 12000);
       expect(created.ok).toBe(true);
       const profitability = computeOrderProfitabilitySnapshot({
         memory,
@@ -523,7 +515,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
   });
 
   describe('pickup, poll-tex, hardware, proof, visibility, readiness', () => {
-    it('pickup turns off public measurement and installation', () => {
+    it('pickup turns off public measurement and installation', async () => {
       const memory = frameMemory();
       const built = buildTrustedPreliminaryCalculationInput(memory, { type: 'pickup' });
       expect(built.ok).toBe(true);
@@ -542,7 +534,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       }
     });
 
-    it('Poll-tex actual price is 330.00 ₽/m²', () => {
+    it('Poll-tex actual price is 330.00 ₽/m²', async () => {
       const computed =
         Math.round(
           ((POLLTEX_INVOICE_NET_RUB_PER_LINEAR_M * (1 + POLLTEX_VAT_RATE)) / POLLTEX_WIDTH_M) *
@@ -553,7 +545,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       expect(MESH_ACTUAL_COST_RUB_PER_M2.ANTIDUST).toBe(330);
     });
 
-    it('HARDWARE missing quantity never becomes an EXACT zero', () => {
+    it('HARDWARE missing quantity never becomes an EXACT zero', async () => {
       const memory = frameMemory();
       const profitability = computeOrderProfitabilitySnapshot({
         memory,
@@ -569,7 +561,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       );
     });
 
-    it('trusted quote cannot be forged from a plain object', () => {
+    it('trusted quote cannot be forged from a plain object', async () => {
       expect(() =>
         buildPreliminaryQuoteSnapshot({
           memory: frameMemory(),
@@ -582,7 +574,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       ).toThrow(/arbitrary object cannot create trusted readiness quote/);
     });
 
-    it('customer LLM context and SafeToolResult hide internal economics', () => {
+    it('customer LLM context and SafeToolResult hide internal economics', async () => {
       let memory = frameMemory();
       memory = {
         ...memory,
@@ -617,7 +609,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       );
     });
 
-    it('low-margin accepted quote can still reach READY/AUTO_ALLOWED', () => {
+    it('low-margin accepted quote can still reach READY/AUTO_ALLOWED', async () => {
       let memory = frameMemory({
         widthMm: 1000,
         heightMm: 1500,
@@ -633,7 +625,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
         value: 'Москва',
         source: SOURCE,
       }).memory;
-      memory = persistTestQuote(memory, 8000).memory;
+      memory = (await persistTestQuote(memory, 8000)).memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,
@@ -649,7 +641,7 @@ describe('Task 11.1.1 profitability analytics without selling mutation', () => {
       expect(decideMeasurementAction(memory, 'AUTO_WHEN_READY')).toBe('AUTO_ALLOWED');
     });
 
-    it('unknown persisted quote status is PersistenceDataError', () => {
+    it('unknown persisted quote status is PersistenceDataError', async () => {
       const memory = createOrderMemory({
         orderId: 'o1',
         conversationId: 'c1',

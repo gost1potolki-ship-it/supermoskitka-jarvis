@@ -87,7 +87,7 @@ function memoryWithItem(productType: string, fields: Record<string, unknown> = {
   return memory;
 }
 
-function persistQuote(memory: OrderMemory, publicTotalRub: number) {
+async function persistQuote(memory: OrderMemory, publicTotalRub: number) {
   return persistTestQuote(memory, publicTotalRub);
 }
 
@@ -107,7 +107,7 @@ function extractionRequest(memory: OrderMemory, text: string): FactExtractionReq
 
 describe('Task 11 preliminary core', () => {
   describe('SIZE rules', () => {
-    it('SIZE-1 FRAME without sizes → ESTIMATED_AVERAGE 800×1600', () => {
+    it('SIZE-1 FRAME without sizes → ESTIMATED_AVERAGE 800×1600', async () => {
       const memory = memoryWithItem('FRAME');
       const size = resolveItemCalculationSize(memory.items[0]!);
       expect(size.source).toBe('ESTIMATED_AVERAGE');
@@ -116,31 +116,31 @@ describe('Task 11 preliminary core', () => {
       expect(getFactValue(memory.items[0]?.widthMm)).toBeUndefined();
     });
 
-    it('SIZE-2 WING without sizes → ESTIMATED_AVERAGE', () => {
+    it('SIZE-2 WING without sizes → ESTIMATED_AVERAGE', async () => {
       const size = resolveItemCalculationSize(memoryWithItem('WING').items[0]!).source;
       expect(size).toBe('ESTIMATED_AVERAGE');
     });
 
-    it('SIZE-3 DOOR without sizes → NEEDS_INPUT', () => {
+    it('SIZE-3 DOOR without sizes → NEEDS_INPUT', async () => {
       expect(resolveItemCalculationSize(memoryWithItem('DOOR').items[0]!).source).toBe(
         'NEEDS_INPUT',
       );
     });
 
-    it('SIZE-4 PLISSE_NET without sizes → NEEDS_INPUT', () => {
+    it('SIZE-4 PLISSE_NET without sizes → NEEDS_INPUT', async () => {
       expect(resolveItemCalculationSize(memoryWithItem('PLISSE_NET').items[0]!).source).toBe(
         'NEEDS_INPUT',
       );
     });
 
-    it('SIZE-5 sizes without basis → NEEDS_SIZE_BASIS', () => {
+    it('SIZE-5 sizes without basis → NEEDS_SIZE_BASIS', async () => {
       const size = resolveItemCalculationSize(
         memoryWithItem('FRAME', { widthMm: 1000, heightMm: 1500 }).items[0]!,
       );
       expect(size.source).toBe('NEEDS_SIZE_BASIS');
     });
 
-    it('SIZE-6 PRODUCT_SIZE uses customer dimensions as-is', () => {
+    it('SIZE-6 PRODUCT_SIZE uses customer dimensions as-is', async () => {
       const size = resolveItemCalculationSize(
         memoryWithItem('FRAME', {
           widthMm: 1000,
@@ -153,7 +153,7 @@ describe('Task 11 preliminary core', () => {
       expect(size.heightMm).toBe(1500);
     });
 
-    it('SIZE-7 LIGHT_OPENING adds +40 without changing memory facts', () => {
+    it('SIZE-7 LIGHT_OPENING adds +40 without changing memory facts', async () => {
       const memory = memoryWithItem('FRAME', {
         widthMm: 1000,
         heightMm: 1500,
@@ -166,7 +166,7 @@ describe('Task 11 preliminary core', () => {
       expect(getFactValue(memory.items[0]?.widthMm)).toBe(1000);
     });
 
-    it('SIZE-8 partial dimensions → NEEDS_INPUT', () => {
+    it('SIZE-8 partial dimensions → NEEDS_INPUT', async () => {
       expect(
         resolveItemCalculationSize(memoryWithItem('FRAME', { widthMm: 1000 }).items[0]!).source,
       ).toBe('NEEDS_INPUT');
@@ -174,26 +174,26 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('MARGIN guard', () => {
-    it('MARGIN-1 passes when margin >= 47%', () => {
+    it('MARGIN-1 passes when margin >= 47%', async () => {
       const result = applyMarginGuard({ publicTotalRub: 10000, trustedDirectCostRub: 5000 });
       expect(result.ok).toBe(true);
       expect(result.publicTotalRub).toBe(10000);
       expect(result.adjusted).toBe(false);
     });
 
-    it('MARGIN-2 below floor does not change customer price', () => {
+    it('MARGIN-2 below floor does not change customer price', async () => {
       const result = applyMarginGuard({ publicTotalRub: 10000, trustedDirectCostRub: 6000 });
       expect(result.ok).toBe(true);
       expect(result.publicTotalRub).toBe(10000);
       expect(result.adjusted).toBe(false);
     });
 
-    it('MARGIN-3 never lowers price', () => {
+    it('MARGIN-3 never lowers price', async () => {
       const result = applyMarginGuard({ publicTotalRub: 20000, trustedDirectCostRub: 6000 });
       expect(result.publicTotalRub).toBe(20000);
     });
 
-    it('MARGIN-4 unavailable direct cost does not block or mutate price', () => {
+    it('MARGIN-4 unavailable direct cost does not block or mutate price', async () => {
       const result = applyMarginGuard({ publicTotalRub: 10000, trustedDirectCostRub: undefined });
       expect(result.ok).toBe(true);
       expect(result.publicTotalRub).toBe(10000);
@@ -257,7 +257,7 @@ describe('Task 11 preliminary core', () => {
       expect(serialized).not.toMatch(/trustedDirectCost|directCost|margin|себестоим/i);
     });
 
-    it('MARGIN-7 safe projection never includes economics fields', () => {
+    it('MARGIN-7 safe projection never includes economics fields', async () => {
       const safe = projectSafeCalculationOutcome(
         {
           status: 'calculated',
@@ -278,9 +278,9 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('ACCEPT commercial facts', () => {
-    it('ACCEPT-1 preliminaryPriceAccepted=true binds quote id', () => {
+    it('ACCEPT-1 preliminaryPriceAccepted=true binds quote id', async () => {
       let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
-      const quoted = persistQuote(memory, 18500);
+      const quoted = await persistQuote(memory, 18500);
       memory = quoted.memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
@@ -290,7 +290,7 @@ describe('Task 11 preliminary core', () => {
       expect(memory.acceptedPreliminaryQuoteId).toBe(memory.preliminaryQuote?.quoteId);
     });
 
-    it('ACCEPT-2 preliminaryPriceAccepted=false clears binding', () => {
+    it('ACCEPT-2 preliminaryPriceAccepted=false clears binding', async () => {
       let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
@@ -305,7 +305,7 @@ describe('Task 11 preliminary core', () => {
       expect(memory.acceptedPreliminaryQuoteId).toBeUndefined();
     });
 
-    it('ACCEPT-3 extraction applies commercialFacts EXPLICIT only', () => {
+    it('ACCEPT-3 extraction applies commercialFacts EXPLICIT only', async () => {
       const memory = memoryWithItem('FRAME');
       const applied = applyValidatedExtraction(
         memory,
@@ -328,7 +328,7 @@ describe('Task 11 preliminary core', () => {
       expect(getFactValue(applied.memory.commercial?.measurementAgreed)).toBe(true);
     });
 
-    it('ACCEPT-4 UNCERTAIN commercial fact skipped', () => {
+    it('ACCEPT-4 UNCERTAIN commercial fact skipped', async () => {
       const memory = memoryWithItem('FRAME');
       const applied = applyValidatedExtraction(
         memory,
@@ -351,7 +351,7 @@ describe('Task 11 preliminary core', () => {
       expect(applied.memory.commercial?.preliminaryPriceAccepted).toBeUndefined();
     });
 
-    it('ACCEPT-5 monetary amount forbidden as fact field', () => {
+    it('ACCEPT-5 monetary amount forbidden as fact field', async () => {
       const memory = memoryWithItem('FRAME');
       const applied = applyValidatedExtraction(
         memory,
@@ -376,7 +376,7 @@ describe('Task 11 preliminary core', () => {
       );
     });
 
-    it('ACCEPT-6 measurementAgreed independent from price acceptance', () => {
+    it('ACCEPT-6 measurementAgreed independent from price acceptance', async () => {
       let memory = memoryWithItem('FRAME');
       memory = applyCommercialFact(memory, {
         field: 'measurementAgreed',
@@ -389,8 +389,8 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('QUOTE snapshot', () => {
-    it('QUOTE-1 service creates snapshot with quoteTrustStatus', () => {
-      const { memory, snapshot } = persistQuote(
+    it('QUOTE-1 service creates snapshot with quoteTrustStatus', async () => {
+      const { memory, snapshot } = await persistQuote(
         memoryWithItem('FRAME', { profileColor: 'WHITE' }),
         20000,
       );
@@ -398,14 +398,14 @@ describe('Task 11 preliminary core', () => {
       expect(memory.preliminaryQuote?.quoteId).toMatch(/^pq_/);
     });
 
-    it('QUOTE-2 fingerprint stable for same memory', () => {
+    it('QUOTE-2 fingerprint stable for same memory', async () => {
       const memory = memoryWithItem('FRAME', { meshType: 'STANDARD', profileColor: 'WHITE' });
       const a = computeQuoteInputFingerprintFromMemory(memory);
       const b = computeQuoteInputFingerprintFromMemory(structuredClone(memory));
       expect(a).toBe(b);
     });
 
-    it('QUOTE-3 fingerprint changes when price-relevant field changes', () => {
+    it('QUOTE-3 fingerprint changes when price-relevant field changes', async () => {
       let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
       const before = computeQuoteInputFingerprintFromMemory(memory);
       memory = applyOrderItemFact(memory, {
@@ -417,9 +417,9 @@ describe('Task 11 preliminary core', () => {
       expect(computeQuoteInputFingerprintFromMemory(memory)).not.toBe(before);
     });
 
-    it('QUOTE-4 new quote clears stale acceptance binding', () => {
+    it('QUOTE-4 new quote clears stale acceptance binding', async () => {
       let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
-      memory = persistQuote(memory, 18000).memory;
+      memory = (await persistQuote(memory, 18000)).memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,
@@ -431,19 +431,19 @@ describe('Task 11 preliminary core', () => {
         value: 'ANTIMOSHKA',
         source: { ...SOURCE, sourceMessageId: 'msg-3' },
       }).memory;
-      memory = persistQuote(memory, 19000).memory;
+      memory = (await persistQuote(memory, 19000)).memory;
       expect(memory.acceptedPreliminaryQuoteId).toBeUndefined();
     });
 
-    it('QUOTE-5 memory context shows quote public total not direct cost', () => {
-      const memory = persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 18500).memory;
+    it('QUOTE-5 memory context shows quote public total not direct cost', async () => {
+      const memory = (await persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 18500)).memory;
       const context = buildOrderMemoryContext(memory);
       expect(context).toContain('publicTotalRub=18500');
       expect(context).not.toMatch(/directCost|margin|trustedDirect/i);
     });
 
-    it('QUOTE-6 codec round-trip preliminary quote', () => {
-      const memory = persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 17500).memory;
+    it('QUOTE-6 codec round-trip preliminary quote', async () => {
+      const memory = (await persistQuote(memoryWithItem('FRAME', { profileColor: 'WHITE' }), 17500)).memory;
       const decoded = decodeOrderMemoryDocument(buildOrderMemoryDocument(memory, 1)).memory;
       expect(decoded.preliminaryQuote?.publicTotalRub).toBe(17500);
       expect(decoded.preliminaryQuote?.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
@@ -451,7 +451,7 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('READY readiness', () => {
-    function readyMemory(): OrderMemory {
+    async function readyMemory(): Promise<OrderMemory> {
       let memory = memoryWithItem('FRAME', {
         widthMm: 1000,
         heightMm: 1500,
@@ -468,7 +468,7 @@ describe('Task 11 preliminary core', () => {
         value: 'Москва, ул. Тестовая 1',
         source: SOURCE,
       }).memory;
-      memory = persistQuote(memory, 20000).memory;
+      memory = (await persistQuote(memory, 20000)).memory;
       memory = applyCommercialFact(memory, {
         field: 'preliminaryPriceAccepted',
         value: true,
@@ -482,29 +482,29 @@ describe('Task 11 preliminary core', () => {
       return memory;
     }
 
-    it('READY-1 full gates → READY_FOR_MEASUREMENT', () => {
-      expect(evaluateLeadReadiness(readyMemory()).status).toBe('READY_FOR_MEASUREMENT');
+    it('READY-1 full gates → READY_FOR_MEASUREMENT', async () => {
+      expect(evaluateLeadReadiness(await readyMemory()).status).toBe('READY_FOR_MEASUREMENT');
     });
 
-    it('READY-2 missing quote → QUOTE_MISSING', () => {
+    it('READY-2 missing quote → QUOTE_MISSING', async () => {
       const readiness = evaluateLeadReadiness(memoryWithItem('FRAME'));
       expect(readiness.blockingCodes).toContain('QUOTE_MISSING');
     });
 
-    it('READY-3 missing price acceptance', () => {
-      let memory = readyMemory();
+    it('READY-3 missing price acceptance', async () => {
+      let memory = await readyMemory();
       memory = {
         ...memory,
         commercial: {
           measurementAgreed: memory.commercial?.measurementAgreed,
         },
       };
-      memory = persistQuote(memory, 20000).memory;
+      memory = (await persistQuote(memory, 20000)).memory;
       expect(evaluateLeadReadiness(memory).blockingCodes).toContain('PRICE_NOT_ACCEPTED');
     });
 
-    it('READY-4 missing measurement agreement', () => {
-      let memory = readyMemory();
+    it('READY-4 missing measurement agreement', async () => {
+      let memory = await readyMemory();
       memory = {
         ...memory,
         commercial: {
@@ -514,20 +514,20 @@ describe('Task 11 preliminary core', () => {
       expect(evaluateLeadReadiness(memory).blockingCodes).toContain('MEASUREMENT_NOT_AGREED');
     });
 
-    it('READY-5 missing phone', () => {
-      let memory = readyMemory();
+    it('READY-5 missing phone', async () => {
+      let memory = await readyMemory();
       memory = { ...memory, customer: { address: memory.customer?.address } };
       expect(evaluateLeadReadiness(memory).blockingCodes).toContain('CONTACT_MISSING');
     });
 
-    it('READY-6 missing address', () => {
-      let memory = readyMemory();
+    it('READY-6 missing address', async () => {
+      let memory = await readyMemory();
       memory = { ...memory, customer: { phone: memory.customer?.phone } };
       expect(evaluateLeadReadiness(memory).blockingCodes).toContain('ADDRESS_MISSING');
     });
 
-    it('READY-7 stale quote after param change', () => {
-      let memory = readyMemory();
+    it('READY-7 stale quote after param change', async () => {
+      let memory = await readyMemory();
       memory = applyOrderItemFact(memory, {
         orderItemId: 'item-1',
         field: 'profileColor',
@@ -537,14 +537,14 @@ describe('Task 11 preliminary core', () => {
       expect(evaluateLeadReadiness(memory).blockingCodes).toContain('QUOTE_STALE');
     });
 
-    it('READY-8 NEEDS_SIZE_BASIS blocks', () => {
+    it('READY-8 NEEDS_SIZE_BASIS blocks', async () => {
       const readiness = evaluateLeadReadiness(
         memoryWithItem('FRAME', { widthMm: 1000, heightMm: 1500 }),
       );
       expect(readiness.blockingCodes).toContain('NEEDS_SIZE_BASIS');
     });
 
-    it('READY-9 color change WHITE vs GRAY_7016 preserved in readiness path', () => {
+    it('READY-9 color change WHITE vs GRAY_7016 preserved in readiness path', async () => {
       let memory = memoryWithItem('FRAME', { profileColor: 'WHITE' });
       memory = applyOrderItemFact(memory, {
         orderItemId: 'item-1',
@@ -566,7 +566,7 @@ describe('Task 11 preliminary core', () => {
       const { orderMemoryStore } = createPersistentJarvisRuntime({
         gateway: new InMemoryFirestoreGateway(),
       });
-      const memory = readyMemory();
+      const memory = await readyMemory();
       await orderMemoryStore.save(memory);
       const loaded = await orderMemoryStore.get('c1');
       expect(evaluateLeadReadiness(loaded!).blockingCodes).not.toContain('QUOTE_MISSING');
@@ -575,26 +575,26 @@ describe('Task 11 preliminary core', () => {
   });
 
   describe('ACTION policy', () => {
-    it('ACTION-1 AUTO_WHEN_READY + ready → AUTO_ALLOWED', () => {
-      expect(decideMeasurementAction(readyFixture(), 'AUTO_WHEN_READY')).toBe('AUTO_ALLOWED');
+    it('ACTION-1 AUTO_WHEN_READY + ready → AUTO_ALLOWED', async () => {
+      expect(decideMeasurementAction(await readyFixture(), 'AUTO_WHEN_READY')).toBe('AUTO_ALLOWED');
     });
 
-    it('ACTION-2 not ready → NOT_READY', () => {
+    it('ACTION-2 not ready → NOT_READY', async () => {
       expect(decideMeasurementAction(memoryWithItem('FRAME'), 'AUTO_WHEN_READY')).toBe('NOT_READY');
     });
 
-    it('ACTION-3 ALWAYS_MANUAL → AWAITING_OWNER_APPROVAL', () => {
-      expect(decideMeasurementAction(readyFixture(), 'ALWAYS_MANUAL')).toBe(
+    it('ACTION-3 ALWAYS_MANUAL → AWAITING_OWNER_APPROVAL', async () => {
+      expect(decideMeasurementAction(await readyFixture(), 'ALWAYS_MANUAL')).toBe(
         'AWAITING_OWNER_APPROVAL',
       );
     });
 
-    it('ACTION-4 DISABLED → NOT_READY', () => {
-      expect(decideMeasurementAction(readyFixture(), 'DISABLED')).toBe('NOT_READY');
+    it('ACTION-4 DISABLED → NOT_READY', async () => {
+      expect(decideMeasurementAction(await readyFixture(), 'DISABLED')).toBe('NOT_READY');
     });
 
-    it('ACTION-5 measurement draft has no cost fields', () => {
-      const draft = buildMeasurementDraft(readyFixture());
+    it('ACTION-5 measurement draft has no cost fields', async () => {
+      const draft = buildMeasurementDraft(await readyFixture());
       expect(JSON.stringify(draft)).not.toMatch(/directCost|margin|publicTotalRub/i);
       expect(draft.items[0]?.widthMm).toBe(1000);
     });
@@ -633,7 +633,7 @@ describe('Task 11 preliminary core', () => {
   });
 });
 
-function readyFixture(): OrderMemory {
+async function readyFixture(): Promise<OrderMemory> {
   let memory = memoryWithItem('FRAME', {
     widthMm: 1000,
     heightMm: 1500,
@@ -650,7 +650,7 @@ function readyFixture(): OrderMemory {
     value: 'Москва',
     source: SOURCE,
   }).memory;
-  memory = persistQuote(memory, 20000).memory;
+  memory = (await persistQuote(memory, 20000)).memory;
   memory = applyCommercialFact(memory, {
     field: 'preliminaryPriceAccepted',
     value: true,

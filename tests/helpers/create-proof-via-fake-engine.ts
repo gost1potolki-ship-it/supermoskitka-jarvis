@@ -2,37 +2,29 @@ import type { OrderMemory } from '../../src/domain/index.js';
 import {
   buildTrustedPreliminaryCalculationInput,
   calculateTrustedPreliminaryQuote,
-  PreliminaryQuoteService,
+  type TrustedPreliminaryQuoteProof,
 } from '../../src/jarvis/preliminary/index.js';
 import { FixedTotalCalculationEngine } from './fixed-total-engine.js';
 
-/**
- * Test fixture: readiness-qualified quote via production coordinator + fake engine.
- * Does not mint proofs from raw numbers.
- */
-export async function persistTestQuote(
+export async function createProofViaFakeEngine(
   memory: OrderMemory,
-  publicTotalRub: number,
+  totalRub: number,
   deliveryType: 'city' | 'out' | 'pickup' = 'city',
-) {
+): Promise<
+  | { ok: true; proof: TrustedPreliminaryQuoteProof }
+  | { ok: false; code: string }
+> {
   const built = buildTrustedPreliminaryCalculationInput(memory, { type: deliveryType });
   if (!built.ok) {
-    throw new Error(`persistTestQuote: trusted input failed (${built.code})`);
+    return { ok: false, code: built.code };
   }
-
   const calculated = await calculateTrustedPreliminaryQuote({
-    engine: new FixedTotalCalculationEngine(publicTotalRub),
+    engine: new FixedTotalCalculationEngine(totalRub),
     memory,
     trustedInput: built.input,
   });
-
   if (!calculated.ok || !calculated.proof) {
-    throw new Error('persistTestQuote: coordinator did not produce trusted proof');
+    return { ok: false, code: 'CALCULATION_INCOMPLETE' };
   }
-
-  return new PreliminaryQuoteService().persistAfterPreliminaryCalculation({
-    memory,
-    proof: calculated.proof,
-    deliveryType,
-  });
+  return { ok: true, proof: calculated.proof };
 }

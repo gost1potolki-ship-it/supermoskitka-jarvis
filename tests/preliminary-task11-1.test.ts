@@ -9,7 +9,6 @@ import {
   SuperMoskitkaCalculationEngine,
   calculateFrame600x1800WhiteStandardFixture,
   calculateFrameBomCost,
-  type CalculationOutcome,
 } from '../src/calculation/index.js';
 import {
   buildOrderMemoryDocument,
@@ -22,8 +21,8 @@ import {
 import {
   buildPreliminaryQuoteSnapshot,
   buildTrustedPreliminaryCalculationInput,
+  calculateTrustedPreliminaryQuote,
   computeFrameOrderDirectCost,
-  createTrustedPreliminaryQuoteProof,
   ESTIMATED_AVERAGE_HEIGHT_MM,
   ESTIMATED_AVERAGE_WIDTH_MM,
   resolvePreliminaryInputs,
@@ -32,6 +31,7 @@ import {
 import { CalculationTool } from '../src/jarvis/tools/index.js';
 import { fakeCalculateOrderCall } from '../src/llm/index.js';
 import { CURRENT_PRICE_CATALOG } from './fixtures/calculation-prices-current.js';
+import { createProofViaFakeEngine } from './helpers/create-proof-via-fake-engine.js';
 import { describe, expect, it } from 'vitest';
 
 const SOURCE = {
@@ -40,33 +40,12 @@ const SOURCE = {
   sourceTimestamp: '2026-08-13T10:00:00.000Z',
 };
 
-function calculatedOutcome(total: number): CalculationOutcome {
-  return {
-    status: 'calculated',
-    items: [],
-    total,
-    warnings: [],
-    missingFields: [],
-    calculationVersion: 'v',
-    priceVersion: 'p',
-    businessRulesVersion: 'b',
-  };
-}
-
-function proofForMemory(
+async function proofForMemory(
   memory: OrderMemory,
   total: number,
   deliveryType: 'city' | 'out' | 'pickup' = 'city',
 ) {
-  const built = buildTrustedPreliminaryCalculationInput(memory, { type: deliveryType });
-  if (!built.ok) {
-    return { ok: false as const, code: built.code };
-  }
-  return createTrustedPreliminaryQuoteProof({
-    memory,
-    outcome: calculatedOutcome(total),
-    trustedInput: built.input,
-  });
+  return createProofViaFakeEngine(memory, total, deliveryType);
 }
 
 function createEngine() {
@@ -337,8 +316,8 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
   describe('psychological pricing is not active', () => {
     it('legacy 9000 / 9050 stay unchanged on the customer path', async () => {
       const memory = frameMemory();
-      const nineThousand = proofForMemory(memory, 9000);
-      const nineFifty = proofForMemory(memory, 9050);
+      const nineThousand = await proofForMemory(memory, 9000);
+      const nineFifty = await proofForMemory(memory, 9050);
       expect(nineThousand.ok).toBe(true);
       expect(nineFifty.ok).toBe(true);
       if (nineThousand.ok) {
@@ -587,45 +566,20 @@ describe('Task 11.1 dual catalog and commercial pricing', () => {
       }).memory;
 
       const engine = createEngine();
-      const tool = new CalculationTool(engine);
-      tool.setOrderMemoryContext(memory);
-
-      const outcome = await engine.calculate({
-        customerType: 'retail',
-        items: [
-          {
-            itemId: 'item-1',
-            productType: 'PLISSE_NET',
-            widthMm: 1000,
-            heightMm: 1500,
-            quantity: 1,
-            meshType: 'STANDARD',
-            color: { kind: 'WHITE' },
-            openingType: 'SIDE',
-            thresholdType: 'STANDARD',
-            handlesCount: 1,
-          },
-        ],
-        delivery: { type: 'city' },
-        installation: { enabled: true },
-        measurement: { includeFee: true },
-        discount: { percent: 0 },
-        payment: { method: 'cash' },
-      });
-
       const built = buildTrustedPreliminaryCalculationInput(memory, { type: 'city' });
       expect(built.ok).toBe(true);
       if (!built.ok) {
         return;
       }
-      const guarded = createTrustedPreliminaryQuoteProof({
+      const guarded = await calculateTrustedPreliminaryQuote({
+        engine,
         memory,
-        outcome,
         trustedInput: built.input,
       });
       expect(guarded.ok).toBe(true);
-      if (guarded.ok) {
-        expect(guarded.proof.publicTotalRub).toBe(outcome.total);
+      expect(guarded.proof).toBeDefined();
+      if (guarded.ok && guarded.proof) {
+        expect(guarded.proof.publicTotalRub).toBe(guarded.outcome.total);
         expect(guarded.proof.quoteTrustStatus).toBe('TRUSTED_LEGACY_CALCULATION');
       }
     });

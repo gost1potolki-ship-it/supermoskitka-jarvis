@@ -5,12 +5,11 @@ import type {
 import type { OrderMemory } from '../../domain/index.js';
 import type { LlmToolCall } from '../../llm/tool-calling-types.js';
 import {
-  buildCalculationRequestFromTrustedPreliminaryInput,
   buildTrustedPreliminaryCalculationInput,
   llmDimensionsConflictWithTrusted,
 } from '../preliminary/trusted-preliminary-calculation.js';
 import {
-  createTrustedPreliminaryQuoteProof,
+  calculateTrustedPreliminaryQuote,
   type TrustedPreliminaryQuoteProof,
 } from '../preliminary/guarded-preliminary-price.js';
 import {
@@ -181,35 +180,32 @@ export class CalculationTool {
 
     void llmDimensionsConflictWithTrusted(memory, toolInput.items);
 
-    const request = buildCalculationRequestFromTrustedPreliminaryInput(built.input);
-    const outcome = await this.engine.calculate(request);
-
-    if (outcome.status !== 'calculated') {
-      return projectSafeCalculationOutcome(outcome, toolInput.mode);
-    }
-
-    const trustedQuote = createTrustedPreliminaryQuoteProof({
+    const calculated = await calculateTrustedPreliminaryQuote({
+      engine: this.engine,
       memory,
-      outcome,
       trustedInput: built.input,
     });
 
-    if (!trustedQuote.ok) {
+    if (!calculated.ok) {
       return failPreliminaryGuard();
+    }
+
+    if (!calculated.proof) {
+      return projectSafeCalculationOutcome(calculated.outcome, toolInput.mode);
     }
 
     this.lastExecuteMeta = {
       mode: toolInput.mode,
-      outcome,
-      guardedTotal: trustedQuote.proof.publicTotalRub,
-      guardedPrice: trustedQuote.proof,
+      outcome: calculated.outcome,
+      guardedTotal: calculated.proof.publicTotalRub,
+      guardedPrice: calculated.proof,
       deliveryType: built.input.delivery.type,
     };
 
     return projectSafeCalculationOutcome(
-      outcome,
+      calculated.outcome,
       toolInput.mode,
-      trustedQuote.proof.publicTotalRub,
+      calculated.proof.publicTotalRub,
     );
   }
 }
