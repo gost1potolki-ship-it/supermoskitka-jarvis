@@ -500,6 +500,7 @@ function render(): void {
 
   if (state.screen === 'menu') {
     root.appendChild(renderMenuScreen({
+      onDashboard: () => navigateTo('menu'),
       onMeasurements: () => navigateTo('measurements'),
       onOrders: () => navigateTo('orders'),
       onCalculator: () => navigateTo('products'),
@@ -522,6 +523,7 @@ function render(): void {
 
   if (state.screen === 'jarvis') {
     root.appendChild(renderJarvisScreen({
+      onDashboard: () => navigateTo('menu'),
       onMeasurements: () => navigateTo('measurements'),
       onOrders: () => navigateTo('orders'),
       onCalculator: () => navigateTo('products'),

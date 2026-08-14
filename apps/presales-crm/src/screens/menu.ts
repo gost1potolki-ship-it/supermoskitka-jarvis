@@ -4,6 +4,7 @@ import { createBrandBlock } from '../brand-logo';
 import { getTheme } from '../theme';
 
 export interface MenuScreenDeps {
+  onDashboard: () => void;
   onMeasurements: () => void;
   onOrders: () => void;
   onCalculator: () => void;
@@ -66,7 +67,7 @@ export function buildSidebarNavItems(
   activeScreen: MenuScreenDeps['activeScreen'] = 'dashboard',
 ): SidebarNavItem[] {
   return [
-    { id: 'dashboard', label: 'Дашборд', icon: 'dashboard', active: activeScreen === 'dashboard' || activeScreen === 'menu' },
+    { id: 'dashboard', label: 'Дашборд', icon: 'dashboard', onClick: deps.onDashboard, active: activeScreen === 'dashboard' || activeScreen === 'menu' },
     { id: 'measurements', label: 'Замеры', icon: 'measurements', onClick: deps.onMeasurements, active: activeScreen === 'measurements' },
     { id: 'orders', label: 'Заказы в работе', icon: 'orders', onClick: deps.onOrders, active: activeScreen === 'orders' },
     {
