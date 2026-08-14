@@ -1,0 +1,192 @@
+{
+  "sourceDir": "D:\\Calc_to_web",
+  "generatedAt": "2026-08-14T10:40:44.335Z",
+  "fileCount": 37,
+  "entries": [
+    {
+      "path": "calc-spec.json",
+      "size": 8880,
+      "sha256": "f0fef069ba149bb03366f9e1f5e034269f66bcb2c1382b66fc051dc878487400"
+    },
+    {
+      "path": "calculator-web-engine.ts",
+      "size": 13861,
+      "sha256": "5565a277b181030412abf565a18d5524a183216a5537df34f9ca8d0e5de680e8"
+    },
+    {
+      "path": "CRM_AUDIT.md",
+      "size": 15126,
+      "sha256": "bb5b5b37825a2bf469e237c3041a72a4634c4af1fe2c2b08eacfd807c287788d"
+    },
+    {
+      "path": "docs/CORPORATE_SITE_CALC_COSTx2.md",
+      "size": 15008,
+      "sha256": "bf408eca735cb6bfdcd3669209fdae8b60a6f33621d99e9ebdd841e960838246"
+    },
+    {
+      "path": "index.html",
+      "size": 619,
+      "sha256": "79ea18c3dfb40bacd25a4b26ea60fc81faeb0c9e4e97185406fdfd5f0b6f8e3e"
+    },
+    {
+      "path": "package-lock.json",
+      "size": 72289,
+      "sha256": "2161af9aeb62dd125eb63029267368edb2a19308326e5159d9b782f716fe1d4f"
+    },
+    {
+      "path": "package.json",
+      "size": 405,
+      "sha256": "09d3d330e3b3bd891fa4ee06e2abcbef201b4fb02702640c078181969b8f3be2"
+    },
+    {
+      "path": "public/.htaccess",
+      "size": 996,
+      "sha256": "b6844c4a1a35f283ee29f66f30ee029f842867993aa5a41a320a5fdbf47a93be"
+    },
+    {
+      "path": "public/robots.txt",
+      "size": 26,
+      "sha256": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1"
+    },
+    {
+      "path": "README.md",
+      "size": 1798,
+      "sha256": "10f43712c958b949edbadc14c88ca491599bd97d2f08000f683c85d3d85e5149"
+    },
+    {
+      "path": "src/auth.ts",
+      "size": 1186,
+      "sha256": "d28b68af951803052e09aac233a31c112376a76e2be8e58231ef456eb52c6fd5"
+    },
+    {
+      "path": "src/brand-logo.ts",
+      "size": 2158,
+      "sha256": "7aa34e433cfdf7304c20be422c7dc465f72c44f265cbd34dba72d90d89c71dbb"
+    },
+    {
+      "path": "src/cart-export.ts",
+      "size": 2822,
+      "sha256": "b73a377694ec3c7ceabd42273a408a55f19ed9e8c5972737288d0c6ccb066fb3"
+    },
+    {
+      "path": "src/cart-item-export.ts",
+      "size": 5596,
+      "sha256": "3449a60f98a034b2cc4e3c3beb6cd784bb3d97f75c4abf8e13ff1cfe5c1660c7"
+    },
+    {
+      "path": "src/cost-calculation.ts",
+      "size": 9048,
+      "sha256": "cfb575af1a341e24176c86f53cfdc5446975a9a933d85b33353eb8ccabd6f3d3"
+    },
+    {
+      "path": "src/dom.ts",
+      "size": 2117,
+      "sha256": "8d2efd85cf2c35035dccb0f598ff5fdff6bcb42fdef0c47ef9b175daf54661b0"
+    },
+    {
+      "path": "src/field-config.ts",
+      "size": 884,
+      "sha256": "85bcf3af45435dd3b724acf3af2848cb958e46c7d4bac7b5185abe6e52c7a3e8"
+    },
+    {
+      "path": "src/firebase.ts",
+      "size": 981,
+      "sha256": "0d83f3a59ab7e3bb5720b5e10675d9129a917739b750958d2f5d6d35c6fceec6"
+    },
+    {
+      "path": "src/labels.ts",
+      "size": 309,
+      "sha256": "d417f5481f677731fcafc594636fbcf7ecf65ad7adf1316ee729746611530e9a"
+    },
+    {
+      "path": "src/lib/archive-outbox.ts",
+      "size": 12090,
+      "sha256": "6422379e4e9002b3aaf2be8b20a873e7ce0b7a39d3e4620ff40397721bab9fc2"
+    },
+    {
+      "path": "src/lib/archive.ts",
+      "size": 4951,
+      "sha256": "767f0ff6eb3d35acc3618010c99f92b0aefc1b031498ef3158e846b18d0aeea6"
+    },
+    {
+      "path": "src/lib/sheet-webhook.ts",
+      "size": 4897,
+      "sha256": "4d4bc57a47e4efbfee84d0c0369bed0a8d2847bb9220b3ac372a4ed8f3446da7"
+    },
+    {
+      "path": "src/lib/upcoming.ts",
+      "size": 1940,
+      "sha256": "fb237639ee17e73d2d3de29cb1641b9bf19ae2508afb455010c4018da8c46232"
+    },
+    {
+      "path": "src/main.ts",
+      "size": 53406,
+      "sha256": "804c6fe25cdcdd959f82a89c2ac890e8f9577b5b09a1f07696c671cda2b808dc"
+    },
+    {
+      "path": "src/orders-store.ts",
+      "size": 2025,
+      "sha256": "f0b01ae930de7f8124038f5f70e9797e3741a5e7c4d24992f8d5a6587d97db53"
+    },
+    {
+      "path": "src/product-icons.ts",
+      "size": 2998,
+      "sha256": "54e3247351b472ea25c3156bd9e0a8ab4eb97a9511e0d3614d64c8446e37738d"
+    },
+    {
+      "path": "src/raw-prices.ts",
+      "size": 773,
+      "sha256": "b8076a241a7010230808e4e4419c3300c22cbdc9cc7ceaf9c5c358c800686fac"
+    },
+    {
+      "path": "src/retail-markup.ts",
+      "size": 3133,
+      "sha256": "7b6ddc945e73735344c338fdadc80d64e45ea161ee7f4248e2a73bbb62c47785"
+    },
+    {
+      "path": "src/screens/login.ts",
+      "size": 2399,
+      "sha256": "dba5cf36a1a268ba7f999f0b115ec17b9e9d29c76ed065b35eb97d2365ba5d13"
+    },
+    {
+      "path": "src/screens/measurements.ts",
+      "size": 5011,
+      "sha256": "2131fa0e98238753c6c86637e6f26394126862d1baaef880802b10d301894511"
+    },
+    {
+      "path": "src/screens/menu.ts",
+      "size": 11709,
+      "sha256": "be57094f8d42916c144c5d619bf1f1a3b68202440f58932dee3b84221b74c7df"
+    },
+    {
+      "path": "src/screens/orders.ts",
+      "size": 5434,
+      "sha256": "af044401b0eb3c6be9e70c07fc6c7232e4b8d502145c7b60cd72c38c213a6a91"
+    },
+    {
+      "path": "src/styles.css",
+      "size": 36964,
+      "sha256": "ec524ea14cec196e1ca1545165e4b6b4e1bfee2caeb405ef21b6cb92d3333855"
+    },
+    {
+      "path": "src/theme.ts",
+      "size": 714,
+      "sha256": "4f6447fdfea3466f01543d62a34e665eddf140d92be117eb205482b842bb66cc"
+    },
+    {
+      "path": "src/types.ts",
+      "size": 1602,
+      "sha256": "5dbb167e59d7eb5347a130cee2310524001dfd8f04e90b230c4df19988d682b7"
+    },
+    {
+      "path": "tsconfig.json",
+      "size": 500,
+      "sha256": "0c8f5c67982b71a55863aa1b0c82279477eed18876e90fbbc10da54272ce72de"
+    },
+    {
+      "path": "vite.config.ts",
+      "size": 419,
+      "sha256": "f91b0f37bdaa860398580bc5baf57a570064b94bd015a6fc31aafe666986b423"
+    }
+  ]
+}

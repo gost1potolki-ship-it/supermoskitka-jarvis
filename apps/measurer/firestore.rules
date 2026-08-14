@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /configs/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /dealers/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /ready_orders/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /measurements/{docId} {
+      allow read: if true;
+
+      // Архив, outbox, отправка в работу
+      allow create, update: if true;
+
+      // Нужно для удаления заказа из архива из приложения
+      allow delete: if true;
+    }
+
+    match /upcoming_measurements/{docId} {
+      allow read: if true;
+
+      // Бронь, отмена, завершение замера и данные замерщика: разрешаем менять только связанные поля
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'reservationStatus',
+            'reservedAt',
+            'reservedByMeasurerId',
+            'reservedByMeasurerName',
+            'cancelledAt',
+            'cancelledByMeasurerId',
+            'cancelledByMeasurerName',
+            'cancelReason',
+            'completedAt',
+            'completedByMeasurerId',
+            'archiveId',
+            'scheduledAt',
+            'measurerNote',
+            'measurerNoteUpdatedAt',
+            'measurerNoteUpdatedBy',
+          ]);
+
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    match /config/{docId} {
+      allow read: if true;
+
+      // Облачный прайс: приложение пишет config/prices
+      allow write: if docId == 'prices';
+    }
+
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+  }
+}

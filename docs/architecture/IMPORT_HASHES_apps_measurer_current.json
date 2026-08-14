@@ -1,0 +1,1257 @@
+{
+  "sourceDir": "D:\\supermoskitka-jarvis\\apps\\measurer",
+  "generatedAt": "2026-08-14T11:01:51.546Z",
+  "fileCount": 250,
+  "entries": [
+    {
+      "path": ".cursor/rules/business-logic.mdc",
+      "size": 2479,
+      "sha256": "ba62b500b13e78cd6a0fac5e445399c3877365eeb5ae8e84c8ac914e5bdf259a"
+    },
+    {
+      "path": ".cursor/rules/calculator-ui-field-matrix.mdc",
+      "size": 7848,
+      "sha256": "9476aca626361c82f6880a2e9f7ee9b649f77325ec8465c089b4e80e8f822848"
+    },
+    {
+      "path": ".cursorrules",
+      "size": 1420,
+      "sha256": "7142d3bb4fa221730e6e626af33618228c586acd4ff479372a7c6534d4c3ec18"
+    },
+    {
+      "path": ".firebaserc",
+      "size": 66,
+      "sha256": "322d7e3a95d036138d01528e89a368bad3459b9ec691ea036ecefbaebc57f251"
+    },
+    {
+      "path": ".gitignore",
+      "size": 269,
+      "sha256": "a5b84e8e305e91c8426a07e495f54d93169d308f6f0442132b29d8aaaeb65b48"
+    },
+    {
+      "path": "ИНСТРУКЦИЯ.md",
+      "size": 10649,
+      "sha256": "2c0787113366972d81ebea709c639f2524e5311a66fb2c753f6aff8df16d8d92"
+    },
+    {
+      "path": "android/.gitignore",
+      "size": 1824,
+      "sha256": "065e4a92a240fe11a0ea230491ad9dabef143f5fd5a3e6884ad6f0395666a971"
+    },
+    {
+      "path": "android/app/.gitignore",
+      "size": 26,
+      "sha256": "99c54e51ee601a60fbde8016b2cbf717483bc2e92773be86c9247d02a7fa6ea4"
+    },
+    {
+      "path": "android/app/build.gradle",
+      "size": 2133,
+      "sha256": "f1fddd46c1a0f2e042b3ccc9e58f2ade4c96892c3aa634a52bb42d97d76d6ce3"
+    },
+    {
+      "path": "android/app/capacitor.build.gradle",
+      "size": 370,
+      "sha256": "99daeda0f3366bba0fe6bae2b51295645aebcb09c0c72c17d580515b47df1a9c"
+    },
+    {
+      "path": "android/app/proguard-rules.pro",
+      "size": 751,
+      "sha256": "1cf8c57e8f79c250b0af9c1a5a4edad71a5c348a79ab70243b6bae086c150ad2"
+    },
+    {
+      "path": "android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java",
+      "size": 774,
+      "sha256": "ff50b4c110a7434312f9af54171f9e8523b015836f707c9b387b76d4c38a97f8"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "size": 1473,
+      "sha256": "dc1700e81319148f935e30578cf16e87a8fd92a99c665451d88097d0d42f8624"
+    },
+    {
+      "path": "android/app/src/main/assets/capacitor.config.json",
+      "size": 159,
+      "sha256": "dfd96929a0fe983971e6f9c7c3c0bf915f85f9a4d8d9f216880971e3b4a9f81b"
+    },
+    {
+      "path": "android/app/src/main/assets/capacitor.plugins.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/index-CBxxsowM.css",
+      "size": 42701,
+      "sha256": "e244ae91748454f9d9a5e4472e2ac87f22419abb0b7e69c9ea4f3d3e61cbbb4b"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/index-Cd0i1Nb5.js",
+      "size": 813872,
+      "sha256": "7a0394b34ff2a74c9db1f6dff86dc3d8640df393041f1892f1aa0d04660ee449"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-400-normal-HOLc17fK.woff",
+      "size": 9780,
+      "sha256": "6e441a6c94788318fa02b6d0a633aa29eebe27b69c6567eb1e59b4edc68ed70e"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-400-normal-obahsSVq.woff2",
+      "size": 7712,
+      "sha256": "f0bb586459ce8f09b238285040f17e3e9e9538b2c5a7aae0775194e33c36c3c3"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-500-normal-BasfLYem.woff2",
+      "size": 7900,
+      "sha256": "b77a86ec16aadc157f4a99e8898d71cd75ea264753d9bdf13f962f8c3988cbb0"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-500-normal-CxZf_p3X.woff",
+      "size": 9940,
+      "sha256": "5be18e0345781cb882a267798518553c0e915174fc70731ab5f085ca64ba1ebc"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-600-normal-4D_pXhcN.woff",
+      "size": 9936,
+      "sha256": "cc190ed1b64eb650a4ad7e97c7a668cb8b34acd9c4c7f7bf4372c0cbacd35795"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-600-normal-CWCymEST.woff2",
+      "size": 7972,
+      "sha256": "6c2a37f82a676bcd441b735e4e2cda4edb8873a059ab9c362a84f0711f257041"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-700-normal-CjBOestx.woff2",
+      "size": 7904,
+      "sha256": "5917871d3cc970d8ce195101cbf65c1f68ec948022eb6070030342bb7edfb3bb"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-700-normal-DrXBdSj3.woff",
+      "size": 9912,
+      "sha256": "72b6daa49173e531027d8a260ef128e142a165811cab6a2875eefe0c3c58fa0e"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-400-normal-BQZuk6qB.woff2",
+      "size": 10232,
+      "sha256": "ef572f9187a8be018d9d9c2c6b77c1f6cb2af4199f02fc16c292ea10ab25a2cc"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-400-normal-DQukG94-.woff",
+      "size": 13336,
+      "sha256": "5cb2f1cc0936f89a42ceae34f5a5720248dc5b8114c12b1c33a7d2ef01a9b6b9"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-500-normal-B0yAr1jD.woff2",
+      "size": 10432,
+      "sha256": "1c2db92d3cd9b237ca7c9c07af556d542f28ded1db54cd4382cf776501c5291f"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-500-normal-BmqWE9Dz.woff",
+      "size": 13452,
+      "sha256": "e250c05aebcf49971e0b25f476992dd463c28c0292ebb204d9db542fb5066ca7"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-600-normal-Bcila6Z-.woff",
+      "size": 13464,
+      "sha256": "a5073285409443f4653c858de58c5dc0bfc2fd33e60d8747388345e7c5ab1ab3"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-600-normal-Dfes3d0z.woff2",
+      "size": 10484,
+      "sha256": "509fca9c59564f9a846fa69bc647f9b050fc11abf1c9f6f3da71fb2d5ed425bd"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-700-normal-BjwYoWNd.woff2",
+      "size": 10496,
+      "sha256": "a46b99781170971e2c99a87ff7ee9f5cf90a9dfcd18175e1be6300201d030123"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-cyrillic-ext-700-normal-LO58E6JB.woff",
+      "size": 13408,
+      "sha256": "0f3d4be2bd7018f78fa3484a5f6e9d8ce567689426643b84a47e8cabb91e5f16"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-400-normal-B4URO6DV.woff2",
+      "size": 7776,
+      "sha256": "c15ddd00a9927b56f5c655a41f976f79bd848a20cce91fc14227751872a1cc27"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-400-normal-q2sYcFCs.woff",
+      "size": 9924,
+      "sha256": "bdae9d28729e8c68587d5d54e216d771a40d7a6800e824586a6e2f570c2f10df"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-500-normal-BIZE56-Y.woff2",
+      "size": 7920,
+      "sha256": "cc197d79d33a3615a047baae85f4d1957f6f98b8898313658e160b1d519b1b6f"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-500-normal-Xzm54t5V.woff",
+      "size": 9980,
+      "sha256": "86d55a4b1b9cbced7e61e76d5d44cf49d0bd1c814d3df2de67b7136ab4fdcece"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-600-normal-BZpKdvQh.woff",
+      "size": 10032,
+      "sha256": "090b24e22fc4ddf41450d13bdec81c8a74808b9fc7edaf8df06c909b177a8992"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-600-normal-plRanbMR.woff2",
+      "size": 7944,
+      "sha256": "9c5a897f9d9fcfe60d90631d766ae62b4bf1edd76633fa7a4b2f8c87e036789b"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-700-normal-BUv2fZ6O.woff",
+      "size": 9980,
+      "sha256": "53368f53d5fc43381dcc45c8533ba2476f80337136313525f96dcbdc736616a5"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-700-normal-C3JjAnD8.woff2",
+      "size": 7920,
+      "sha256": "737c6c91cd60372d30e6540096ada83c89c9b4613cd7472e3366bf2e07ad99f1"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-400-normal-DGGRlc-M.woff2",
+      "size": 5264,
+      "sha256": "eadedd9e13c2582430a9fb1519eb86152fdabb483a6f66d90f8d8a52e977a1b7"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-400-normal-KugGGMne.woff",
+      "size": 7064,
+      "sha256": "4f2b6f92ddfece8812e79774d446218aa6e0773ff8c2d31130fe2bdc23bd22d0"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-500-normal-2j5mBUwD.woff",
+      "size": 7192,
+      "sha256": "c85d11bde719108cc9a4f6f5b008087f6c36493b47395580d4f5336182b0f0c7"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-500-normal-C4iEst2y.woff2",
+      "size": 5428,
+      "sha256": "75a9ec9383a3b7a7bf7cfb94f64edf38d9cfdc5f7ffa0cbed2733627a6e4426d"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-600-normal-B8X0CLgF.woff",
+      "size": 7212,
+      "sha256": "efc7aa9cce5c505dd8cc4c4daf00247fa805f37bcda96079239ba3358ab27dfb"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-600-normal-DRtmH8MT.woff2",
+      "size": 5432,
+      "sha256": "399f94d75aa73403e40e2353e8c0cc75c38f7362a6ca263b3b02d9723157ffe5"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-700-normal-BoQ6DsYi.woff",
+      "size": 7216,
+      "sha256": "b26ed64c9135a750ad580b92152bedeef90771e74e18f6f7759a6d7adb0f1b5d"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-greek-ext-700-normal-qfdV9bQt.woff2",
+      "size": 5444,
+      "sha256": "b7b2732ebc981b30a5463ffc850407649dba41e625aee124cc63293da4547629"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-400-normal-C38fXH4l.woff2",
+      "size": 23664,
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-400-normal-CyCys3Eg.woff",
+      "size": 30696,
+      "sha256": "e20fa0b4fd2dd26e4d14b3ac3cc922509c3a63fa5e910e90c614544aa042dd45"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-500-normal-BL9OpVg8.woff",
+      "size": 31284,
+      "sha256": "9b42c108da48b5ed55a3072e815ffee2d271562e6c0dd6998910e8f9c09e0a3d"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-500-normal-Cerq10X2.woff2",
+      "size": 24272,
+      "sha256": "f3779f1efccc4bdcdf9c0a02ab95bf6bd092ed09c48c08cedc725889edd1d19f"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-600-normal-CiBQ2DWP.woff",
+      "size": 31260,
+      "sha256": "6a9cb3a509b4eeaf12b7dda6c4aacac3e85d07f4201bf4dd716e332e692b87bd"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-600-normal-LgqL8muc.woff2",
+      "size": 24452,
+      "sha256": "f9a06e79cd3a2a20951c0f0e28f66dd0e6d3fda73911d640a2125c8fcb78f21a"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-700-normal-BLAVimhd.woff",
+      "size": 31320,
+      "sha256": "7c5ed5655730de337704d3fc94628515cd7e3d8d32368871709bf56ac0397e7a"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-700-normal-Yt3aPRUw.woff2",
+      "size": 24356,
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-400-normal-77YHD8bZ.woff",
+      "size": 47560,
+      "sha256": "22ae8360fbad24d2af7c6c9898a346c881774dc87f7cf94bd262c48ad58d7116"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-400-normal-C1nco2VV.woff2",
+      "size": 35000,
+      "sha256": "6744a7f509ebc6ab220a6cd4ea77e898adf014f03d88dcda5d45d8a9feefb4e9"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-500-normal-BxGbmqWO.woff",
+      "size": 48492,
+      "sha256": "30d2903ce97f8a89ea0e9c083b42cb8bf97e7bbb5607e7f00352815f19cb0d5b"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-500-normal-CV4jyFjo.woff2",
+      "size": 36024,
+      "sha256": "2c6fbc42d315528beb06c1096df45487bf4186c4b78b8111d12c9c951f8acca2"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-600-normal-CIVaiw4L.woff",
+      "size": 48668,
+      "sha256": "22ff20a6170674fb9637c2a072227be86303bb6ec52b829b9d7077405f7196a6"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-600-normal-D2bJ5OIk.woff2",
+      "size": 36260,
+      "sha256": "e4bdf67b0cd15ca9e184509275be95db942195d3cc2b17f6a0452f2adf75d0bf"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-700-normal-Ca8adRJv.woff2",
+      "size": 36244,
+      "sha256": "143f9504f1377012aa3e39c90c4354ef429cb0494b9ac0e1437f1a81e5412236"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-latin-ext-700-normal-TidjK2hL.woff",
+      "size": 48632,
+      "sha256": "1761edba32014180deab3dbbe3f7156c64ef6f34bc76313ba31ce227fc9ff391"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-400-normal-Bbgyi5SW.woff",
+      "size": 6500,
+      "sha256": "54aa42d325bcdfd623ecb9eac4a5e3c6420c63d7b86e9d8545fb479f653beb57"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-400-normal-DMkecbls.woff2",
+      "size": 4972,
+      "sha256": "547ad9fdaeb0ae43487f4b8a02e47c36553c0c0cb73c8aa98f93b7b615f6b55d"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-500-normal-DOriooB6.woff2",
+      "size": 5112,
+      "sha256": "44e36aa5a8f12130029a29bb0e6695d0262b67446ce321e878b1fb56162b5de6"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-500-normal-mJboJaSs.woff",
+      "size": 6596,
+      "sha256": "18a4a09f751671cd8929d7c66e8fe7d820b511c36e51cf6047ffceab88eec4a4"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-600-normal-BuLX-rYi.woff",
+      "size": 6640,
+      "sha256": "24a01e7bd947aeef91ae8f7b8edeb23fadaf5ceda34a610ce62d2bbdaea57e83"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-600-normal-Cc8MFFhd.woff2",
+      "size": 5100,
+      "sha256": "1aeb94ae9db052a4a2fe6f3046f928cff1fdbd7abdf870a9a01c13cae6faeba5"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-700-normal-BZaoP0fm.woff",
+      "size": 6632,
+      "sha256": "412023ab2f41333b373e2c6eb2a3ebab806fddd610015d2ae8cd4f4314c7ba92"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/inter-vietnamese-700-normal-DlLaEgI2.woff2",
+      "size": 5104,
+      "sha256": "5fafa3829a16d9ea5ac3a67c51e54186353122790b604a3e361f96cab188da8b"
+    },
+    {
+      "path": "android/app/src/main/assets/public/assets/payment-qr-CyPNbkR-.png",
+      "size": 123793,
+      "sha256": "7a4dc54998fdd350a4a9ebf011592dea10ff51ea121fe588c1fa20a88f4336b0"
+    },
+    {
+      "path": "android/app/src/main/assets/public/cordova_plugins.js",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "android/app/src/main/assets/public/cordova.js",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "android/app/src/main/assets/public/favicon.png",
+      "size": 825595,
+      "sha256": "10ebf2cf93bbc40e396a319a936a9baa33114047664a29ea238e841e4183a58f"
+    },
+    {
+      "path": "android/app/src/main/assets/public/favicon.svg",
+      "size": 274,
+      "sha256": "85e0d265ed7d42cf75706f8e48b02f7b554f2c3c794458fa7f06ee33fbdbd160"
+    },
+    {
+      "path": "android/app/src/main/assets/public/icon-512x512.png",
+      "size": 699401,
+      "sha256": "878f0b8aebeb5905443ec19a46ff00a8925901d83b92f62df52095adec3052f6"
+    },
+    {
+      "path": "android/app/src/main/assets/public/icon.png",
+      "size": 825595,
+      "sha256": "10ebf2cf93bbc40e396a319a936a9baa33114047664a29ea238e841e4183a58f"
+    },
+    {
+      "path": "android/app/src/main/assets/public/index.html",
+      "size": 1426,
+      "sha256": "478c56741b7922bd4c0882324eca27bc34879f0045821b3af29e45fa2c572f2d"
+    },
+    {
+      "path": "android/app/src/main/assets/public/manifest.webmanifest",
+      "size": 1164,
+      "sha256": "b7c0cc9b5aad204940294d32c27a37fa76b65b478fbbf434a037ccda161a0b6c"
+    },
+    {
+      "path": "android/app/src/main/java/com/supermoskitka/app/MainActivity.java",
+      "size": 125,
+      "sha256": "2022963854ba2125848432ee63722fb63c07491b939ab1f531b6195c705bbe1d"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-hdpi/splash.png",
+      "size": 37615,
+      "sha256": "a2968750c90880ecc922f149fcc70fc19711a5ece5a35013e2b49382b7e2346b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-ldpi/splash.png",
+      "size": 8134,
+      "sha256": "53236fcd16372e34131dbcffaf25a91c981de40488144f72405924ce8871e4e7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-mdpi/splash.png",
+      "size": 15676,
+      "sha256": "2ab179440603ea6d9c4352979c6bb134b4c9ebf61aff68cbfe129827d7df46a3"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-night-hdpi/splash.png",
+      "size": 44135,
+      "sha256": "176f0479a62fe598fef4a832539f24d17cd4ebb30ad1fe9f1ffa45fe86403c1b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-night-ldpi/splash.png",
+      "size": 9232,
+      "sha256": "fd0691259151c46c13e11dc569a9e562a89a5854b2a891ab100e18b7fa014e85"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-night-mdpi/splash.png",
+      "size": 18349,
+      "sha256": "5ba8736011c91618abe0b6c79d923f5545c1140181a6853205c9f310c349e14e"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-night-xhdpi/splash.png",
+      "size": 96247,
+      "sha256": "3cbdca2599e03ae9308b75224c4b7496cafe46894a7872f78d1f91227dace791"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-night-xxhdpi/splash.png",
+      "size": 146719,
+      "sha256": "6e7bab80d2baf0c6ba48cf3e34ef6efad5ee0903c91b331730810f47d2eab7e3"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-night-xxxhdpi/splash.png",
+      "size": 210977,
+      "sha256": "bf12eb5da91dbae0af74fa148f28be6a20470612462ef075fc9e8c47fb0df85e"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-xhdpi/splash.png",
+      "size": 82199,
+      "sha256": "1459dc1e04428471d1dde6e8d4653acbb683e3e630fd4eafee884b46714c1db7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-xxhdpi/splash.png",
+      "size": 123262,
+      "sha256": "c2ed38d535c0ffad1e7e5901bee1a27eea883ab303e349c4079e467b30abb2ca"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-land-xxxhdpi/splash.png",
+      "size": 173936,
+      "sha256": "9caf82555542a40eda82e219a424b7e637b01fb7077d6efc110d4d545407dce8"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-night/splash.png",
+      "size": 9232,
+      "sha256": "fd0691259151c46c13e11dc569a9e562a89a5854b2a891ab100e18b7fa014e85"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-hdpi/splash.png",
+      "size": 18165,
+      "sha256": "aa6705566239e9ee4ba7f34b66b72be5ded475827a1a23748212dfdd60c09b92"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-ldpi/splash.png",
+      "size": 5662,
+      "sha256": "caf463a3017d7264a594cc942447ca6c3b57624cb97753d8f98b0dba781fcd07"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-mdpi/splash.png",
+      "size": 9174,
+      "sha256": "fc0d21facb258b84b69c53571e54826be0c60019a151ac90d2f8943bcc1bd425"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-night-hdpi/splash.png",
+      "size": 25016,
+      "sha256": "016318eb35520159638687c43768b3b57780a0cc62e3a9b0577dd1cbadb11069"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-night-ldpi/splash.png",
+      "size": 6860,
+      "sha256": "ee6e2ee716727dbb547b6a9c69efe76f62ddeb347df82d62e32de4f47e8ff6ff"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-night-mdpi/splash.png",
+      "size": 11457,
+      "sha256": "8855388ba31243e31fac813fca493443045db23954bcc81b5dae8f5546981433"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-night-xhdpi/splash.png",
+      "size": 53052,
+      "sha256": "629ac117d5ef8fbb8cd2d1c770fac78ed3f18aa5daa05ea4c91ef8b77bb8b6f6"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-night-xxhdpi/splash.png",
+      "size": 80275,
+      "sha256": "2bbfbac03f625102eb472d31253937aebd4c6e5afa536b3ba36444d87f1f4f35"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-night-xxxhdpi/splash.png",
+      "size": 128086,
+      "sha256": "644a5185c593e7f7669b6640fd7f803580ff0c8a5e4a2d20404212b33d6b7fe3"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-xhdpi/splash.png",
+      "size": 36309,
+      "sha256": "d3c61787547a1ca2e9760d840e5c9fec604fce4e6ac343bcf000cc73a60d94cc"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-xxhdpi/splash.png",
+      "size": 56571,
+      "sha256": "727735d94d1ff2b9d86309e2c114e41c198e7c549b90e131d8b4129a79fda6ff"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-port-xxxhdpi/splash.png",
+      "size": 89862,
+      "sha256": "fc97ba397522f91e47f4832eae3a9712586b25fa3129d6d0dd99a086c0371a8e"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml",
+      "size": 1880,
+      "sha256": "a8514094f754b099d3e55ce1d6e0b2de79db418b2eeacb0fc2a6bb0bfadef221"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_background.xml",
+      "size": 5606,
+      "sha256": "718ba51adf166bb55c3e9936bb8199a0148457f7f0191aaa2f37a94f3159d6ec"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/splash.png",
+      "size": 9174,
+      "sha256": "fc0d21facb258b84b69c53571e54826be0c60019a151ac90d2f8943bcc1bd425"
+    },
+    {
+      "path": "android/app/src/main/res/layout/activity_main.xml",
+      "size": 535,
+      "sha256": "5d770feb791313b947020cbfc57e5c733c556dac5e9e49261a1190e527073253"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "size": 380,
+      "sha256": "70f2c6a1478441deb70762f95abf87a8ab8b2b38d53715edc1f7b73df8e5f8df"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "size": 380,
+      "sha256": "70f2c6a1478441deb70762f95abf87a8ab8b2b38d53715edc1f7b73df8e5f8df"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png",
+      "size": 531,
+      "sha256": "7189839950fc679f54b3d42f1c7f9b26b1dcf022c8b4b1192963562f06366717"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png",
+      "size": 28015,
+      "sha256": "35ac30df98bcaa0862bc142d34f95d91fbaa570c8402136a119752a7bfba6549"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+      "size": 7497,
+      "sha256": "f78b28206387ba9cfab91eab93a17254234d21e320debd4055cbd7eda77a154f"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "size": 5277,
+      "sha256": "35b557828af9d2ccac29509c35d92ba06e6b5aa0aa0a66385382e0be0c9ce287"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-ldpi/ic_launcher_background.png",
+      "size": 277,
+      "sha256": "aa92fd5bf862df0dc0abde01ce2696fa0a948cf3a18fc4de2602a0969ae6bc12"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-ldpi/ic_launcher_foreground.png",
+      "size": 8779,
+      "sha256": "d413664f93dc5852f99f589220a195fce32df8a74e1e997027bd06bd7306aac6"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-ldpi/ic_launcher_round.png",
+      "size": 2675,
+      "sha256": "0cfdf26cfcb18e79100c45b274f93d0c5be1c2bb786e44d551bb74bbed702eb8"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-ldpi/ic_launcher.png",
+      "size": 1092,
+      "sha256": "c78dead5ffbfbdf414e009b25df389a3e91671ec41eae8ac25c4bb5c214aed14"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png",
+      "size": 350,
+      "sha256": "6acd52bdd43b528a024d6d46d5a50dba12b466c499a2a95fa1edf66af10b4918"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png",
+      "size": 14264,
+      "sha256": "4dce0df53fe397a5cdcd7da62d927d9b4951d84071d7c4bc22f5694c474164dc"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+      "size": 4128,
+      "sha256": "48c9375ec698ba267016149d8377f82ef309a13c61b4581eaa91f8c53395d8b7"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "size": 2201,
+      "sha256": "3ac27a9da37984f3564d94a7c79bafded410183bdae2b26fc9d2513383ba9cae"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png",
+      "size": 697,
+      "sha256": "35b716f97156f38260ea4c99d6f9dad67f0fb742f05f821fe8a790f5c8eec082"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png",
+      "size": 45849,
+      "sha256": "5cfbfaca94725f478f8e8f008d6fd8fa9600ff033327d6cec664edb961a00180"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+      "size": 11623,
+      "sha256": "3bae5000843e55079bbee373e76e8b37ec904bc5065e242cdced7d67cb09ea41"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "size": 9173,
+      "sha256": "dc43c156177e98b7813f0cf26ee549447399d742d36c86b7214b8c86300cd0ee"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png",
+      "size": 1040,
+      "sha256": "779eab0767b85aa6f205ba4c0aba69fba43c9cd08b5052c42bcb53ef3832a123"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png",
+      "size": 94399,
+      "sha256": "819335b10983f4b7cebb0cc57ff514304f240b23d9d83eea221b94b4b44ad288"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+      "size": 22041,
+      "sha256": "cb7521bf7da4bc67b7f604c2adf75341357a480fec9affa63d95955edf17c38b"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "size": 19625,
+      "sha256": "74ac9d2e361edc37b7729b12d850bd10bbf5ee1f57f55ee6cb0e97921fa94c31"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png",
+      "size": 1726,
+      "sha256": "ac90b7ceeacb59bc41e6ad470596a0192a819af38cdd03084ec9a293efeb870a"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
+      "size": 167727,
+      "sha256": "eb9f44736932a3229cb554899d47dcf7427919057ef1948bc5dcd6a4840a1263"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "size": 36920,
+      "sha256": "9d4d0a950a9474ea1c0130b1e75bc6f34e3272f450a20884e567f451dbe726ef"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "size": 34525,
+      "sha256": "43bd88e685ed7d69c305761172601c5394456f307c9e7de5844a09590d5e3bc5"
+    },
+    {
+      "path": "android/app/src/main/res/values/ic_launcher_background.xml",
+      "size": 120,
+      "sha256": "cd40bafe618ff506f4088778b135cb4faa15f25e0c9b475e22d730c74b7be115"
+    },
+    {
+      "path": "android/app/src/main/res/values/strings.xml",
+      "size": 334,
+      "sha256": "80df7287a6c2c9ea470b3ac53a7bb3494fc12af600933b30a8dd48d2336a3494"
+    },
+    {
+      "path": "android/app/src/main/res/values/styles.xml",
+      "size": 823,
+      "sha256": "18ebba36575e9461347ee67361b23caf095f158ee85dbefe1b83a4669ba5bd6c"
+    },
+    {
+      "path": "android/app/src/main/res/xml/config.xml",
+      "size": 185,
+      "sha256": "e9dcda493e663c5c4db9e3cb3bd968477a6e90aa8840bcbba40d72ed54b767ce"
+    },
+    {
+      "path": "android/app/src/main/res/xml/file_paths.xml",
+      "size": 213,
+      "sha256": "a46ed43ef65c90cb6778f4581decf3556e3f0055aad8f36d69dae16f9a0e99aa"
+    },
+    {
+      "path": "android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java",
+      "size": 402,
+      "sha256": "d4045ae8fac1f0807e6b24eb34e68409a9a235df9d1a3f896fb8c9a49424363d"
+    },
+    {
+      "path": "android/build.gradle",
+      "size": 636,
+      "sha256": "c05c6e67af5651a56aecb0908027be42c84c03dad529af4839dbdc4393405158"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/build.gradle",
+      "size": 1661,
+      "sha256": "0fc6605e7e0f9b9ba2e60be539c5a9e42b8ef6841e684439c7061cdaade5837f"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/cordova.variables.gradle",
+      "size": 312,
+      "sha256": "1a5679e3f7757891431842bbdd89e9570445d4180a23a2d00f101dd8860d77a7"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml",
+      "size": 210,
+      "sha256": "2e3e383475f0e6cb76f0a7b46017a546663fba8e5bd1ef2a537412afac2ee9b5"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/src/main/java/.gitkeep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/src/main/res/.gitkeep",
+      "size": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "android/capacitor.settings.gradle",
+      "size": 207,
+      "sha256": "b488e162f552d6efb8286793c7871bbc1061c9bf5ca3a6a495fdeb8988a541c7"
+    },
+    {
+      "path": "android/gradle.properties",
+      "size": 987,
+      "sha256": "3bab15c5b8bc4c2f4b6cf525497d15ad4abca53a460e6dd2eb0f0135817d31e6"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.jar",
+      "size": 63375,
+      "sha256": "a8451eeda314d0568b5340498b36edf147a8f0d692c5ff58082d477abe9146e4"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.properties",
+      "size": 252,
+      "sha256": "252070f2b15e40fd80dc5f8f3a6ae8a2f6928bec943889e189a78b294e8f36a5"
+    },
+    {
+      "path": "android/gradlew",
+      "size": 8527,
+      "sha256": "e0108761fee312b7b373ee96c0870cab5c167e664ac507776814b1d59e9b3bad"
+    },
+    {
+      "path": "android/gradlew.bat",
+      "size": 2868,
+      "sha256": "8e327fcb99d29ce0fe3ee2fec6e6a25de815a2df83a6a44a553dea89ffc92955"
+    },
+    {
+      "path": "android/local.properties",
+      "size": 368,
+      "sha256": "6291ce097f107120e65c0929afc7d99d2a11379f72eb7af56d636e0eb9f4e101"
+    },
+    {
+      "path": "android/settings.gradle",
+      "size": 208,
+      "sha256": "6ce098d15ebd69b44c4ecd786bca1bdc366340d2459b2af4d7bb0ab317aa9669"
+    },
+    {
+      "path": "android/variables.gradle",
+      "size": 496,
+      "sha256": "47391f3ef8551f8cdeabcc383a99bbee6927d8b4191cfaf3027353fe25741852"
+    },
+    {
+      "path": "App.tsx",
+      "size": 56125,
+      "sha256": "a628cbfb18feba6c4f1f3b9ebad5ffc17051dbe090ab58fe1e118b5251e5fa54"
+    },
+    {
+      "path": "assets/icon-only.png",
+      "size": 699401,
+      "sha256": "878f0b8aebeb5905443ec19a46ff00a8925901d83b92f62df52095adec3052f6"
+    },
+    {
+      "path": "assets/icon.png",
+      "size": 825595,
+      "sha256": "10ebf2cf93bbc40e396a319a936a9baa33114047664a29ea238e841e4183a58f"
+    },
+    {
+      "path": "assets/payment-qr.png",
+      "size": 123793,
+      "sha256": "7a4dc54998fdd350a4a9ebf011592dea10ff51ea121fe588c1fa20a88f4336b0"
+    },
+    {
+      "path": "assets/README.md",
+      "size": 1457,
+      "sha256": "e519cba515b9c7d62dfc0644fa8584caf57922d080c4a0b8f82a4c2cf188b730"
+    },
+    {
+      "path": "AUDIT_FOR_CHATGPT.md",
+      "size": 18641,
+      "sha256": "52755372a0ec57651d5b50b5b7327dad40d41c206277a4c7dc5d20a71fd35919"
+    },
+    {
+      "path": "BUILD_APK.md",
+      "size": 3323,
+      "sha256": "671ce3e5ae438d3f6bad504cd7accd4bf77b59503ef4bd6c3f2d89d016e32aec"
+    },
+    {
+      "path": "capacitor.config.ts",
+      "size": 406,
+      "sha256": "b9d42d9484b8f17899115d684dc502e21796f2693c5a9ce7ae9bf44f6bf39e06"
+    },
+    {
+      "path": "components/IconMapColor.tsx",
+      "size": 2297,
+      "sha256": "3447edb018cb876806770a6301b71c98ae60ea46428a1916faa1365c8290abb7"
+    },
+    {
+      "path": "components/IconRouteColor.tsx",
+      "size": 1620,
+      "sha256": "9d7a3c6aafdd61370aab2deddc04a7d9ddeb1db3b8a02ac6984e33bdee3e6bb5"
+    },
+    {
+      "path": "constants.ts",
+      "size": 7461,
+      "sha256": "b32a3cb585638b1aa2c9552a1d82ca0483e6d9cdf87a1ec4f9351dd57d5ab26d"
+    },
+    {
+      "path": "dealer-pleated-mesh-price-per-m2.docx",
+      "size": 40325,
+      "sha256": "cf92bfa449b8e109209f80c4fb53cf31284af520a066c9f7f637e9ff4a38d658"
+    },
+    {
+      "path": "dealer-pleated-mesh-price-per-m2.v2.docx",
+      "size": 40771,
+      "sha256": "6022cf1c3837acf81c523c73985508091bd7815ca9fa8c2c7d1416bf02f18754"
+    },
+    {
+      "path": "docs/app-audit-auth.md",
+      "size": 20938,
+      "sha256": "c894812b0b677d6b2df4c378d1856486b32a5d28f70401315e262dbac92fb701"
+    },
+    {
+      "path": "docs/app-audit.md",
+      "size": 26612,
+      "sha256": "5c4059622b6e90e40a433eb97ec1133cd87d61cfa23122a7d4fdf32c9bed412a"
+    },
+    {
+      "path": "docs/AUDIT_APK_PREBUILD.md",
+      "size": 10070,
+      "sha256": "20c8534a69f931edd5d61ab465f1722df6b46077d0be020cbcf3ddfe83f24274"
+    },
+    {
+      "path": "docs/auth-mvp-plan.md",
+      "size": 16543,
+      "sha256": "66c17ab350235a7176514ba5fad8cb15bbcbd609887165b99a157073b7a77df0"
+    },
+    {
+      "path": "docs/DESKTOP_CALCULATOR_PRICING_SCHEMA.md",
+      "size": 23044,
+      "sha256": "6cfc0651a75fd84d26454ea4680edd2174c249fbdc0e7ee5780044fa20313b76"
+    },
+    {
+      "path": "docs/desktop-calculator-input.schema.json",
+      "size": 9485,
+      "sha256": "361d01f1ff9b2b5c8ece6659f39d89ee49642562d23f756553129018baec5629"
+    },
+    {
+      "path": "docs/firestore-rules-measurer-app-plan.md",
+      "size": 9873,
+      "sha256": "a4ac726fad8e175e62a47cc4800c827c6cf84686ec314481539600946515c872"
+    },
+    {
+      "path": "docs/firestore-rules-measurer-architecture-plan.md",
+      "size": 17043,
+      "sha256": "02c7251f062a7a5a7198d1c21abb7d8539afc8082b96cd43f706c51e9bb9d7e0"
+    },
+    {
+      "path": "docs/MEASURER_AUTH_CRM_ROADMAP.md",
+      "size": 4514,
+      "sha256": "6d7a11b46bb3aab63bf3b47e9e105375088536f268903f9b3bcc5b2c8f5eaa60"
+    },
+    {
+      "path": "docs/prices-export/prices-flat.csv",
+      "size": 8538,
+      "sha256": "685823dd06a31b44207f47fe58bf2dc3fa9f36db7323cb43a170432698ab061b"
+    },
+    {
+      "path": "docs/prices-export/prices-full.json",
+      "size": 6184,
+      "sha256": "226c96648f086fd6c2f46b081ab4b76f2e2f4f1ab9617a365c41c00809a16acf"
+    },
+    {
+      "path": "docs/prices-export/prices-structured.csv",
+      "size": 7929,
+      "sha256": "11eb9e1c21a84b3e63c094916ce1f814ae6d2ebe3f3f095bdff7987f6c9a7e5e"
+    },
+    {
+      "path": "docs/prices-export/product-fields-matrix.csv",
+      "size": 1795,
+      "sha256": "7830b3d4508df97ab09e2903343327bc4464fa897b85c8103413135a9dd73eae"
+    },
+    {
+      "path": "docs/prices-export/product-fields-matrix.json",
+      "size": 3776,
+      "sha256": "c97798a3368b9b54991a82da65822cc69516ee1ab82a4b877d7f10d3de6dcc45"
+    },
+    {
+      "path": "docs/prices-export/README.txt",
+      "size": 612,
+      "sha256": "95295dd58436c4498d8903c4406a45acb7af891c9e0df3b89fbb28aa5d7b500d"
+    },
+    {
+      "path": "docs/upcoming-measurement-completion-plan.md",
+      "size": 13587,
+      "sha256": "6cd48145f0c9ed3f1fcda454b9512226e4fbf511bf54eb9cf7d5eb231b596c9a"
+    },
+    {
+      "path": "firebase.json",
+      "size": 112,
+      "sha256": "09ca7e05ccb509becfd198b23704f0a0b97cf2bbb90af753a05f4f79e15be51b"
+    },
+    {
+      "path": "firebase.ts",
+      "size": 1322,
+      "sha256": "9d140bbc7feb65147a728d1541982883245e16a4dc7c4b0ad9e00c623ab37870"
+    },
+    {
+      "path": "firestore.rules",
+      "size": 1877,
+      "sha256": "67ef95efe0d59d81c67dd5da28f51c7e3735be3aca3410011e9a9ff1a794eb89"
+    },
+    {
+      "path": "functions/firebase-debug.log",
+      "size": 1157,
+      "sha256": "ca1f3e2e9c6cd29df570f6cd24df7e937a2445dee8a17fd27630f4cd11556dd5"
+    },
+    {
+      "path": "functions/lib/index.js",
+      "size": 2313,
+      "sha256": "aab2cf31d351a2f5228b9aaad6553ce17e07842a06af4c70bd671f0204d378cf"
+    },
+    {
+      "path": "functions/lib/index.js.map",
+      "size": 1529,
+      "sha256": "b93ea5f91ef2847b07fea719b17cf9a0dc3e7e725dc8f451a23e8be4ee3c7aac"
+    },
+    {
+      "path": "functions/package-lock.json",
+      "size": 125202,
+      "sha256": "c4bad9c0765bc8fb6e626a3cac41cac39a3c663398213047bb75d8a6b878c350"
+    },
+    {
+      "path": "functions/package.json",
+      "size": 456,
+      "sha256": "ad683e778df63d6e57839e3747185aef7456def8f1a8b6ca799d9279d2e4ba36"
+    },
+    {
+      "path": "functions/src/index.ts",
+      "size": 5476,
+      "sha256": "8214f814ffc22d34f71213382724f956639de8178347128da43965b7391d403d"
+    },
+    {
+      "path": "functions/tsconfig.json",
+      "size": 288,
+      "sha256": "f9b324cdd971a1f4dc6fe9d1eb14e3ac4c310935f0888fe191ec383812fc839e"
+    },
+    {
+      "path": "gradle-build.log",
+      "size": 13494,
+      "sha256": "de5dfe82b2e744c372b1227280ea590b667369579e5176ac323ec2fe5657b345"
+    },
+    {
+      "path": "icons/icon-128.webp",
+      "size": 18324,
+      "sha256": "47ebdb49f77c46cf2402379ef1ca7d8f14d2a631cab9a0659ffdb60485a805af"
+    },
+    {
+      "path": "icons/icon-192.webp",
+      "size": 37672,
+      "sha256": "953167f416002029e4f4d0e99220e31054058aff845cae1f209cc65bcb3b4665"
+    },
+    {
+      "path": "icons/icon-256.webp",
+      "size": 66649,
+      "sha256": "f47876d3e91c5edf36b648e19041d282bdd9aead46384c3c61027e4f2067038e"
+    },
+    {
+      "path": "icons/icon-48.webp",
+      "size": 3915,
+      "sha256": "f3a422ecb69af79013110ebb0a3c03f225588a51b68838507f154a10714a807c"
+    },
+    {
+      "path": "icons/icon-512.webp",
+      "size": 243660,
+      "sha256": "4928fed3acbe4d3c0c32f342256ea0269925ad56ab2db30177897e9ba527f33b"
+    },
+    {
+      "path": "icons/icon-72.webp",
+      "size": 7165,
+      "sha256": "6489415320325bc3b8c42b6d5efe4873e60241f69f6fd3bc860f564ec576bef8"
+    },
+    {
+      "path": "icons/icon-96.webp",
+      "size": 11293,
+      "sha256": "4ae36fbf92eaa55b6804a3905662c8f4a34e588620babdfaebc99fee01e6fe02"
+    },
+    {
+      "path": "index.css",
+      "size": 353,
+      "sha256": "2b5491c70f3e31164a45f59fc7901a8471f26f19620a098cc60efc08db13fc47"
+    },
+    {
+      "path": "index.html",
+      "size": 1318,
+      "sha256": "45a03e9f4e36fa60439768c5179c4bfd4cf1e90774aa04abf412470f855f1f54"
+    },
+    {
+      "path": "index.tsx",
+      "size": 372,
+      "sha256": "08a57f18946ccc70fb59bf2b4117167ab41a99ea513fd6fd2be64829720e6748"
+    },
+    {
+      "path": "lib/auth.ts",
+      "size": 971,
+      "sha256": "34e9ae81065adbfc2d00533f33c719a04959c474742163c46f8a1096c7e879e7"
+    },
+    {
+      "path": "lib/emailExport.ts",
+      "size": 521,
+      "sha256": "3dd49b27c5c099cc6472e0dcff8504221cff74b8276fdc02e6c6f8989fc526c0"
+    },
+    {
+      "path": "lib/formatOrderForManager.ts",
+      "size": 9296,
+      "sha256": "88f40717670e82dca7d73ab13ce70b7ff2fb4d806715d8bf74adbfee93efafd1"
+    },
+    {
+      "path": "lib/phone.ts",
+      "size": 1044,
+      "sha256": "0275caf507d85467e9d3185661a583b079b3b3de215f0d8bc2d3f24ffc6ea82e"
+    },
+    {
+      "path": "lib/tochkaApi.ts",
+      "size": 9473,
+      "sha256": "eb4aa750782a05c1ca22e9840507f8ee85a616dca2dffc9551cf4803af53f791"
+    },
+    {
+      "path": "lib/txtExport.ts",
+      "size": 1332,
+      "sha256": "d0c7fa7131bee43c7675fd8c6fc6fd24771a8579d114e59ee2c0d209c00b6e38"
+    },
+    {
+      "path": "lib/vkManager.ts",
+      "size": 945,
+      "sha256": "01392bcdc29981cb7c47516933ac5f362474ae3f0ec76b4bc097d4ad31b66dd8"
+    },
+    {
+      "path": "logic/calculations.ts",
+      "size": 18713,
+      "sha256": "45f102d34c5621b2327ba7ab3c7ff1581616a46512a1644c4297be04e1378141"
+    },
+    {
+      "path": "logic/orderTotals.ts",
+      "size": 6720,
+      "sha256": "0a434abb40f254ec15ff5c6f037b9742a2293d54ac46c68a228766283297895f"
+    },
+    {
+      "path": "MEASUREMENTS_STATUS_ANALYSIS_FOR_CHATGPT.md",
+      "size": 16213,
+      "sha256": "21a97239798c84185bb421fe8dbefb65212c12f9bd7b765ab430001b6dd177f5"
+    },
+    {
+      "path": "metadata.json",
+      "size": 327,
+      "sha256": "d023b58236773d92afe2629eebbcc4c133721704087a25746ef3502662d814a4"
+    },
+    {
+      "path": "package-lock.json",
+      "size": 319629,
+      "sha256": "5a1289b900c69ac613e79e6a6525b64b85b09ca48b37169171455b98d95b2e42"
+    },
+    {
+      "path": "package.json",
+      "size": 1224,
+      "sha256": "bdef474543e5e9acc8747ad4b6f029dcc150d601cc19d92a8d254ad04d91f55d"
+    },
+    {
+      "path": "plisse-net-test.js",
+      "size": 5556,
+      "sha256": "1c6bb44c05edcb69fd5bc68e6dce7596d204e0652cd5a696b5618ee6c5a6ad1f"
+    },
+    {
+      "path": "postcss.config.cjs",
+      "size": 83,
+      "sha256": "fa650b380adfabb151a0b352f7135e107e6352345f899060f1c5c231228f94bf"
+    },
+    {
+      "path": "PROJECT_OVERVIEW_FOR_CHATGPT.md",
+      "size": 47580,
+      "sha256": "c2c0e31d8400bbe5f6f74626f3864add7f1ef136ff937a48730a70a896300d2d"
+    },
+    {
+      "path": "public/favicon.png",
+      "size": 825595,
+      "sha256": "10ebf2cf93bbc40e396a319a936a9baa33114047664a29ea238e841e4183a58f"
+    },
+    {
+      "path": "public/favicon.svg",
+      "size": 274,
+      "sha256": "85e0d265ed7d42cf75706f8e48b02f7b554f2c3c794458fa7f06ee33fbdbd160"
+    },
+    {
+      "path": "public/icon-512x512.png",
+      "size": 699401,
+      "sha256": "878f0b8aebeb5905443ec19a46ff00a8925901d83b92f62df52095adec3052f6"
+    },
+    {
+      "path": "public/icon.png",
+      "size": 825595,
+      "sha256": "10ebf2cf93bbc40e396a319a936a9baa33114047664a29ea238e841e4183a58f"
+    },
+    {
+      "path": "public/manifest.webmanifest",
+      "size": 1164,
+      "sha256": "b7c0cc9b5aad204940294d32c27a37fa76b65b478fbbf434a037ccda161a0b6c"
+    },
+    {
+      "path": "README.md",
+      "size": 553,
+      "sha256": "658e79f97e3d334da69a55290dddbf607efa96605acdee28772b79da8a41ab4b"
+    },
+    {
+      "path": "screens/AdminScreen.tsx",
+      "size": 35941,
+      "sha256": "6ffa4cbcce1c5aaae342345059285e1f1626c7f1981b121f84d8b6d73a9a83a9"
+    },
+    {
+      "path": "screens/ArchiveScreen.tsx",
+      "size": 60742,
+      "sha256": "46d6c460a363b9d5865debdc608b395d7e7760b55d3e8ed5838d64ca8a1ec253"
+    },
+    {
+      "path": "screens/CalcScreen.tsx",
+      "size": 31415,
+      "sha256": "b6c40b3ec1be471ecda39f3808b1240698b987d21729fa18837c9b7b4505a67e"
+    },
+    {
+      "path": "screens/CartScreen.tsx",
+      "size": 50748,
+      "sha256": "4dfbc59853007b725ef40b23b8f60386a527fbd5e0831da5af0d7b2969f9a2fb"
+    },
+    {
+      "path": "screens/HomeScreen.tsx",
+      "size": 8509,
+      "sha256": "7b74b527a6d5e626911a1ada15c5865b8fd40367f7c40d2c2ea6d20447154b71"
+    },
+    {
+      "path": "screens/InProgressScreen.tsx",
+      "size": 1267,
+      "sha256": "d1f19e52929373af365825d7489f4c8f89111f6dcadb58c2072da0bc2351d172"
+    },
+    {
+      "path": "screens/InstallationScreen.tsx",
+      "size": 29636,
+      "sha256": "c44ac244933236bf1e6c8ffa4addbb8effcfc7bc426dd9a95faa7f4b91e5b55d"
+    },
+    {
+      "path": "screens/LoginScreen.tsx",
+      "size": 6393,
+      "sha256": "bd239c4a7afd9e8131089e052d777a80b5879b25a229f268ec8caee86e27dd9b"
+    },
+    {
+      "path": "screens/MenuScreen.tsx",
+      "size": 5713,
+      "sha256": "ef215630b34c6582c3513086588e73734c9ac369c4eebc018e78700248fbcbce"
+    },
+    {
+      "path": "screens/UpcomingScreen.tsx",
+      "size": 39304,
+      "sha256": "5029afa6871be8cf07a66ec027f26914bdf49bb8e67709c4fa2b558a6fdf7204"
+    },
+    {
+      "path": "scripts/analyze-plisse-dealer-prices.ts",
+      "size": 15627,
+      "sha256": "d1eca8d170165a20f230df540a6e52f3425d3e27019445c4e11e9aa1a4131e43"
+    },
+    {
+      "path": "scripts/export-prices-for-desktop.ts",
+      "size": 12900,
+      "sha256": "9392f80602a182958972c4f1d8c44040ebb4e100f031e5814d409598b8fe8bfc"
+    },
+    {
+      "path": "scripts/generate_dealer_plisse_docx.py",
+      "size": 8108,
+      "sha256": "03ca0ca21c82fc9de1a9f0e75187496e756f09d1018e466258e7ec4fb40533e7"
+    },
+    {
+      "path": "scripts/google-apps-script/firebase-crm.backup.js",
+      "size": 13014,
+      "sha256": "beeee7ee2863f22d8c3ef5b20f36419fd49f48974a1b4064510ccdee68f97887"
+    },
+    {
+      "path": "scripts/google-apps-script/firebase-crm.js",
+      "size": 82419,
+      "sha256": "b011abd21fbb6406c0d295473287424d3ec381b245c011c706f1565b852a6ee9"
+    },
+    {
+      "path": "tailwind.config.cjs",
+      "size": 309,
+      "sha256": "e0e682c8e273df2ea034874d071c95c4027740e0c6fbfb00cbdee5f6f2a78737"
+    },
+    {
+      "path": "tsconfig.json",
+      "size": 590,
+      "sha256": "b5ec18c3eb06f56bc92e0c439685a05de01bc26fd42efb8e358c6e224f60e41b"
+    },
+    {
+      "path": "types.ts",
+      "size": 6623,
+      "sha256": "a044239a2182bed304f201543b120cf876ddefac986c5e7a905a80ea1e346594"
+    },
+    {
+      "path": "vite.config.ts",
+      "size": 1983,
+      "sha256": "10f1f19902153ce7fae4a63284e5743a21bcefb3517547a5bf820df791ebd0b0"
+    }
+  ]
+}

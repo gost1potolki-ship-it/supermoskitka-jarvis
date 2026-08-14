@@ -1,0 +1,157 @@
+---
+description: Матрица полей калькулятора — вид изделия, UI, ключи кода; для агента и переноса на сайт
+alwaysApply: true
+---
+
+# Калькулятор: матрица «вид изделия → поля → код»
+
+**Зачем это правило:** чтобы агент не гадал, какие селекторы есть у какого типа и какие строки из `types.ts` / `calculatePrice` использовать.
+
+## Источники истины (порядок чтения)
+
+| Что | Файл |
+|-----|------|
+| Какие блоки UI показываются по типу | `screens/CalcScreen.tsx` |
+| Формулы | `logic/calculations.ts` → `calculatePrice`, движки `*Engine` |
+| Цифры прайса | `constants.ts` → `PRICES` |
+| Перечисления и ключи полей | `types.ts` — `ProductType`, `MeshType`, `ColorType`, `MountType`, `CornerType`, `HandleType`, `PlisseOpening`, `PlisseThreshold` |
+| Подписи для пользователя | `constants.ts` — `COLOR_LABELS`, `MESH_LABELS`, `MOUNT_LABELS`, `CORNER_LABELS`, `HANDLE_LABELS`, `OPENING_LABELS`, `THRESHOLD_LABELS` |
+
+**Имя типа в коде:** `ProductType` — enum; значения строковые (русские названия как в меню).
+
+---
+
+## Общие поля (не услуги)
+
+- **Размеры:** `width`, `height` (мм), `quantity` (шт.) — почти всегда.
+- **RAL:** для классики при `color === ral` UI принудительно сдвигает уголки/ручки/крепёж (см. `useEffect` в `CalcScreen`).
+
+---
+
+## По каждому виду изделия
+
+Формат: **вид** → полотно/ткань → цвет → прочее → что скрыто в UI.
+
+### `ProductType.FRAME` — рамочная сетка
+
+| Секция | Ключи в коде | Варианты в UI |
+|--------|----------------|---------------|
+| Полотно | `mesh` | `standard`, `antimoshka`, `anticat`, `antipyl` |
+| Цвет | `color` | `white`, `brown`, `gray`, `ral` |
+| Профиль | `frameProfile` | `25` \| `32` (мм) |
+| Уголки | `cornerType` | `plastic` \| `aluminum` (у `32` алюминий недоступен; у RAL — только алюминий) |
+| Ручки | `handleType` | `plastic` \| `metal` (у RAL — только металл) |
+| Крепление | `mount` | `standard` \| `z_metal` \| `plunger` (у RAL `standard` недоступен) |
+
+---
+
+### `ProductType.WING` — «Крыло»
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Полотно | `mesh` | как у рамочной: `standard`, `antimoshka`, `anticat`, `antipyl` |
+| Цвет | `color` | `white`, `brown`, `gray`, `ral` |
+
+**Нет отдельных блоков:** уголки, ручки, крепление (остаются значения из state по умолчанию).
+
+---
+
+### `ProductType.INSIDE_INSERT` — внутривставные VSN
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Полотно | `mesh` | `standard`, `antimoshka`, `anticat`, `antipyl` |
+| Цвет | `color` | `white`, `brown`, `gray`, `ral` |
+
+**Нет отдельных блоков:** уголки, ручки, крепление.
+
+---
+
+### `ProductType.DOOR` — дверная распашная
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Полотно | `mesh` | `standard`, `antimoshka`, `anticat`, `antipyl` |
+| Цвет | `color` | `white`, `brown`, `gray`, `ral` |
+| Профиль | `doorProfile` | `32` \| `42` (мм) |
+| Петли | `hingesCount` | `2` \| `3` |
+| Фурнитура | `hasLatch`, `hasBolt` | булевы (защёлка / шпингалет) |
+
+**Отдельного блока «крепление» в UI нет** — в корзину всё равно уходит `mount` (дефолт из state).
+
+---
+
+### `ProductType.ROLL` — рулонные
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Полотно | `mesh` | фильтр как у рамочной: `standard`, `antimoshka`, `anticat`, `antipyl` |
+| Цвет | `color` | `white`, `brown`, `gray`, `ral` |
+
+**Нет:** профиль рамы, уголки, крепление (в форме).
+
+---
+
+### `ProductType.PLISSE_NET` — плиссе-сетка
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Полотно | `mesh` | `standard`, `antikoshka`, `antipyl` |
+| Цвет | `color` | `white`, `brown`, `anthracite`, `ral` |
+| Открывание | `opening` | `side` \| `up` \| `counter` |
+| Порог | `threshold` | кнопки из `THRESHOLD_LABELS`: `standard`, `low` (в типах есть `reinforced`, в подписях экрана нет) |
+| Ручки | `handles` | `0`, `1`, `2`, `4`; при `opening === counter` только `4` |
+
+---
+
+### `ProductType.JALOUSIE_CLASSIC` — штора плиссе «Портал»
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Ткань | `mesh` | все `fb1601`…`fb1607`, `fa1621`…`fa1627` (группы blackout / semi) |
+| Цвет | `color` | `white`, `brown`, `anthracite`, `ral` |
+| Открывание | `opening` | `side` \| `up` \| `counter` |
+| Порог | `threshold` | `standard`, `low` |
+| Ручки | `handles` | как у плиссе-сетки |
+
+---
+
+### `ProductType.JALOUSIE_LIGHT` — штора «Лайт»
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Ткань | `mesh` | FB / FA как у Портала |
+| Цвет | `color` | `white`, `brown`, `gray`, `gold`, `black`, `ral` |
+
+**Нет блоков:** открывание, порог, ручки.
+
+---
+
+### `ProductType.JALOUSIE_COZY` — штора «Уют+»
+
+| Секция | Ключи | Варианты в UI |
+|--------|--------|----------------|
+| Ткань | `mesh` | FB / FA |
+| Цвет | `color` | `white`, `gray`, `anthracite`, `ral` — у ключа `gray` подпись в UI **«Коричневый»** (см. `CalcScreen`) |
+| Открывание | `opening` | `side`, `up` только (**`counter` отфильтрован**) |
+
+**Нет блоков:** порог, ручки.
+
+---
+
+### Услуги (без ширины/высоты в полях размера)
+
+| `ProductType` | Ввод | Доп. поля |
+|----------------|------|-----------|
+| `SEAL` | количество **м.п.** | — |
+| `COMB` | шт. | `handleType`: `plastic` \| `metal` |
+| `CHILD_LOCK` | шт. | — |
+| `ADJUSTMENT` | шт. | `subType`: `window` \| `door` (окно / дверь ПВХ) |
+
+---
+
+## Быстрые правила для агента
+
+1. **Плиссе-сетка и Портал** делят общую логику открывания/порога/ручек; **Лайт** и **Уют+** — урезанный набор полей (см. выше).
+2. **Рулонные и рамочная линейка** в одном списке полотна в UI (4 типа), но **плиссе** — другой список (3 типа).
+3. Любая правка «какие варианты доступны» — сначала `CalcScreen` (фильтры `allowedFrameMeshes` / `allowedPlisseMeshes`, `availableColors`, условия `isFrame` / `isDoor` / …), затем согласованность с `calculatePrice`.

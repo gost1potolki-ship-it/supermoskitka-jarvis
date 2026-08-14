@@ -1,0 +1,109 @@
+{
+  "exportedAt": "2026-06-01T10:38:37.691Z",
+  "entries": [
+    {
+      "productType": "Рамочные",
+      "engine": "ClassicEngine",
+      "requiredFields": "width;height;quantity;color;mesh;mount;cornerType;handleType;frameProfile",
+      "optionalFields": "comment",
+      "ignoredFields": "",
+      "notes": "frameProfile=32: уголки только plastic_32mm в расчёте"
+    },
+    {
+      "productType": "КРЫЛО",
+      "engine": "ClassicEngine",
+      "requiredFields": "width;height;quantity;color;mesh",
+      "optionalFields": "mount;cornerType;handleType;comment",
+      "ignoredFields": "",
+      "notes": "UI без крепления/углов/ручек; дефолты state в расчёте"
+    },
+    {
+      "productType": "Внутривставные",
+      "engine": "ClassicEngine",
+      "requiredFields": "width;height;quantity;color;mesh",
+      "optionalFields": "mount;cornerType;handleType",
+      "ignoredFields": "",
+      "notes": "Без импоста"
+    },
+    {
+      "productType": "Дверные",
+      "engine": "ClassicEngine",
+      "requiredFields": "width;height;quantity;color;mesh;doorProfile;hingesCount;hasLatch;hasBolt",
+      "optionalFields": "mount",
+      "ignoredFields": "cornerType;handleType;frameProfile",
+      "notes": "install 1000; mult 2.8"
+    },
+    {
+      "productType": "Рулонные",
+      "engine": "RollEngine",
+      "requiredFields": "width;height;quantity;mesh",
+      "optionalFields": "color",
+      "ignoredFields": "mount;cornerType;handleType;opening;threshold;handles",
+      "notes": "color не влияет на расчёт"
+    },
+    {
+      "productType": "Плиссе Сетки",
+      "engine": "PlisseNetEngine",
+      "requiredFields": "width;height;quantity;color;mesh;opening;threshold;handles",
+      "optionalFields": "",
+      "ignoredFields": "mount;cornerType;handleType;frameProfile",
+      "notes": "mesh: standard|antikoshka|antipyl"
+    },
+    {
+      "productType": "ШТОРЫ плиссе ПОРТАЛ",
+      "engine": "BlindsEngine",
+      "requiredFields": "width;height;quantity;color;mesh;opening;threshold;handles",
+      "optionalFields": "",
+      "ignoredFields": "mount;cornerType;handleType",
+      "notes": "Ткань FB/FA"
+    },
+    {
+      "productType": "ШТОРЫ плиссе ЛАЙТ",
+      "engine": "BlindsEngine",
+      "requiredFields": "width;height;quantity;color;mesh",
+      "optionalFields": "",
+      "ignoredFields": "opening;threshold;handles;mount",
+      "notes": "lite_system"
+    },
+    {
+      "productType": "ШТОРЫ плиссе УЮТ +",
+      "engine": "BlindsEngine",
+      "requiredFields": "width;height;quantity;color;mesh;opening",
+      "optionalFields": "",
+      "ignoredFields": "threshold;handles",
+      "notes": "opening: side|up"
+    },
+    {
+      "productType": "Уплотнительная резинка",
+      "engine": "MaintenanceEngine",
+      "requiredFields": "quantity",
+      "optionalFields": "",
+      "ignoredFields": "width;height;color;mesh",
+      "notes": "quantity = м.п."
+    },
+    {
+      "productType": "Гребенка",
+      "engine": "MaintenanceEngine",
+      "requiredFields": "quantity;handleType",
+      "optionalFields": "",
+      "ignoredFields": "width;height",
+      "notes": ""
+    },
+    {
+      "productType": "Детский замок",
+      "engine": "MaintenanceEngine",
+      "requiredFields": "quantity",
+      "optionalFields": "",
+      "ignoredFields": "",
+      "notes": ""
+    },
+    {
+      "productType": "Регулировка",
+      "engine": "MaintenanceEngine",
+      "requiredFields": "quantity;subType",
+      "optionalFields": "",
+      "ignoredFields": "",
+      "notes": "subType window|door"
+    }
+  ]
+}

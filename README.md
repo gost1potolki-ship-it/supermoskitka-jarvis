@@ -1,6 +1,18 @@
 # SuperMoskitka Jarvis
 
-HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separate from the surveyor React/Firebase app.
+HTTP backend for the SuperMoskitka AI manager (Jarvis), now consolidated with Presales CRM and measurer app sources in one repository.
+
+## Repository Layout
+
+```text
+D:\supermoskitka-jarvis
+│
+├── Jarvis API (root)     # this backend
+├── apps/presales-crm     # office CRM
+└── apps/measurer         # measurer / Capacitor app
+```
+
+See `docs/architecture/SUPERMOSKITKA_WORKSPACE.md`.
 
 ## Project documentation
 
@@ -16,6 +28,9 @@ HTTP backend scaffold for the SuperMoskitka AI manager. This repository is separ
 - `docs/APPLICATION_API.md` — internal Application/HTTP API boundary (`/internal/v1`)
 - `docs/openapi.internal.v1.yaml` — OpenAPI for internal v1
 - `docs/PERSISTENCE.md` — Firestore persistence for Conversation / Order Memory
+- `docs/architecture/SUPERMOSKITKA_WORKSPACE.md` — consolidated workspace layout
+- `docs/architecture/IMPORT_PROVENANCE.md` — Task 13 import provenance
+- `docs/architecture/JARVIS_CRM_INTEGRATION_MAP.md` — future Jarvis↔CRM map (docs only)
 
 ## Requirements
 
@@ -44,7 +59,10 @@ npm install
 | `npm run smoke:odirouter:readiness` | Live OdiRouter preliminary readiness smoke (not in `npm test`) |
 | `npm run smoke:api:odirouter` | Live HTTP Application API smoke via OdiRouter (not in `npm test`) |
 | `npm run smoke:firestore:persistence` | Live Firestore persistence smoke (`jarvis_v1_*` only; not in `npm test`) |
-| `npm run build` | Compile TypeScript to `dist/` |
+| `npm run verify:workspace` | Verify consolidated apps layout / CRM `@calc` wiring |
+| `npm run build:crm` | Build imported Presales CRM (`apps/presales-crm`) |
+| `npm run build:measurer` | Build imported measurer app (`apps/measurer`) |
+| `npm run build` | Compile Jarvis TypeScript to `dist/` |
 | `npm start` | Run the compiled server |
 
 ## Health check

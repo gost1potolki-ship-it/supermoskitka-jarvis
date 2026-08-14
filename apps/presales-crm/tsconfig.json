@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "lib": ["ES2020", "DOM"],
+    "paths": {
+      "@calc/*": ["../measurer/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../measurer/logic/calculations.ts",
+    "../measurer/logic/orderTotals.ts",
+    "../measurer/types.ts",
+    "../measurer/constants.ts",
+    "../measurer/lib/phone.ts"
+  ]
+}

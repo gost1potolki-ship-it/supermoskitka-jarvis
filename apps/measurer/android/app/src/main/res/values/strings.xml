@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Супермоскитка</string>
+    <string name="title_activity_main">Супермоскитка</string>
+    <string name="package_name">com.supermoskitka.app</string>
+    <string name="custom_url_scheme">com.supermoskitka.app</string>
+</resources>

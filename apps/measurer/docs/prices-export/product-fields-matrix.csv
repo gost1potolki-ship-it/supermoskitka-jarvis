@@ -1,0 +1,14 @@
+product_type,engine,required_fields,optional_fields,ignored_fields,notes
+Рамочные,ClassicEngine,width;height;quantity;color;mesh;mount;cornerType;handleType;frameProfile,comment,,frameProfile=32: уголки только plastic_32mm в расчёте
+КРЫЛО,ClassicEngine,width;height;quantity;color;mesh,mount;cornerType;handleType;comment,,UI без крепления/углов/ручек; дефолты state в расчёте
+Внутривставные,ClassicEngine,width;height;quantity;color;mesh,mount;cornerType;handleType,,Без импоста
+Дверные,ClassicEngine,width;height;quantity;color;mesh;doorProfile;hingesCount;hasLatch;hasBolt,mount,cornerType;handleType;frameProfile,install 1000; mult 2.8
+Рулонные,RollEngine,width;height;quantity;mesh,color,mount;cornerType;handleType;opening;threshold;handles,color не влияет на расчёт
+Плиссе Сетки,PlisseNetEngine,width;height;quantity;color;mesh;opening;threshold;handles,,mount;cornerType;handleType;frameProfile,mesh: standard|antikoshka|antipyl
+ШТОРЫ плиссе ПОРТАЛ,BlindsEngine,width;height;quantity;color;mesh;opening;threshold;handles,,mount;cornerType;handleType,Ткань FB/FA
+ШТОРЫ плиссе ЛАЙТ,BlindsEngine,width;height;quantity;color;mesh,,opening;threshold;handles;mount,lite_system
+ШТОРЫ плиссе УЮТ +,BlindsEngine,width;height;quantity;color;mesh;opening,,threshold;handles,opening: side|up
+Уплотнительная резинка,MaintenanceEngine,quantity,,width;height;color;mesh,quantity = м.п.
+Гребенка,MaintenanceEngine,quantity;handleType,,width;height,
+Детский замок,MaintenanceEngine,quantity,,,
+Регулировка,MaintenanceEngine,quantity;subType,,,subType window|door

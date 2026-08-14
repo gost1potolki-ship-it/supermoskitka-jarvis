@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supermoskitka.local/schemas/desktop-calculator.json",
+  "title": "DesktopCalculatorSchemas",
+  "description": "Схемы для ПК-калькулятора. Основной ввод расчёта: #/$defs/calculatePriceInput. Корзина: cartItem. Заказ: orderState.",
+  "$defs": {
+    "productType": {
+      "type": "string",
+      "enum": [
+        "Рамочные",
+        "КРЫЛО",
+        "Дверные",
+        "Рулонные",
+        "Плиссе Сетки",
+        "ШТОРЫ плиссе ПОРТАЛ",
+        "ШТОРЫ плиссе ЛАЙТ",
+        "ШТОРЫ плиссе УЮТ +",
+        "Внутривставные",
+        "Уплотнительная резинка",
+        "Гребенка",
+        "Детский замок",
+        "Регулировка"
+      ]
+    },
+    "colorType": {
+      "type": "string",
+      "enum": ["white", "brown", "gray", "ral", "unpainted", "anthracite", "beige", "black", "gold", "gray7040"]
+    },
+    "meshTypeClassic": {
+      "type": "string",
+      "enum": ["standard", "anticat", "antipyl", "antimoshka", "antimosquito", "antipollen"]
+    },
+    "meshTypePlisseNet": {
+      "type": "string",
+      "enum": ["standard", "antikoshka", "antipyl"]
+    },
+    "meshTypeFabric": {
+      "type": "string",
+      "enum": [
+        "fb1601", "fb1602", "fb1603", "fb1604", "fb1605", "fb1606", "fb1607",
+        "fa1621", "fa1622", "fa1623", "fa1624", "fa1625", "fa1626", "fa1627"
+      ]
+    },
+    "mountType": { "type": "string", "enum": ["standard", "z_metal", "plunger"] },
+    "cornerType": { "type": "string", "enum": ["plastic", "aluminum"] },
+    "handleType": { "type": "string", "enum": ["plastic", "metal"] },
+    "plisseOpening": { "type": "string", "enum": ["side", "up", "counter"] },
+    "plisseThreshold": { "type": "string", "enum": ["standard", "low", "reinforced"] },
+    "frameProfile": { "type": "string", "enum": ["25", "32"] },
+    "doorProfile": { "type": "string", "enum": ["32", "42"] },
+    "adjustmentSubType": { "type": "string", "enum": ["window", "door", "pvc", "alu"] },
+    "deliveryType": { "type": "string", "enum": ["city", "out", "pickup"] },
+    "orderDiscountPercent": { "type": "integer", "enum": [0, 5, 10] },
+    "paymentMethod": { "type": "string", "enum": ["cash", "qr"] },
+    "positiveMm": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "calculatePriceInput": {
+      "type": "object",
+      "required": ["type", "quantity"],
+      "properties": {
+        "type": { "$ref": "#/$defs/productType" },
+        "width": { "type": "number", "minimum": 0, "default": 0 },
+        "height": { "type": "number", "minimum": 0, "default": 0 },
+        "color": { "$ref": "#/$defs/colorType", "default": "white" },
+        "mesh": { "type": "string", "default": "standard" },
+        "opening": { "$ref": "#/$defs/plisseOpening", "default": "side" },
+        "threshold": { "$ref": "#/$defs/plisseThreshold", "default": "standard" },
+        "handles": { "type": "integer", "minimum": 0, "maximum": 4, "default": 1 },
+        "quantity": { "type": "number", "exclusiveMinimum": 0 },
+        "subType": { "$ref": "#/$defs/adjustmentSubType", "default": "window" },
+        "mount": { "$ref": "#/$defs/mountType", "default": "z_metal" },
+        "cornerType": { "$ref": "#/$defs/cornerType", "default": "plastic" },
+        "handleType": { "$ref": "#/$defs/handleType", "default": "plastic" },
+        "doorProfile": { "$ref": "#/$defs/doorProfile", "default": "42" },
+        "hingesCount": { "type": "integer", "enum": [2, 3], "default": 3 },
+        "hasLatch": { "type": "boolean", "default": true },
+        "hasBolt": { "type": "boolean", "default": false },
+        "frameProfile": { "$ref": "#/$defs/frameProfile", "default": "25" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "Рамочные", "КРЫЛО", "Дверные", "Рулонные", "Плиссе Сетки",
+                  "ШТОРЫ плиссе ПОРТАЛ", "ШТОРЫ плиссе ЛАЙТ", "ШТОРЫ плиссе УЮТ +", "Внутривставные"
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["width", "height"],
+            "properties": {
+              "width": { "$ref": "#/$defs/positiveMm" },
+              "height": { "$ref": "#/$defs/positiveMm" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "Рамочные" } }, "required": ["type"] },
+          "then": {
+            "required": ["color", "mesh", "mount", "cornerType", "handleType", "frameProfile"],
+            "properties": { "mesh": { "$ref": "#/$defs/meshTypeClassic" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "Дверные" } }, "required": ["type"] },
+          "then": {
+            "required": ["color", "mesh", "doorProfile", "hingesCount", "hasLatch", "hasBolt"],
+            "properties": { "mesh": { "$ref": "#/$defs/meshTypeClassic" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "Плиссе Сетки" } }, "required": ["type"] },
+          "then": {
+            "required": ["color", "mesh", "opening", "threshold", "handles"],
+            "properties": { "mesh": { "$ref": "#/$defs/meshTypePlisseNet" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["ШТОРЫ плиссе ПОРТАЛ", "ШТОРЫ плиссе ЛАЙТ", "ШТОРЫ плиссе УЮТ +"] } },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["color", "mesh"],
+            "properties": { "mesh": { "$ref": "#/$defs/meshTypeFabric" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "ШТОРЫ плиссе ПОРТАЛ" } }, "required": ["type"] },
+          "then": { "required": ["opening", "threshold", "handles"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "ШТОРЫ плиссе УЮТ +" } }, "required": ["type"] },
+          "then": {
+            "required": ["opening"],
+            "properties": { "opening": { "enum": ["side", "up"] } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "Гребенка" } }, "required": ["type"] },
+          "then": { "required": ["handleType", "quantity"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "Регулировка" } }, "required": ["type"] },
+          "then": { "required": ["subType", "quantity"] }
+        },
+        {
+          "if": { "properties": { "type": { "enum": ["Уплотнительная резинка", "Детский замок"] } }, "required": ["type"] },
+          "then": { "required": ["quantity"] }
+        }
+      ]
+    },
+    "cartItem": {
+      "type": "object",
+      "required": ["id", "type", "price", "installPrice", "details"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "$ref": "#/$defs/productType" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "quantity": { "type": "number", "minimum": 1, "default": 1 },
+        "color": { "$ref": "#/$defs/colorType" },
+        "mesh": { "type": "string" },
+        "mount": { "$ref": "#/$defs/mountType" },
+        "cornerType": { "$ref": "#/$defs/cornerType" },
+        "handleType": { "$ref": "#/$defs/handleType" },
+        "frameProfile": { "$ref": "#/$defs/frameProfile" },
+        "opening": { "$ref": "#/$defs/plisseOpening" },
+        "threshold": { "$ref": "#/$defs/plisseThreshold" },
+        "handles": { "type": "integer" },
+        "price": { "type": "number" },
+        "installPrice": { "type": "number" },
+        "details": { "type": "string" },
+        "comment": { "type": "string" },
+        "subType": { "$ref": "#/$defs/adjustmentSubType" },
+        "doorProfile": { "$ref": "#/$defs/doorProfile" },
+        "hingesCount": { "type": "integer" },
+        "hasLatch": { "type": "boolean" },
+        "hasBolt": { "type": "boolean" }
+      }
+    },
+    "orderState": {
+      "type": "object",
+      "required": ["items", "deliveryType", "deliveryKm", "globalInstall"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/cartItem" } },
+        "deliveryType": { "$ref": "#/$defs/deliveryType" },
+        "deliveryKm": { "type": "number", "minimum": 0 },
+        "globalInstall": { "type": "boolean" },
+        "installOverride": { "type": ["number", "null"] },
+        "orderDiscountPercent": { "$ref": "#/$defs/orderDiscountPercent" },
+        "includeMeasurementFee": { "type": "boolean" },
+        "paymentMethod": { "$ref": "#/$defs/paymentMethod" },
+        "measurementPaidCash": { "type": "boolean" },
+        "isMeasurementPaidCash": { "type": "boolean" },
+        "measurement_paid_cash": { "type": "boolean" },
+        "generalComment": { "type": "string" },
+        "customer": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

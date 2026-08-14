@@ -4,6 +4,8 @@ coverage/
 .env
 .env.local
 .env.*.local
+**/.env.local
+**/.env.*.local
 *.log
 npm-debug.log*
 .DS_Store
@@ -11,3 +13,11 @@ npm-debug.log*
 .vscode/
 *.tsbuildinfo
 /TASK_*_REVIEW.patch
+apps/**/android/.gradle/
+apps/**/android/**/build/
+apps/**/*.apk
+apps/**/*.aab
+apps/**/*.jks
+apps/**/*.keystore
+**/__pycache__/
+*.pyc
