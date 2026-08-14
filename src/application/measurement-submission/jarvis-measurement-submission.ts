@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 
 import type { MeasurementSubmissionV1, OrderMemory } from '../../domain/index.js';
+import {
+  DEFAULT_MEASURER_PAYER,
+  buildMeasurementFinancials,
+} from '../../domain/measurement-financials.js';
 import { buildMeasurementDraft } from '../../jarvis/preliminary/index.js';
 
 const HASH_PREFIX_LENGTH = 32;
@@ -42,6 +46,10 @@ export function buildTrustedJarvisMeasurementSubmission(
   }
 
   const itemSummary = compactItemSummary(memory);
+  const financials = buildMeasurementFinancials({
+    preliminaryTotalRub: quote.publicTotalRub,
+    measurerPayer: DEFAULT_MEASURER_PAYER,
+  });
   return {
     submissionId: createJarvisMeasurementSubmissionId(memory.conversationId),
     source: 'JARVIS',
@@ -51,8 +59,11 @@ export function buildTrustedJarvisMeasurementSubmission(
       address: draft.customer.address.trim(),
     },
     itemSummary,
-    preliminaryTotalRub: quote.publicTotalRub,
-    payerType: 'CUSTOMER',
+    preliminaryTotalRub: financials.preliminaryTotalRub,
+    measurerPayoutRub: financials.measurerPayoutRub,
+    measurerPayer: financials.measurerPayer,
+    customerDepositRub: financials.customerDepositRub,
+    remainingBalanceRub: financials.remainingBalanceRub,
     jarvis: {
       conversationId: memory.conversationId,
       memoryRevision: revision,

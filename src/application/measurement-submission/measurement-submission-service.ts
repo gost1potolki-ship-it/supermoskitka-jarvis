@@ -1,4 +1,5 @@
 import type { MeasurementSubmissionV1 } from '../../domain/index.js';
+import { assertMeasurementFinancialPayload } from '../../domain/measurement-financials.js';
 
 import { MeasurementSheetError } from './errors.js';
 import type {
@@ -48,12 +49,13 @@ function assertValidSubmission(submission: MeasurementSubmissionV1): void {
   if (!submission.customer.address.trim()) {
     throw new TypeError('customer.address is required');
   }
-  if (
-    submission.preliminaryTotalRub !== undefined &&
-    (!Number.isFinite(submission.preliminaryTotalRub) || submission.preliminaryTotalRub < 0)
-  ) {
-    throw new TypeError('preliminaryTotalRub must be a non-negative finite number');
-  }
+  assertMeasurementFinancialPayload({
+    preliminaryTotalRub: submission.preliminaryTotalRub,
+    measurerPayoutRub: submission.measurerPayoutRub,
+    measurerPayer: submission.measurerPayer,
+    customerDepositRub: submission.customerDepositRub,
+    remainingBalanceRub: submission.remainingBalanceRub,
+  });
 }
 
 /**

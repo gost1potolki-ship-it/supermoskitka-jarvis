@@ -18,8 +18,11 @@ export interface MeasurementSubmissionV1 {
   itemSummary: string;
   comment?: string;
   preferredTime?: string;
-  preliminaryTotalRub?: number;
-  payerType: MeasurementPayerType;
+  preliminaryTotalRub: number;
+  measurerPayoutRub: number;
+  measurerPayer: MeasurementPayerType;
+  customerDepositRub: number;
+  remainingBalanceRub: number;
   jarvis?: {
     conversationId: string;
     memoryRevision: number;

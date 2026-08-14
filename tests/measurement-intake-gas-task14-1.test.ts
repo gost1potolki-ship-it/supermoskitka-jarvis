@@ -206,6 +206,11 @@ function payload(overrides: Record<string, unknown> = {}) {
     customerComment: 'Позвонить заранее',
     payer_text: 'Заказчик',
     amount_rub: 1000,
+    preliminaryTotalRub: 15_000,
+    measurerPayoutRub: 1000,
+    measurerPayer: 'CUSTOMER',
+    customerDepositRub: 1000,
+    remainingBalanceRub: 14_000,
     ...overrides,
   };
 }
@@ -333,6 +338,11 @@ describe('Task 14.1 Firestore REST sequencing and failure control', () => {
       comment: { stringValue: '3 сетки стандарт' },
       payer_text: { stringValue: 'Заказчик' },
       amount_rub: { integerValue: '1000' },
+      preliminaryTotalRub: { integerValue: '15000' },
+      measurerPayoutRub: { integerValue: '1000' },
+      measurerPayer: { stringValue: 'CUSTOMER' },
+      customerDepositRub: { integerValue: '1000' },
+      remainingBalanceRub: { integerValue: '14000' },
       apt: { stringValue: '12' },
       time: { stringValue: 'вечером' },
       customerComment: { stringValue: 'Позвонить заранее' },
@@ -408,5 +418,54 @@ describe('Task 14.1 Firestore REST sequencing and failure control', () => {
       stringValue: 'sent',
     });
     expect(harness.firestore.documents.get('crm_X')?.createdAt).toBeDefined();
+  });
+});
+
+describe('Task 14.1.1 financial validation in GAS', () => {
+  it('MONEY-5 rejects inconsistent derived values without writes', () => {
+    const harness = createHarness();
+    const result = harness.post(
+      payload({
+        customerDepositRub: 0,
+        remainingBalanceRub: 15_000,
+      }),
+    );
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
+    expect(harness.sheet.dataWriteAttempts).toBe(0);
+    expect(harness.firestore.calls).toHaveLength(0);
+  });
+
+  it('MONEY-6 rejects totals below customer deposit', () => {
+    const harness = createHarness();
+    const result = harness.post(
+      payload({
+        preliminaryTotalRub: 500,
+        customerDepositRub: 1000,
+        remainingBalanceRub: -500,
+      }),
+    );
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
+    expect(harness.sheet.dataWriteAttempts).toBe(0);
+    expect(harness.firestore.calls).toHaveLength(0);
+  });
+
+  it('MONEY-2 stores company payer text and payout separately', () => {
+    const harness = createHarness();
+    harness.post(
+      payload({
+        payer_text: 'фирма',
+        measurerPayer: 'COMPANY',
+        customerDepositRub: 0,
+        remainingBalanceRub: 15_000,
+      }),
+    );
+
+    expect(harness.sheet.rows[1]?.[4]).toBe('фирма');
+    expect(harness.sheet.rows[1]?.[5]).toBe(1000);
+    expect(harness.firestore.documents.get('crm_X')?.remainingBalanceRub).toEqual({
+      integerValue: '15000',
+    });
   });
 });

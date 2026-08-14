@@ -215,7 +215,25 @@ describe('Task 14.1 legacy Sheet to Firestore coexistence', () => {
       'source',
       'createdAt',
       'sheetSyncStatus',
+      'preliminaryTotalRub',
+      'measurerPayoutRub',
+      'measurerPayer',
+      'customerDepositRub',
+      'remainingBalanceRub',
     ];
     expect(write.updateMask?.fieldPaths.filter((field) => preservedFields.includes(field))).toEqual([]);
+  });
+
+  it('does not erase financial technical fields during legacy sync update', () => {
+    const mappedRow = row('crm_X');
+    mappedRow.source_key = '+79990000000|тестовый проспект, 1';
+    mappedRow.source_hash = 'hash';
+    const write = sync.buildMeasurementWrite_('crm_X', mappedRow);
+
+    expect(write.update?.fields).not.toHaveProperty('preliminaryTotalRub');
+    expect(write.update?.fields).not.toHaveProperty('measurerPayoutRub');
+    expect(write.update?.fields).not.toHaveProperty('measurerPayer');
+    expect(write.update?.fields).not.toHaveProperty('customerDepositRub');
+    expect(write.update?.fields).not.toHaveProperty('remainingBalanceRub');
   });
 });

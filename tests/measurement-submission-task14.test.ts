@@ -127,7 +127,10 @@ function submission(overrides: Partial<MeasurementSubmissionV1> = {}): Measureme
     comment: 'Свободный комментарий клиента',
     preferredTime: 'после 18:00',
     preliminaryTotalRub: 15_200,
-    payerType: 'CUSTOMER',
+    measurerPayoutRub: 1000,
+    measurerPayer: 'CUSTOMER',
+    customerDepositRub: 1000,
+    remainingBalanceRub: 14_200,
     jarvis: {
       conversationId: 'conversation-test',
       memoryRevision: 3,
@@ -288,6 +291,8 @@ describe('Task 14 trusted Jarvis use case and HTTP', () => {
     expect(sheet.submissions[0]?.customer.phone).toBe('+79990000000');
     expect(sheet.submissions[0]?.customer.address).toBe('Только доверенный адрес');
     expect(sheet.submissions[0]?.preliminaryTotalRub).toBe(15_200);
+    expect(sheet.submissions[0]?.measurerPayoutRub).toBe(1000);
+    expect(sheet.submissions[0]?.remainingBalanceRub).toBe(14_200);
     expect(sheet.submissions[0]?.jarvis?.quoteId).not.toBe('OVERRIDE');
     expect(sheet.submissions[0]?.itemSummary).toBe('1 × FRAME');
     expect(sheet.submissions[0]?.itemSummary).not.toContain('15 200');
@@ -444,8 +449,12 @@ describe('Task 14 codecs and measurer compatibility', () => {
       name: 'Иван',
       phone: '+79990001122',
       comment: '1 × FRAME',
-      amount_rub: 15_200,
-      payer_text: 'Клиент',
+      amount_rub: 1000,
+      payer_text: 'Заказчик',
+      preliminaryTotalRub: 15_200,
+      measurerPayoutRub: 1000,
+      customerDepositRub: 1000,
+      remainingBalanceRub: 14_200,
       apt: '12',
       time: 'после 18:00',
       source: 'JARVIS',
@@ -461,11 +470,14 @@ describe('Task 14 codecs and measurer compatibility', () => {
   it('optional free comment remains absent and COMPANY maps to measurer payer alias', () => {
     const minimal = submission({
       customer: { phone: '+70000000000', address: 'Адрес' },
-      payerType: 'COMPANY',
+      measurerPayer: 'COMPANY',
       itemSummary: '2 × WING',
       comment: undefined,
       preferredTime: undefined,
-      preliminaryTotalRub: undefined,
+      preliminaryTotalRub: 15_000,
+      measurerPayoutRub: 1000,
+      customerDepositRub: 0,
+      remainingBalanceRub: 15_000,
       jarvis: undefined,
     });
     const doc = encodeUpcomingMeasurementDocument({
@@ -475,10 +487,10 @@ describe('Task 14 codecs and measurer compatibility', () => {
       sheetSyncStatus: 'pending',
       sheetSyncUpdatedAt: NOW,
     });
-    expect(doc.payer_text).toBe('Фирма');
+    expect(doc.payer_text).toBe('фирма');
+    expect(doc.amount_rub).toBe(1000);
     expect(doc).not.toHaveProperty('name');
     expect(doc.comment).toBe('2 × WING');
-    expect(doc).not.toHaveProperty('amount_rub');
     expect(doc).not.toHaveProperty('jarvisQuoteId');
   });
 
@@ -507,7 +519,7 @@ describe('Task 14 codecs and measurer compatibility', () => {
       customerName: 'Иван',
       phone: '+79990001122',
       comment: '1 × FRAME',
-      price: 15_200,
+      price: 1000,
       payerType: 'customer',
       apartment: '12',
       time: 'после 18:00',
@@ -523,8 +535,12 @@ describe('Task 14 codecs and measurer compatibility', () => {
       phone: '+79990001122',
       address: 'Москва, Тверская 1',
       itemSummary: '1 × FRAME',
-      amount_rub: 15_200,
-      payer_text: 'Клиент',
+      amount_rub: 1000,
+      payer_text: 'Заказчик',
+      preliminaryTotalRub: 15_200,
+      measurerPayoutRub: 1000,
+      customerDepositRub: 1000,
+      remainingBalanceRub: 14_200,
       source: 'JARVIS',
     });
     expect(payload).not.toHaveProperty('comment');

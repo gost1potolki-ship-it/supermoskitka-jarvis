@@ -91,12 +91,84 @@ function validateRequest_(request) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(request.submissionId)) {
     throw intakeError_('VALIDATION_ERROR', 'submissionId is invalid');
   }
-  if (
-    request.amount_rub !== undefined &&
-    (!isFinite(Number(request.amount_rub)) || Number(request.amount_rub) < 0)
-  ) {
-    throw intakeError_('VALIDATION_ERROR', 'amount_rub is invalid');
+  validateFinancialRequest_(request);
+}
+
+function normalizePayerText_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function parseMeasurerPayer_(request) {
+  if (request.measurerPayer === 'CUSTOMER' || request.measurerPayer === 'COMPANY') {
+    return request.measurerPayer;
   }
+  var payerText = normalizePayerText_(request.payer_text);
+  if (!payerText) {
+    return '';
+  }
+  if (payerText.indexOf('фирм') !== -1 || payerText.indexOf('офис') !== -1) {
+    return 'COMPANY';
+  }
+  if (
+    payerText.indexOf('заказчик') !== -1 ||
+    payerText.indexOf('клиент') !== -1 ||
+    payerText.indexOf('customer') !== -1
+  ) {
+    return 'CUSTOMER';
+  }
+  return '';
+}
+
+function payerTextMatches_(value, measurerPayer) {
+  var parsed = parseMeasurerPayer_({ payer_text: value });
+  return parsed === measurerPayer;
+}
+
+function validateFinancialRequest_(request) {
+  var preliminaryTotalRub = Number(request.preliminaryTotalRub);
+  var measurerPayoutRub =
+    request.measurerPayoutRub !== undefined ? Number(request.measurerPayoutRub) : Number(request.amount_rub);
+  var measurerPayer = parseMeasurerPayer_(request);
+
+  if (!isFinite(preliminaryTotalRub) || preliminaryTotalRub < 0) {
+    throw intakeError_('VALIDATION_ERROR', 'preliminaryTotalRub is invalid');
+  }
+  if (!isFinite(measurerPayoutRub) || measurerPayoutRub < 0) {
+    throw intakeError_('VALIDATION_ERROR', 'measurerPayoutRub is invalid');
+  }
+  if (!measurerPayer) {
+    throw intakeError_('VALIDATION_ERROR', 'measurerPayer is invalid');
+  }
+
+  var expectedDeposit = measurerPayer === 'CUSTOMER' ? measurerPayoutRub : 0;
+  var expectedBalance = preliminaryTotalRub - expectedDeposit;
+  if (expectedBalance < 0) {
+    throw intakeError_('VALIDATION_ERROR', 'remainingBalanceRub would be negative');
+  }
+
+  if (request.customerDepositRub !== undefined && Number(request.customerDepositRub) !== expectedDeposit) {
+    throw intakeError_('VALIDATION_ERROR', 'customerDepositRub is inconsistent');
+  }
+  if (
+    request.remainingBalanceRub !== undefined &&
+    Number(request.remainingBalanceRub) !== expectedBalance
+  ) {
+    throw intakeError_('VALIDATION_ERROR', 'remainingBalanceRub is inconsistent');
+  }
+  if (request.amount_rub !== undefined && Number(request.amount_rub) !== measurerPayoutRub) {
+    throw intakeError_('VALIDATION_ERROR', 'amount_rub must equal measurerPayoutRub');
+  }
+  if (request.payer_text && !payerTextMatches_(request.payer_text, measurerPayer)) {
+    throw intakeError_('VALIDATION_ERROR', 'payer_text is inconsistent with measurerPayer');
+  }
+
+  request.preliminaryTotalRub = preliminaryTotalRub;
+  request.measurerPayoutRub = measurerPayoutRub;
+  request.measurerPayer = measurerPayer;
+  request.customerDepositRub = expectedDeposit;
+  request.remainingBalanceRub = expectedBalance;
+  request.amount_rub = measurerPayoutRub;
+  request.payer_text = measurerPayer === 'COMPANY' ? 'фирма' : 'Заказчик';
 }
 
 function fullIntakeResult_(request) {
@@ -325,6 +397,11 @@ function firestoreProjectionFields_(request, now) {
     comment: firestoreString_(itemSummary),
     payer_text: firestoreString_(request.payer_text || ''),
     amount_rub: firestoreNumber_(request.amount_rub),
+    preliminaryTotalRub: firestoreNumber_(request.preliminaryTotalRub),
+    measurerPayoutRub: firestoreNumber_(request.measurerPayoutRub),
+    measurerPayer: firestoreString_(request.measurerPayer),
+    customerDepositRub: firestoreNumber_(request.customerDepositRub),
+    remainingBalanceRub: firestoreNumber_(request.remainingBalanceRub),
     updatedAt: { timestampValue: now },
     sheetSyncStatus: firestoreString_('pending'),
     sheetSyncUpdatedAt: { timestampValue: now },

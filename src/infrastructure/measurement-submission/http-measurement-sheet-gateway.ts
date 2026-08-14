@@ -1,4 +1,5 @@
 import type { MeasurementSubmissionV1 } from '../../domain/index.js';
+import { formatMeasurerPayerText } from '../../domain/measurement-financials.js';
 import {
   MeasurementSheetError,
   type MeasurementSheetGateway,
@@ -22,8 +23,13 @@ export function encodeMeasurementSheetRequest(
     name: submission.customer.name,
     phone: submission.customer.phone,
     itemSummary: submission.itemSummary,
-    amount_rub: submission.preliminaryTotalRub,
-    payer_text: submission.payerType === 'COMPANY' ? 'Фирма' : 'Клиент',
+    amount_rub: submission.measurerPayoutRub,
+    payer_text: formatMeasurerPayerText(submission.measurerPayer),
+    preliminaryTotalRub: submission.preliminaryTotalRub,
+    measurerPayoutRub: submission.measurerPayoutRub,
+    measurerPayer: submission.measurerPayer,
+    customerDepositRub: submission.customerDepositRub,
+    remainingBalanceRub: submission.remainingBalanceRub,
     apt: submission.customer.apartment,
     time: submission.preferredTime,
     source: submission.source,

@@ -12,6 +12,7 @@ import {
   type MeasurementSubmissionResult,
   type MeasurementSubmissionV1,
 } from './measurement-submission';
+import { buildMeasurementFinancials } from './measurement-financials';
 
 const validInput = (
   overrides: Partial<MeasurementSubmissionInput> = {},
@@ -100,6 +101,24 @@ describe('Presales CRM measurement submission', () => {
       },
       comment: 'Позвонить заранее',
       itemSummary: '2 × Рамочные — Антимошка, серый',
+      preliminaryTotalRub: 8970,
+      measurerPayoutRub: 1000,
+      measurerPayer: 'CUSTOMER',
+      customerDepositRub: 1000,
+      remainingBalanceRub: 7970,
+    });
+  });
+
+  it('derives company payer balance without customer deposit', () => {
+    const submission = buildMeasurementSubmission(
+      validInput({ preliminaryTotalRub: 15_000, payerType: 'COMPANY' }),
+    );
+    expect(submission).toMatchObject({
+      preliminaryTotalRub: 15_000,
+      measurerPayoutRub: 1000,
+      measurerPayer: 'COMPANY',
+      customerDepositRub: 0,
+      remainingBalanceRub: 15_000,
     });
   });
 
@@ -119,7 +138,7 @@ describe('Presales CRM measurement submission', () => {
     expect(source).not.toContain('MeasurementStore');
   });
 
-  it('sends itemSummary separately and never maps free comment to legacy comment', () => {
+  it('sends itemSummary separately and maps payout to legacy amount_rub', () => {
     const payload = buildMeasurementSheetPayload(buildMeasurementSubmission(validInput()));
 
     expect(payload).toMatchObject({
@@ -127,8 +146,13 @@ describe('Presales CRM measurement submission', () => {
       submissionId: 'crm_test-stable-id',
       itemSummary: '2 × Рамочные — Антимошка, серый',
       customerComment: 'Позвонить заранее',
-      amount_rub: 8970,
-      payer_text: 'Клиент',
+      amount_rub: 1000,
+      payer_text: 'Заказчик',
+      preliminaryTotalRub: 8970,
+      measurerPayoutRub: 1000,
+      measurerPayer: 'CUSTOMER',
+      customerDepositRub: 1000,
+      remainingBalanceRub: 7970,
       source: 'PRESALES_CRM',
     });
     expect(payload).not.toHaveProperty('comment');
@@ -148,6 +172,44 @@ describe('Presales CRM measurement submission', () => {
     const changed = buildMeasurementSubmission(validInput({ address: 'Новый адрес, 2' }));
     expect(measurementFingerprint(changed)).not.toBe(measurementFingerprint(first));
     expect(changed.submissionId).toBe(first.submissionId);
+  });
+
+  it('retry preserves the same financial values', async () => {
+    vi.stubEnv('VITE_MEASUREMENT_SHEET_WEBHOOK_URL', 'https://example.test/intake');
+    const bodies = [
+      {
+        ok: false,
+        status: 'PARTIAL',
+        submissionId: 'crm_test-stable-id',
+        firestore: 'UPSERTED',
+        sheet: 'ERROR',
+        error: { code: 'SHEET_WRITE_FAILED' },
+      },
+      {
+        ok: true,
+        status: 'SUBMITTED',
+        submissionId: 'crm_test-stable-id',
+        firestore: 'UPSERTED',
+        sheet: 'SENT',
+      },
+    ];
+    const payloads: Record<string, unknown>[] = [];
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      payloads.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return response(bodies.shift());
+    });
+    const gateway = createMeasurementIntakeGateway(fetchImpl as typeof fetch);
+
+    await submitMeasurement(validInput({ preliminaryTotalRub: 15_000 }), gateway);
+    await submitMeasurement(validInput({ preliminaryTotalRub: 15_000 }), gateway);
+
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0]).toMatchObject({
+      preliminaryTotalRub: 15_000,
+      customerDepositRub: 1000,
+      remainingBalanceRub: 14_000,
+    });
+    expect(payloads[1]).toEqual(payloads[0]);
   });
 
   it('parses controlled SUBMITTED response', async () => {
@@ -224,40 +286,11 @@ describe('Presales CRM measurement submission', () => {
     });
   });
 
-  it('retry sends the same stable ID and eventually succeeds', async () => {
-    vi.stubEnv('VITE_MEASUREMENT_SHEET_WEBHOOK_URL', 'https://example.test/intake');
-    const bodies = [
-      {
-        ok: false,
-        status: 'PARTIAL',
-        submissionId: 'crm_test-stable-id',
-        firestore: 'UPSERTED',
-        sheet: 'ERROR',
-        error: { code: 'SHEET_WRITE_FAILED' },
-      },
-      {
-        ok: true,
-        status: 'SUBMITTED',
-        submissionId: 'crm_test-stable-id',
-        firestore: 'UPSERTED',
-        sheet: 'SENT',
-      },
-    ];
-    const sentIds: string[] = [];
-    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
-      sentIds.push(
-        (JSON.parse(String(init?.body)) as { submissionId: string }).submissionId,
-      );
-      return response(bodies.shift());
+  it('uses the shared financial builder for confirmation math', () => {
+    const financials = buildMeasurementFinancials({
+      preliminaryTotalRub: 15_000,
+      measurerPayer: 'CUSTOMER',
     });
-    const gateway = createMeasurementIntakeGateway(fetchImpl as typeof fetch);
-
-    const first = await submitMeasurement(validInput(), gateway);
-    const retry = await submitMeasurement(validInput(), gateway);
-
-    expect(first.status).toBe('PARTIAL');
-    expect(retry.status).toBe('SUBMITTED');
-    expect(sentIds).toEqual(['crm_test-stable-id', 'crm_test-stable-id']);
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(financials.remainingBalanceRub).toBe(14_000);
   });
 });

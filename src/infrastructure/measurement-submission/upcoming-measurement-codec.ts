@@ -4,6 +4,10 @@ import type {
   MeasurementSubmissionV1,
   UpcomingMeasurementRecord,
 } from '../../domain/index.js';
+import {
+  formatMeasurerPayerText,
+  parseMeasurerPayerText,
+} from '../../domain/measurement-financials.js';
 
 export type UpcomingMeasurementDocument = Record<string, unknown>;
 
@@ -21,6 +25,11 @@ export function omitUndefinedDeep(value: unknown): unknown {
   return value;
 }
 
+function optionalNumber(doc: UpcomingMeasurementDocument, key: string): number | undefined {
+  const value = doc[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 /** Pure canonical contract → measurer-compatible Firestore document mapping. */
 export function encodeUpcomingMeasurementDocument(
   record: UpcomingMeasurementRecord,
@@ -33,8 +42,13 @@ export function encodeUpcomingMeasurementDocument(
     name: submission.customer.name,
     phone: submission.customer.phone,
     comment: submission.itemSummary,
-    amount_rub: submission.preliminaryTotalRub,
-    payer_text: submission.payerType === 'COMPANY' ? 'Фирма' : 'Клиент',
+    amount_rub: submission.measurerPayoutRub,
+    payer_text: formatMeasurerPayerText(submission.measurerPayer),
+    preliminaryTotalRub: submission.preliminaryTotalRub,
+    measurerPayoutRub: submission.measurerPayoutRub,
+    measurerPayer: submission.measurerPayer,
+    customerDepositRub: submission.customerDepositRub,
+    remainingBalanceRub: submission.remainingBalanceRub,
     apt: submission.customer.apartment,
     time: submission.preferredTime,
     createdAt: record.createdAt,
@@ -73,9 +87,25 @@ export function decodeUpcomingMeasurementDocument(
     throw new TypeError('Invalid sheet sync status');
   }
 
-  const amount = doc.amount_rub;
-  if (amount !== undefined && (typeof amount !== 'number' || !Number.isFinite(amount))) {
-    throw new TypeError('Invalid upcoming measurement amount_rub');
+  const measurerPayoutRub =
+    optionalNumber(doc, 'measurerPayoutRub') ?? optionalNumber(doc, 'amount_rub') ?? 0;
+  const measurerPayer =
+    doc.measurerPayer === 'CUSTOMER' || doc.measurerPayer === 'COMPANY'
+      ? doc.measurerPayer
+      : parseMeasurerPayerText(doc.payer_text) ?? 'CUSTOMER';
+  let customerDepositRub = optionalNumber(doc, 'customerDepositRub');
+  if (customerDepositRub === undefined) {
+    customerDepositRub = measurerPayer === 'CUSTOMER' ? measurerPayoutRub : 0;
+  }
+  let preliminaryTotalRub = optionalNumber(doc, 'preliminaryTotalRub');
+  let remainingBalanceRub = optionalNumber(doc, 'remainingBalanceRub');
+  if (preliminaryTotalRub === undefined && remainingBalanceRub !== undefined) {
+    preliminaryTotalRub = remainingBalanceRub + customerDepositRub;
+  } else if (preliminaryTotalRub === undefined) {
+    preliminaryTotalRub = customerDepositRub;
+  }
+  if (remainingBalanceRub === undefined) {
+    remainingBalanceRub = preliminaryTotalRub - customerDepositRub;
   }
   const revision = doc.jarvisMemoryRevision;
   const jarvisConversationId = optionalString(doc, 'jarvisConversationId');
@@ -92,8 +122,11 @@ export function decodeUpcomingMeasurementDocument(
     },
     itemSummary: requiredString(doc, 'comment'),
     ...(optionalString(doc, 'time') ? { preferredTime: optionalString(doc, 'time') } : {}),
-    ...(typeof amount === 'number' ? { preliminaryTotalRub: amount } : {}),
-    payerType: doc.payer_text === 'Фирма' ? 'COMPANY' : 'CUSTOMER',
+    preliminaryTotalRub,
+    measurerPayoutRub,
+    measurerPayer,
+    customerDepositRub,
+    remainingBalanceRub,
     ...(jarvisConversationId &&
     jarvisQuoteId &&
     typeof revision === 'number' &&

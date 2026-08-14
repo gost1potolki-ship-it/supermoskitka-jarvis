@@ -61,7 +61,41 @@ replace that product summary.
 
 The legacy Sheet → Firestore sync prefers `submission_id` for Task 14 rows and
 keeps `m_<hash(phone|address)>` only for old rows. Its masked updates preserve
-measurer-owned metadata, and cleanup is limited to legacy `m_` documents.
+measurer-owned metadata and Task 14.1.1 financial technical fields
+(`preliminaryTotalRub`, `measurerPayoutRub`, `measurerPayer`,
+`customerDepositRub`, `remainingBalanceRub`), and cleanup is limited to legacy
+`m_` documents.
+
+## Financial model (Task 14.1.1)
+
+Measurement intake now separates:
+
+```text
+preliminaryTotalRub   = full customer order total
+measurerPayoutRub     = payout to measurer, currently 1000
+measurerPayer         = CUSTOMER | COMPANY
+customerDepositRub    = amount already paid by customer toward the order
+remainingBalanceRub   = customer total still due
+```
+
+Operational Sheet mapping:
+
+```text
+E = who physically pays the measurer ("Заказчик" | "фирма")
+F = measurerPayoutRub
+```
+
+Legacy measurer compatibility:
+
+```text
+amount_rub = measurerPayoutRub
+payer_text = "Заказчик" | "фирма"
+comment    = itemSummary
+```
+
+When `measurerPayer=CUSTOMER`, deposit equals payout and balance equals
+`total - payout`. When `measurerPayer=COMPANY`, deposit is `0` and balance
+equals the full total. The payout is never added on top of the customer total.
 
 ## Existing production “Отправить в работу”
 

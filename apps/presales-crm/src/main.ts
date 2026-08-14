@@ -69,6 +69,7 @@ import { renderLoginScreen } from './screens/login';
 import { initTheme, toggleTheme } from './theme';
 import type { ArchivedOrder } from '@calc/types';
 import type { ArchiveOrderView } from './lib/archive';
+import { buildMeasurementFinancials } from './lib/measurement-financials';
 import {
   buildCompactItemSummary,
   buildMeasurementSubmission,
@@ -1393,11 +1394,33 @@ function openMeasurementConfirmation(totals: ReturnType<typeof calculateOrderTot
   form.appendChild(makeField('Телефон *', draft.phone, (value) => { draft.phone = value; }));
   form.appendChild(makeField('Адрес *', draft.address, (value) => { draft.address = value; }));
   form.appendChild(makeField('Квартира', draft.apartment ?? '', (value) => { draft.apartment = value; }));
-  const total = el(
-    'div',
-    'measurement-dialog-total',
-    `Предварительная сумма: ${draft.preliminaryTotalRub.toLocaleString('ru-RU')} ₽`,
-  );
+
+  const renderFinancialSummary = (): string => {
+    const financials = buildMeasurementFinancials({
+      preliminaryTotalRub: draft.preliminaryTotalRub,
+      measurerPayer: draft.payerType,
+    });
+    const lines = [
+      `Предварительно: ${financials.preliminaryTotalRub.toLocaleString('ru-RU')} ₽`,
+    ];
+    if (financials.measurerPayer === 'CUSTOMER') {
+      lines.push(`На замере: ${financials.measurerPayoutRub.toLocaleString('ru-RU')} ₽`);
+      lines.push('Кто платит замерщику: Заказчик');
+      lines.push(
+        `После замера останется: ${financials.remainingBalanceRub.toLocaleString('ru-RU')} ₽`,
+      );
+    } else {
+      lines.push('Замерщику платит: фирма');
+      lines.push(
+        `После замера клиенту останется: ${financials.remainingBalanceRub.toLocaleString('ru-RU')} ₽`,
+      );
+    }
+    return lines.join('\n');
+  };
+
+  const total = el('div', 'measurement-dialog-total');
+  total.style.whiteSpace = 'pre-line';
+  total.textContent = renderFinancialSummary();
   form.appendChild(total);
   form.appendChild(makeField('Комментарий', draft.comment ?? '', (value) => { draft.comment = value; }, true));
   form.appendChild(
@@ -1405,13 +1428,16 @@ function openMeasurementConfirmation(totals: ReturnType<typeof calculateOrderTot
   );
 
   const payerLabel = el('label', 'measurement-dialog-field');
-  payerLabel.appendChild(el('span', '', 'Замер оплачивает'));
+  payerLabel.appendChild(el('span', '', 'Кто платит замерщику'));
   const payerSelect = document.createElement('select');
   payerSelect.className = 'input';
-  payerSelect.appendChild(new Option('Клиент', 'CUSTOMER'));
-  payerSelect.appendChild(new Option('Фирма', 'COMPANY'));
+  payerSelect.appendChild(new Option('Заказчик', 'CUSTOMER'));
+  payerSelect.appendChild(new Option('фирма', 'COMPANY'));
   payerSelect.value = draft.payerType;
-  payerSelect.onchange = () => { draft.payerType = payerSelect.value as MeasurementPayerType; };
+  payerSelect.onchange = () => {
+    draft.payerType = payerSelect.value as MeasurementPayerType;
+    total.textContent = renderFinancialSummary();
+  };
   payerLabel.appendChild(payerSelect);
   form.appendChild(payerLabel);
 

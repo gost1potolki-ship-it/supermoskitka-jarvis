@@ -1,3 +1,7 @@
+import {
+  buildMeasurementFinancials,
+  formatMeasurerPayerText,
+} from './measurement-financials';
 export type MeasurementPayerType = 'CUSTOMER' | 'COMPANY';
 export type MeasurementSheetStatus = 'pending' | 'sent' | 'error';
 
@@ -13,7 +17,10 @@ export interface MeasurementSubmissionV1 {
   comment?: string;
   preferredTime?: string;
   preliminaryTotalRub: number;
-  payerType: MeasurementPayerType;
+  measurerPayoutRub: number;
+  measurerPayer: MeasurementPayerType;
+  customerDepositRub: number;
+  remainingBalanceRub: number;
   itemSummary: string;
 }
 
@@ -138,6 +145,10 @@ export const buildMeasurementSubmission = (
       'Некорректный идентификатор заявки.',
     );
   }
+  const financials = buildMeasurementFinancials({
+    preliminaryTotalRub: input.preliminaryTotalRub,
+    measurerPayer: input.payerType,
+  });
   return {
     submissionId: input.submissionId,
     source: 'PRESALES_CRM',
@@ -149,8 +160,11 @@ export const buildMeasurementSubmission = (
     },
     ...(cleanOptional(input.comment) ? { comment: cleanOptional(input.comment) } : {}),
     ...(cleanOptional(input.preferredTime) ? { preferredTime: cleanOptional(input.preferredTime) } : {}),
-    preliminaryTotalRub: input.preliminaryTotalRub,
-    payerType: input.payerType,
+    preliminaryTotalRub: financials.preliminaryTotalRub,
+    measurerPayoutRub: financials.measurerPayoutRub,
+    measurerPayer: financials.measurerPayer,
+    customerDepositRub: financials.customerDepositRub,
+    remainingBalanceRub: financials.remainingBalanceRub,
     itemSummary: buildCompactItemSummary(input.items),
   };
 };
@@ -165,8 +179,13 @@ export const buildMeasurementSheetPayload = (
   phone: submission.customer.phone,
   itemSummary: submission.itemSummary,
   customerComment: submission.comment ?? '',
-  amount_rub: submission.preliminaryTotalRub,
-  payer_text: submission.payerType === 'COMPANY' ? 'Фирма' : 'Клиент',
+  amount_rub: submission.measurerPayoutRub,
+  payer_text: formatMeasurerPayerText(submission.measurerPayer),
+  preliminaryTotalRub: submission.preliminaryTotalRub,
+  measurerPayoutRub: submission.measurerPayoutRub,
+  measurerPayer: submission.measurerPayer,
+  customerDepositRub: submission.customerDepositRub,
+  remainingBalanceRub: submission.remainingBalanceRub,
   apt: submission.customer.apartment ?? '',
   time: submission.preferredTime ?? '',
   source: submission.source,
@@ -181,7 +200,10 @@ export const measurementFingerprint = (submission: MeasurementSubmissionV1): str
     comment: submission.comment ?? '',
     preferredTime: submission.preferredTime ?? '',
     preliminaryTotalRub: submission.preliminaryTotalRub,
-    payerType: submission.payerType,
+    measurerPayer: submission.measurerPayer,
+    measurerPayoutRub: submission.measurerPayoutRub,
+    customerDepositRub: submission.customerDepositRub,
+    remainingBalanceRub: submission.remainingBalanceRub,
     itemSummary: submission.itemSummary,
   });
   let hash = 0x811c9dc5;

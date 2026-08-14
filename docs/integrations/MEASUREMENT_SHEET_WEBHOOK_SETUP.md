@@ -41,6 +41,9 @@ Firestore rules are neither weakened nor deployed by this task.
 
 ## Request contract
 
+Task 14.1.1 separates customer order total, measurer payout, customer deposit,
+and remaining balance. The payout is not added on top of the order total.
+
 ```json
 {
   "action": "upsert_measurement",
@@ -50,13 +53,32 @@ Firestore rules are neither weakened nor deployed by this task.
   "phone": "Customer phone",
   "itemSummary": "2 × Рамочная — Антимошка",
   "customerComment": "Позвонить заранее",
-  "amount_rub": 8970,
+  "preliminaryTotalRub": 15000,
+  "measurerPayoutRub": 1000,
+  "measurerPayer": "CUSTOMER",
+  "customerDepositRub": 1000,
+  "remainingBalanceRub": 14000,
+  "amount_rub": 1000,
   "payer_text": "Заказчик",
   "apt": "12",
   "time": "После 18:00",
   "source": "PRESALES_CRM"
 }
 ```
+
+Field meaning:
+
+- `preliminaryTotalRub` — full customer order total
+- `measurerPayoutRub` — payout to measurer, currently `1000`
+- `measurerPayer` — `CUSTOMER` or `COMPANY`
+- `customerDepositRub` — amount already paid by customer toward the order
+- `remainingBalanceRub` — customer total still due after measurement
+- `amount_rub` — legacy measurer field, always equals `measurerPayoutRub`
+- `payer_text` — legacy measurer field: `Заказчик` or `фирма`
+
+When `measurerPayer=CUSTOMER`, deposit equals payout and balance equals
+`preliminaryTotalRub - measurerPayoutRub`. When `measurerPayer=COMPANY`, deposit
+is `0` and balance equals the full total.
 
 `submissionId` is the idempotency key shared with
 `upcoming_measurements/{submissionId}`.
@@ -72,6 +94,9 @@ its Admin Firestore upsert.
 
 - The production-visible layout is exactly:
   `Имя | Телефон | Адрес | Изделия | Заказчик | сумма`.
+- Column E stores who physically pays the measurer: `Заказчик` or `фирма`.
+- Column F stores `measurerPayoutRub` (currently `1000`), not
+  `preliminaryTotalRub` and not `remainingBalanceRub`.
 - Existing A–F columns are never renamed, reordered, or shifted.
 - Supported payer headers are `Заказчик`, `Платит`, and `Плательщик`.
 - If A–F are all blank, the same positional layout is used as a legacy fallback.
@@ -87,7 +112,7 @@ its Admin Firestore upsert.
 ## Firestore and failure behavior
 
 - REST writes use update masks, so reservation, status, coordinates, completion,
-  and other measurer-owned fields are preserved.
+  Task 14 financial technical fields, and other measurer-owned fields are preserved.
 - New documents receive `createdAt`; updates preserve the existing value.
 - Firestore failure prevents any Sheet write and returns `FAILED`.
 - Sheet failure after Firestore returns `PARTIAL`; the document remains with
