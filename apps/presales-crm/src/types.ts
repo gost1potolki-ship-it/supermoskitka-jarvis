@@ -25,7 +25,7 @@ export interface WebCartItem extends BaseCartItem {
   marginPercent?: number;
 }
 
-export type Screen = 'menu' | 'measurements' | 'orders' | 'products' | 'calc' | 'cart';
+export type Screen = 'menu' | 'measurements' | 'orders' | 'products' | 'calc' | 'cart' | 'jarvis-lab';
 
 export interface ProductMatrixEntry {
   productType: string;

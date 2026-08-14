@@ -7,6 +7,7 @@ export interface MenuScreenDeps {
   onOrders: () => void;
   onCalculator: () => void;
   onNewOrder: () => void;
+  onJarvisLab?: () => void;
   onThemeToggle: () => void;
   onLogout: () => void;
   profileName: string;
@@ -237,6 +238,16 @@ export function renderMenuScreen(deps: MenuScreenDeps): HTMLElement {
     badge: cartBadge,
     onClick: deps.onCalculator,
   }));
+  if (deps.onJarvisLab) {
+    cards.appendChild(renderDashboardCard({
+      title: 'Jarvis Lab',
+      desc: 'Локальный dev-only стенд для живого диалога с Jarvis и просмотра order state.',
+      actionLabel: 'ОТКРЫТЬ →',
+      icon: 'support',
+      badge: 'DEV',
+      onClick: deps.onJarvisLab,
+    }));
+  }
   content.appendChild(cards);
   content.appendChild(renderNotifications());
 

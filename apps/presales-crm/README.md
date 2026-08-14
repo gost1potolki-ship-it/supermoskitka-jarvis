@@ -86,3 +86,22 @@ VITE_MEASUREMENT_SHEET_WEBHOOK_URL=
 
 Реальный URL не хранится в репозитории. Production-order webhook
 `VITE_GOOGLE_SHEET_WEBHOOK_URL` остаётся отдельным от записи на замер.
+
+## Jarvis Lab (local dev only)
+
+`Jarvis Lab` — внутренний dev-only экран Presales CRM для живого диалога с Jarvis через локальный Vite proxy `/jarvis-dev`.
+
+- **Не** production customer channel
+- **Не** measurement executor
+- **Не** пишет `upcoming_measurements`, Google Sheet или другие operational namespaces
+
+Настройка:
+
+```text
+JARVIS_DEV_API_BASE_URL=http://127.0.0.1:3000
+JARVIS_DEV_INTERNAL_API_KEY=
+```
+
+Переменные задаются в `apps/presales-crm/.env.local` без префикса `VITE_`. Bearer добавляется только на Node-side Vite dev proxy.
+
+Ручной чеклист: [`docs/testing/JARVIS_LAB_MANUAL_TEST.md`](../../docs/testing/JARVIS_LAB_MANUAL_TEST.md)

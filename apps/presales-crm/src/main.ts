@@ -61,6 +61,7 @@ import {
   startOrdersSubscription,
   subscribeOrders,
 } from './orders-store';
+import { renderJarvisLabScreen } from './screens/jarvis-lab';
 import { renderMenuScreen } from './screens/menu';
 import { renderMeasurementsScreen, startMeasurementsSubscription, subscribeMeasurements } from './screens/measurements';
 import { renderOrdersScreen } from './screens/orders';
@@ -227,6 +228,7 @@ function loadState(): AppState {
 
 function normalizeLoadedScreen(screen: Screen | undefined): Screen {
   if (screen === 'calc') return 'products';
+  if (screen === 'jarvis-lab') return 'menu';
   if (screen === 'products' || screen === 'cart') return screen;
   return 'menu';
 }
@@ -502,6 +504,7 @@ function render(): void {
       onOrders: () => navigateTo('orders'),
       onCalculator: () => navigateTo('products'),
       onNewOrder: startNewOrder,
+      onJarvisLab: import.meta.env.DEV ? () => navigateTo('jarvis-lab') : undefined,
       onThemeToggle: () => {
         toggleTheme();
         render();
@@ -513,6 +516,11 @@ function render(): void {
       profileName: getAuthUsername() ?? 'Менеджер',
       cartCount: state.cart.length,
     }));
+    return;
+  }
+
+  if (state.screen === 'jarvis-lab' && import.meta.env.DEV) {
+    root.appendChild(renderJarvisLabScreen({ onBack: () => navigateTo('menu') }));
     return;
   }
 
@@ -586,7 +594,7 @@ function goBack(): void {
   } else if (state.screen === 'cart') {
     state.screen = 'products';
     state.productType = null;
-  } else if (state.screen === 'products' || state.screen === 'measurements' || state.screen === 'orders') {
+  } else if (state.screen === 'products' || state.screen === 'measurements' || state.screen === 'orders' || state.screen === 'jarvis-lab') {
     state.screen = 'menu';
     state.productType = null;
   }
@@ -775,6 +783,7 @@ function renderCrmHeader(): HTMLElement {
 
 function headerTitle(): string {
   if (state.screen === 'menu') return 'СуперМоскитка';
+  if (state.screen === 'jarvis-lab') return 'Jarvis Lab';
   if (state.screen === 'measurements') return 'Замеры';
   if (state.screen === 'orders') return 'Заказы в работе';
   if (state.screen === 'products' || state.screen === 'calc' || state.screen === 'cart') return 'Калькулятор';

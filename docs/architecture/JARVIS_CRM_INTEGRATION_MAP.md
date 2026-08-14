@@ -97,6 +97,30 @@ When `measurerPayer=CUSTOMER`, deposit equals payout and balance equals
 `total - payout`. When `measurerPayer=COMPANY`, deposit is `0` and balance
 equals the full total. The payout is never added on top of the customer total.
 
+## Jarvis Lab (Task 15, local dev only)
+
+Presales CRM includes a dev-only **Jarvis Lab** screen for the owner to talk to real Jarvis as a customer and inspect order state/readiness.
+
+```text
+Presales CRM browser
+        ↓ relative /jarvis-dev/*
+Vite dev proxy (server-side bearer)
+        ↓
+Jarvis /internal/v1
+        ↓
+Conversation + OrderMemory + trusted quote/readiness
+```
+
+Properties:
+
+- visible only when `import.meta.env.DEV`
+- no internal API key in browser bundle
+- no `POST /measurement-submit`
+- no operational Firestore/Sheet writes from ordinary Lab turns
+- recent test conversation IDs stored locally for convenience only
+
+This is **not** production omnichannel integration and **not** a deployment target for Task 15.
+
 ## Existing production “Отправить в работу”
 
 ```text
