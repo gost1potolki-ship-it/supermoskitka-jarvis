@@ -19,6 +19,26 @@ import {
   type JarvisLabRecentConversation,
 } from '../lib/jarvis-lab-storage';
 
+export interface JarvisLabSnapshot {
+  configured: boolean;
+  loading: boolean;
+  loadingLabel: string;
+  error: string | null;
+  conversation: ConversationDto | null;
+  orderState: ConversationOrderStateDto | null;
+  measurementAction: MeasurementActionDto | null;
+}
+
+export interface JarvisDialoguesPanelHandle {
+  switchMode: (mode: 'AI' | 'HUMAN') => Promise<void>;
+  createConversation: () => Promise<void>;
+}
+
+export interface JarvisDialoguesPanelDeps {
+  api?: JarvisDevApi;
+  onSnapshot?: (snapshot: JarvisLabSnapshot) => void;
+}
+
 export interface JarvisLabDeps {
   onBack: () => void;
   api?: JarvisDevApi;
@@ -68,9 +88,12 @@ const measurementActionLabel = (kind: MeasurementActionDto['kind']): string => {
   return 'NOT_READY';
 };
 
-export function renderJarvisLabScreen(deps: JarvisLabDeps): HTMLElement {
+export function renderJarvisDialoguesPanel(deps: JarvisDialoguesPanelDeps): {
+  element: HTMLElement;
+  handle: JarvisDialoguesPanelHandle;
+} {
   const api = deps.api ?? createJarvisDevApi();
-  const root = el('div', 'jarvis-lab');
+  const root = el('div', 'jarvis-lab jarvis-lab-panel');
 
   const state: LabState = {
     configured: true,
@@ -231,32 +254,29 @@ export function renderJarvisLabScreen(deps: JarvisLabDeps): HTMLElement {
     }
   };
 
-  const renderHeader = (): HTMLElement => {
-    const header = el('div', 'jarvis-lab-header');
-    const titleWrap = el('div', 'jarvis-lab-header-title');
-    titleWrap.appendChild(el('h1', 'jarvis-lab-title', 'Jarvis Lab'));
-    titleWrap.appendChild(el('p', 'jarvis-lab-subtitle', 'Локальный dev-only стенд для живого диалога с Jarvis'));
-    header.appendChild(titleWrap);
+  const handle: JarvisDialoguesPanelHandle = {
+    switchMode,
+    createConversation,
+  };
 
-    const actions = el('div', 'jarvis-lab-header-actions');
-    actions.appendChild(btn('← Назад', deps.onBack, 'btn-secondary'));
-    const modeWrap = el('div', 'jarvis-lab-mode-toggle');
-    const aiBtn = btn('AI', () => void switchMode('AI'), state.conversation?.mode === 'AI' ? 'btn-primary' : 'btn-secondary');
-    const humanBtn = btn(
-      'HUMAN',
-      () => void switchMode('HUMAN'),
-      state.conversation?.mode === 'HUMAN' ? 'btn-primary' : 'btn-secondary',
-    );
-    aiBtn.disabled = !state.conversation || state.loading;
-    humanBtn.disabled = !state.conversation || state.loading;
-    modeWrap.appendChild(aiBtn);
-    modeWrap.appendChild(humanBtn);
-    actions.appendChild(modeWrap);
+  const emitSnapshot = (): void => {
+    deps.onSnapshot?.({
+      configured: state.configured,
+      loading: state.loading,
+      loadingLabel: state.loadingLabel,
+      error: state.error,
+      conversation: state.conversation,
+      orderState: state.orderState,
+      measurementAction: state.measurementAction,
+    });
+  };
+
+  const renderToolbar = (): HTMLElement => {
+    const toolbar = el('div', 'jarvis-lab-toolbar');
     const newBtn = btn('Новый диалог', () => void createConversation(), 'btn-primary');
     newBtn.disabled = state.loading;
-    actions.appendChild(newBtn);
-    header.appendChild(actions);
-    return header;
+    toolbar.appendChild(newBtn);
+    return toolbar;
   };
 
   const renderRecent = (): HTMLElement => {
@@ -433,25 +453,17 @@ export function renderJarvisLabScreen(deps: JarvisLabDeps): HTMLElement {
     return composer;
   };
 
-  const renderFooter = (): HTMLElement | null => {
-    if (!state.conversation) return null;
-    const footer = el('div', 'jarvis-lab-footer');
-    footer.appendChild(el('span', '', `conversationId: ${state.conversation.conversationId}`));
-    footer.appendChild(el('span', '', `mode: ${state.conversation.mode}`));
-    footer.appendChild(el('span', '', `updatedAt: ${formatTime(state.conversation.updatedAt)}`));
-    return footer;
-  };
-
   const paint = (): void => {
     root.replaceChildren();
 
     if (!state.configured) {
-      root.appendChild(renderHeader());
+      root.appendChild(renderToolbar());
       root.appendChild(el('p', 'jarvis-lab-error', CONFIG_MESSAGE));
+      emitSnapshot();
       return;
     }
 
-    root.appendChild(renderHeader());
+    root.appendChild(renderToolbar());
     if (state.loading) {
       root.appendChild(el('p', 'jarvis-lab-loading', state.loadingLabel || 'Загрузка...'));
     }
@@ -465,8 +477,7 @@ export function renderJarvisLabScreen(deps: JarvisLabDeps): HTMLElement {
     grid.appendChild(renderOrderState());
     root.appendChild(grid);
     root.appendChild(renderComposer());
-    const footer = renderFooter();
-    if (footer) root.appendChild(footer);
+    emitSnapshot();
   };
 
   paint();
@@ -482,5 +493,15 @@ export function renderJarvisLabScreen(deps: JarvisLabDeps): HTMLElement {
     }
   })();
 
-  return root;
+  return { element: root, handle };
+}
+
+export function renderJarvisLabScreen(deps: JarvisLabDeps): HTMLElement {
+  const panel = renderJarvisDialoguesPanel({ api: deps.api });
+  const wrap = el('div', 'jarvis-lab-page');
+  const header = el('div', 'jarvis-lab-header');
+  header.appendChild(btn('← Назад', deps.onBack, 'btn-secondary'));
+  wrap.appendChild(header);
+  wrap.appendChild(panel.element);
+  return wrap;
 }

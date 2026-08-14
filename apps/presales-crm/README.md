@@ -87,9 +87,17 @@ VITE_MEASUREMENT_SHEET_WEBHOOK_URL=
 Реальный URL не хранится в репозитории. Production-order webhook
 `VITE_GOOGLE_SHEET_WEBHOOK_URL` остаётся отдельным от записи на замер.
 
-## Jarvis Lab (local dev only)
+## Jarvis (permanent CRM section)
 
-`Jarvis Lab` — внутренний dev-only экран Presales CRM для живого диалога с Jarvis через локальный Vite proxy `/jarvis-dev`.
+`Jarvis` — постоянный раздел Presales CRM для управления ИИ-менеджером SuperMoskitka.
+
+- Sidebar: **Калькулятор → Jarvis → Клиенты**
+- Страница с вкладками **Диалоги / Управление / Настройки**
+- В production build раздел виден, но рабочие каналы ещё не подключены
+
+## Jarvis Lab (local dev only, inside Jarvis → Диалоги)
+
+`Jarvis Lab` — dev-only функциональность внутри вкладки **Диалоги** для живого диалога с Jarvis через локальный Vite proxy `/jarvis-dev`.
 
 - **Не** production customer channel
 - **Не** measurement executor

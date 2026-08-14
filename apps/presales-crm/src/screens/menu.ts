@@ -1,3 +1,4 @@
+import type { Screen } from '../types';
 import { el } from '../dom';
 import { createBrandBlock } from '../brand-logo';
 import { getTheme } from '../theme';
@@ -6,15 +7,16 @@ export interface MenuScreenDeps {
   onMeasurements: () => void;
   onOrders: () => void;
   onCalculator: () => void;
+  onJarvis: () => void;
   onNewOrder: () => void;
-  onJarvisLab?: () => void;
   onThemeToggle: () => void;
   onLogout: () => void;
   profileName: string;
   cartCount: number;
+  activeScreen?: Screen | 'dashboard' | 'clients';
 }
 
-type NavItem = {
+export type SidebarNavItem = {
   id: string;
   label: string;
   icon: string;
@@ -28,6 +30,7 @@ const ICONS: Record<string, string> = {
   measurements: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>`,
   orders: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><circle cx="12" cy="14" r="3"/><path d="M12 12v2l1 1"/></svg>`,
   calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15h0"/></svg>`,
+  jarvis: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a7 7 0 017 7v2h1a2 2 0 012 2v3a2 2 0 01-2 2h-1.2A3 3 0 0114 20H10a3 3 0 01-2.8-2H6a2 2 0 01-2-2v-3a2 2 0 012-2h1v-2a7 7 0 017-7z"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/><path d="M9 16h6"/></svg>`,
   clients: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5M14 19c0-2.2 1.8-4 4-4"/></svg>`,
   support: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 014.5 1.5c0 2-2.5 2-2.5 4M12 17h.01"/></svg>`,
   logout: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H6a2 2 0 01-2-2V5a2 2 0 012-2h3M16 17l5-5-5-5M21 12H9"/></svg>`,
@@ -49,13 +52,33 @@ function icon(name: string, className = 'crm-icon'): HTMLElement {
   return span;
 }
 
-function navButton(item: NavItem): HTMLButtonElement {
+function navButton(item: SidebarNavItem): HTMLButtonElement {
   const b = el('button', `crm-nav-item${item.active ? ' crm-nav-item--active' : ''}${item.disabled ? ' crm-nav-item--disabled' : ''}`);
   b.type = 'button';
   b.appendChild(icon(item.icon, 'crm-nav-icon'));
   b.appendChild(el('span', 'crm-nav-label', item.label));
   if (!item.disabled && item.onClick) b.onclick = item.onClick;
   return b;
+}
+
+export function buildSidebarNavItems(
+  deps: MenuScreenDeps,
+  activeScreen: MenuScreenDeps['activeScreen'] = 'dashboard',
+): SidebarNavItem[] {
+  return [
+    { id: 'dashboard', label: 'Дашборд', icon: 'dashboard', active: activeScreen === 'dashboard' || activeScreen === 'menu' },
+    { id: 'measurements', label: 'Замеры', icon: 'measurements', onClick: deps.onMeasurements, active: activeScreen === 'measurements' },
+    { id: 'orders', label: 'Заказы в работе', icon: 'orders', onClick: deps.onOrders, active: activeScreen === 'orders' },
+    {
+      id: 'calculator',
+      label: 'Калькулятор',
+      icon: 'calculator',
+      onClick: deps.onCalculator,
+      active: activeScreen === 'products' || activeScreen === 'calc' || activeScreen === 'cart',
+    },
+    { id: 'jarvis', label: 'Jarvis', icon: 'jarvis', onClick: deps.onJarvis, active: activeScreen === 'jarvis' },
+    { id: 'clients', label: 'Клиенты', icon: 'clients', disabled: true, active: activeScreen === 'clients' },
+  ];
 }
 
 function renderSidebar(deps: MenuScreenDeps): HTMLElement {
@@ -66,14 +89,9 @@ function renderSidebar(deps: MenuScreenDeps): HTMLElement {
   sidebar.appendChild(brand);
 
   const nav = el('nav', 'crm-nav');
-  const items: NavItem[] = [
-    { id: 'dashboard', label: 'Дашборд', icon: 'dashboard', active: true },
-    { id: 'measurements', label: 'Замеры', icon: 'measurements', onClick: deps.onMeasurements },
-    { id: 'orders', label: 'Заказы в работе', icon: 'orders', onClick: deps.onOrders },
-    { id: 'calculator', label: 'Калькулятор', icon: 'calculator', onClick: deps.onCalculator },
-    { id: 'clients', label: 'Клиенты', icon: 'clients', disabled: true },
-  ];
-  for (const item of items) nav.appendChild(navButton(item));
+  for (const item of buildSidebarNavItems(deps, deps.activeScreen ?? 'dashboard')) {
+    nav.appendChild(navButton(item));
+  }
   sidebar.appendChild(nav);
 
   const newOrderBtn = el('button', 'crm-new-order-btn', 'Новый заказ');
@@ -198,14 +216,17 @@ function renderNotifications(): HTMLElement {
   return section;
 }
 
-export function renderMenuScreen(deps: MenuScreenDeps): HTMLElement {
+export function renderCrmSidebarLayout(deps: MenuScreenDeps, pageContent: HTMLElement): HTMLElement {
   const layout = el('div', 'crm-dashboard');
-
   layout.appendChild(renderSidebar(deps));
-
   const main = el('div', 'crm-dashboard-main');
   main.appendChild(renderTopbar(deps));
+  main.appendChild(pageContent);
+  layout.appendChild(main);
+  return layout;
+}
 
+export function renderMenuScreen(deps: MenuScreenDeps): HTMLElement {
   const content = el('div', 'crm-dashboard-content');
   content.appendChild(el('h1', 'crm-dashboard-title', 'Менеджер CRM'));
   content.appendChild(el('p', 'crm-dashboard-subtitle', 'Выберите раздел для продолжения работы'));
@@ -238,20 +259,8 @@ export function renderMenuScreen(deps: MenuScreenDeps): HTMLElement {
     badge: cartBadge,
     onClick: deps.onCalculator,
   }));
-  if (deps.onJarvisLab) {
-    cards.appendChild(renderDashboardCard({
-      title: 'Jarvis Lab',
-      desc: 'Локальный dev-only стенд для живого диалога с Jarvis и просмотра order state.',
-      actionLabel: 'ОТКРЫТЬ →',
-      icon: 'support',
-      badge: 'DEV',
-      onClick: deps.onJarvisLab,
-    }));
-  }
   content.appendChild(cards);
   content.appendChild(renderNotifications());
 
-  main.appendChild(content);
-  layout.appendChild(main);
-  return layout;
+  return renderCrmSidebarLayout(deps, content);
 }

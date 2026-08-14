@@ -9,6 +9,7 @@ describe('Jarvis Lab security boundary', () => {
     const sources = [
       read('../lib/jarvis-dev-api.ts'),
       read('../screens/jarvis-lab.ts'),
+      read('../screens/jarvis.ts'),
       read('../main.ts'),
       read('../screens/menu.ts'),
     ].join('\n');
@@ -19,13 +20,21 @@ describe('Jarvis Lab security boundary', () => {
     expect(sources).not.toContain('JARVIS_DEV_INTERNAL_API_KEY=');
   });
 
-  it('keeps Jarvis Lab navigation behind import.meta.env.DEV', () => {
+  it('keeps functional dev Lab behind import.meta.env.DEV', () => {
+    const jarvisSource = read('../screens/jarvis.ts');
+    const labSource = read('../screens/jarvis-lab.ts');
     const mainSource = read('../main.ts');
     const menuSource = read('../screens/menu.ts');
 
-    expect(mainSource).toContain("import.meta.env.DEV ? () => navigateTo('jarvis-lab')");
-    expect(mainSource).toContain("state.screen === 'jarvis-lab' && import.meta.env.DEV");
-    expect(menuSource).toContain('if (deps.onJarvisLab)');
+    expect(jarvisSource).toContain('import.meta.env.DEV');
+    expect(jarvisSource).toContain('renderJarvisDialoguesPanel');
+    expect(labSource).not.toContain('import.meta.env.PROD');
+    expect(mainSource).toContain("navigateTo('jarvis')");
+    expect(mainSource).not.toContain("navigateTo('jarvis-lab')");
+    expect(mainSource).not.toContain("state.screen === 'jarvis-lab'");
+    expect(menuSource).toContain("label: 'Jarvis'");
+    expect(menuSource).not.toContain('Jarvis Lab');
+    expect(menuSource).not.toContain('onJarvisLab');
   });
 
   it('keeps dev proxy env names server-side in vite config only', () => {
@@ -37,10 +46,16 @@ describe('Jarvis Lab security boundary', () => {
   });
 });
 
-describe('Jarvis Lab production invisibility', () => {
-  it('does not expose Jarvis Lab route in built HTML shell', async () => {
+describe('Jarvis production shell visibility', () => {
+  it('includes permanent Jarvis section in built HTML shell without dev bridge strings', async () => {
     const distHtml = readFileSync(new URL('../../dist/index.html', import.meta.url), 'utf8');
     expect(distHtml).not.toContain('Jarvis Lab');
     expect(distHtml).not.toContain('/jarvis-dev');
+  });
+
+  it('keeps Jarvis navigation in menu source for production builds', () => {
+    const menuSource = read('../screens/menu.ts');
+    expect(menuSource).toContain("label: 'Jarvis'");
+    expect(menuSource).not.toContain('if (deps.onJarvisLab)');
   });
 });

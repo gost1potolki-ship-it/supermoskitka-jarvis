@@ -2340,3 +2340,115 @@ html[data-theme="dark"] .login-card {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Jarvis CRM section ─── */
+.jarvis-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.jarvis-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.jarvis-page-title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.jarvis-page-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.jarvis-page-status {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.jarvis-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jarvis-tab-btn {
+  border: 1px solid var(--border-light);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.jarvis-tab-btn--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.jarvis-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.jarvis-tab-panel--hidden {
+  display: none;
+}
+
+.jarvis-placeholder {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.jarvis-lab-panel {
+  min-height: auto;
+  padding: 0;
+}
+
+.jarvis-lab-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.jarvis-management,
+.jarvis-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.jarvis-management-block,
+.jarvis-settings-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.jarvis-management-block-title,
+.jarvis-settings-block-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.jarvis-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.jarvis-settings-block-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}

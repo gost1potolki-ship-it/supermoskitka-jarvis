@@ -25,7 +25,9 @@ JARVIS_DEV_API_BASE_URL=http://127.0.0.1:3000
 JARVIS_DEV_INTERNAL_API_KEY=<same value as root JARVIS_INTERNAL_API_KEY>
 ```
 
-Open the local Vite URL, authenticate into CRM, open **Jarvis Lab** from the dashboard.
+Open the local Vite URL, authenticate into CRM, open **Jarvis** from the left sidebar, tab **Диалоги**.
+
+In production build the Jarvis section is visible, but the working dev Lab is not available there.
 
 ## TEST A — basic qualification
 
@@ -87,7 +89,7 @@ Expected:
 
 ## TEST F — HUMAN mode
 
-Switch to `HUMAN`, send a customer message.
+Switch to `HUMAN` in **Jarvis → Управление**, send a customer message.
 
 Expected:
 
@@ -99,7 +101,7 @@ Switch back to `AI` and continue in the same transcript.
 
 ## TEST G — reload
 
-Reload the browser while Jarvis Lab is open.
+Reload the browser while Jarvis → Диалоги is open.
 
 Expected:
 

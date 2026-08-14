@@ -97,9 +97,19 @@ When `measurerPayer=CUSTOMER`, deposit equals payout and balance equals
 `total - payout`. When `measurerPayer=COMPANY`, deposit is `0` and balance
 equals the full total. The payout is never added on top of the customer total.
 
+## Jarvis CRM section (Task 15.1+)
+
+Presales CRM includes a permanent **Jarvis** sidebar section with page tabs:
+
+```text
+Диалоги | Управление | Настройки
+```
+
+Production build keeps the section shell visible. Functional operator controls appear only after a production gateway is connected.
+
 ## Jarvis Lab (Task 15, local dev only)
 
-Presales CRM includes a dev-only **Jarvis Lab** screen for the owner to talk to real Jarvis as a customer and inspect order state/readiness.
+Inside **Jarvis → Диалоги**, development mode reuses the Task 15 **Jarvis Lab** stand for the owner to talk to real Jarvis as a customer and inspect order state/readiness.
 
 ```text
 Presales CRM browser
@@ -113,13 +123,21 @@ Conversation + OrderMemory + trusted quote/readiness
 
 Properties:
 
-- visible only when `import.meta.env.DEV`
+- permanent CRM sidebar item in dev and production builds
+- functional `/jarvis-dev` bridge only when `import.meta.env.DEV`
 - no internal API key in browser bundle
 - no `POST /measurement-submit`
 - no operational Firestore/Sheet writes from ordinary Lab turns
 - recent test conversation IDs stored locally for convenience only
 
 This is **not** production omnichannel integration and **not** a deployment target for Task 15.
+
+Future Jarvis subsections documented but not implemented yet:
+
+```text
+Обучение
+Каналы
+```
 
 ## Existing production “Отправить в работу”
 
@@ -155,7 +173,6 @@ Structured lead channel that should:
 
 ## Explicit non-goals of Task 14.1
 
-- No Jarvis UI embedded in CRM
 - No automatic measurement executor trigger after a customer message
 - No writes to `measurements`, `ready_orders`, `config/prices`, or production status
 - No channel adapters
