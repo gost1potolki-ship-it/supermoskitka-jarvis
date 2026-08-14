@@ -21,6 +21,13 @@ import type { OrderMemoryStore } from '../storage/order-memory-store.js';
 
 import { JarvisApplication } from './jarvis-application.js';
 import type { IdGenerator } from './id-generator.js';
+import {
+  MeasurementSubmissionService,
+  type MeasurementSheetGateway,
+  type MeasurementSubmissionClock,
+  type MeasurementSubmissionLogger,
+  type UpcomingMeasurementStore,
+} from './measurement-submission/index.js';
 
 export interface ComposeJarvisApplicationInput {
   conversationStore: ConversationStore;
@@ -33,6 +40,11 @@ export interface ComposeJarvisApplicationInput {
   includeFactExtractor?: boolean;
   includeCalculationTools?: boolean;
   measurementActionPolicy?: MeasurementActionPolicy;
+  measurementSubmissionService?: MeasurementSubmissionService;
+  upcomingMeasurementStore?: UpcomingMeasurementStore;
+  measurementSheetGateway?: MeasurementSheetGateway;
+  measurementSubmissionClock?: MeasurementSubmissionClock;
+  measurementSubmissionLogger?: MeasurementSubmissionLogger;
   idGenerator?: IdGenerator;
 }
 
@@ -93,6 +105,17 @@ export function composeJarvisApplication(
     },
   );
 
+  const measurementSubmissionService =
+    input.measurementSubmissionService ??
+    (input.upcomingMeasurementStore && input.measurementSheetGateway
+      ? new MeasurementSubmissionService(
+          input.upcomingMeasurementStore,
+          input.measurementSheetGateway,
+          input.measurementSubmissionClock ?? { now: () => new Date().toISOString() },
+          input.measurementSubmissionLogger,
+        )
+      : undefined);
+
   const application = new JarvisApplication({
     conversationStore: input.conversationStore,
     orderMemoryStore: input.orderMemoryStore,
@@ -100,6 +123,7 @@ export function composeJarvisApplication(
     ...(input.measurementActionPolicy
       ? { measurementActionPolicy: input.measurementActionPolicy }
       : {}),
+    ...(measurementSubmissionService ? { measurementSubmissionService } : {}),
     ...(input.idGenerator ? { idGenerator: input.idGenerator } : {}),
   });
 

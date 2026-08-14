@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: >
     Internal control/application API for Jarvis Core. Not a public customer API.
-    CRM measurement submission is intentionally out of scope.
+    Measurement submission is an explicit trusted server-side operation only.
 servers:
   - url: /
     description: Same origin as the Jarvis process
@@ -236,8 +236,8 @@ paths:
       summary: Measurement action decision (+ safe draft when ready)
       operationId: getMeasurementAction
       description: >
-        Uses readiness + measurement action policy. AUTO_ALLOWED is an internal
-        decision signal only — Jarvis V1 does not write CRM measurements.
+        Uses readiness + measurement action policy. Reading AUTO_ALLOWED never
+        writes operational data.
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       responses:
@@ -253,6 +253,67 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/NotConfigured'
+
+  /internal/v1/conversations/{conversationId}/measurement-submit:
+    post:
+      summary: Explicitly submit the current trusted measurement draft
+      operationId: submitReadyMeasurement
+      description: >
+        Rebuilds all values from the current server-side Order Memory and trusted
+        preliminary quote. Request-body phone, address, items, total, or quote
+        overrides are ignored. This operation is never triggered automatically
+        by an ordinary customer message.
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: No request-body fields are used as measurement authority.
+      responses:
+        '200':
+          description: Firestore upsert and Sheet projection succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasurementSubmitResultDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: >
+            Owner approval is required or the memory/quote changed before execution
+            (MEASUREMENT_OWNER_APPROVAL_REQUIRED / MEASUREMENT_SUBMISSION_STALE).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Current MeasurementAction is NOT_READY (MEASUREMENT_NOT_READY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: >
+            Firestore persistence failed, or Firestore was upserted and the Sheet
+            projection failed. Partial details identify firestore=UPSERTED.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: >
+            Internal API runtime or measurement Sheet webhook is not configured.
+            MEASUREMENT_SHEET_NOT_CONFIGURED includes partial Firestore status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   securitySchemes:
@@ -620,6 +681,26 @@ components:
           allOf:
             - $ref: '#/components/schemas/MeasurementDraftDto'
 
+    MeasurementSubmitResultDto:
+      type: object
+      additionalProperties: false
+      required: [conversationId, submissionId, status, firestore, sheet]
+      properties:
+        conversationId:
+          type: string
+        submissionId:
+          type: string
+          description: Deterministic jarvis_<SHA-256 prefix> idempotency key
+        status:
+          type: string
+          enum: [SUBMITTED]
+        firestore:
+          type: string
+          enum: [UPSERTED]
+        sheet:
+          type: string
+          enum: [SENT]
+
     ErrorResponse:
       type: object
       additionalProperties: false
@@ -642,8 +723,20 @@ components:
                 - MODE_INVALID
                 - PERSISTENCE_CONFLICT
                 - PROVIDER_UNAVAILABLE
+                - MEASUREMENT_NOT_READY
+                - MEASUREMENT_OWNER_APPROVAL_REQUIRED
+                - MEASUREMENT_SUBMISSION_STALE
+                - MEASUREMENT_SHEET_NOT_CONFIGURED
+                - MEASUREMENT_SHEET_FAILED
+                - MEASUREMENT_PERSISTENCE_FAILED
                 - INTERNAL_ERROR
             message:
               type: string
             requestId:
               type: string
+            details:
+              type: object
+              additionalProperties: true
+              description: >
+                Safe operational status only. Partial measurement failures may
+                include conversationId, submissionId, status, firestore, and sheet.

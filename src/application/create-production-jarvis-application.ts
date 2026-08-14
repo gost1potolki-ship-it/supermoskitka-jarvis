@@ -2,8 +2,13 @@ import type { Logger } from '../app/logger.js';
 import {
   createPersistentJarvisRuntime,
   tryLoadJarvisFirestoreConfig,
+  type JarvisFirestoreConfig,
   type JarvisFirestoreGateway,
 } from '../infrastructure/firestore/index.js';
+import {
+  AdminUpcomingMeasurementStore,
+  HttpMeasurementSheetGateway,
+} from '../infrastructure/measurement-submission/index.js';
 import {
   loadOdiRouterConfig,
   OdiRouterConfigError,
@@ -13,6 +18,10 @@ import {
 import type { ConversationStore } from '../storage/conversation-store.js';
 import type { OrderMemoryStore } from '../storage/order-memory-store.js';
 
+import type {
+  MeasurementSheetGateway,
+  UpcomingMeasurementStore,
+} from './measurement-submission/index.js';
 import {
   composeJarvisApplication,
   type ComposedJarvisApplication,
@@ -27,6 +36,8 @@ export interface TryCreateProductionJarvisApplicationOptions {
   orderMemoryStore?: OrderMemoryStore;
   llm?: LlmProvider;
   gateway?: JarvisFirestoreGateway;
+  upcomingMeasurementStore?: UpcomingMeasurementStore;
+  measurementSheetGateway?: MeasurementSheetGateway;
   knowledgeRoot?: string;
 }
 
@@ -47,13 +58,14 @@ export function tryCreateProductionJarvisApplication(
 
   let conversationStore = options.conversationStore;
   let orderMemoryStore = options.orderMemoryStore;
+  let firestoreConfig: JarvisFirestoreConfig | undefined;
 
   if (!conversationStore || !orderMemoryStore) {
     try {
-      const firestoreConfig =
+      firestoreConfig =
         options.gateway !== undefined
           ? undefined
-          : tryLoadJarvisFirestoreConfig(env);
+          : (tryLoadJarvisFirestoreConfig(env) ?? undefined);
       if (!options.gateway && !firestoreConfig) {
         warn(logger, 'internal_api.runtime_incomplete', {
           reason: 'firestore_config_missing',
@@ -77,6 +89,25 @@ export function tryCreateProductionJarvisApplication(
       return undefined;
     }
   }
+
+  let upcomingMeasurementStore = options.upcomingMeasurementStore;
+  if (!upcomingMeasurementStore && firestoreConfig) {
+    try {
+      upcomingMeasurementStore = new AdminUpcomingMeasurementStore(firestoreConfig);
+    } catch (error) {
+      warn(logger, 'measurement_submission.store_unavailable', {
+        err:
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : { message: 'measurement_store_runtime_failed' },
+      });
+    }
+  }
+  const measurementSheetGateway =
+    options.measurementSheetGateway ??
+    new HttpMeasurementSheetGateway(
+      env.MEASUREMENT_SHEET_WEBHOOK_URL?.trim() || undefined,
+    );
 
   let llm = options.llm;
   if (!llm) {
@@ -104,6 +135,9 @@ export function tryCreateProductionJarvisApplication(
     conversationStore,
     orderMemoryStore,
     llm,
+    ...(upcomingMeasurementStore ? { upcomingMeasurementStore } : {}),
+    measurementSheetGateway,
+    ...(logger ? { measurementSubmissionLogger: logger } : {}),
     ...(options.knowledgeRoot ? { knowledgeRoot: options.knowledgeRoot } : {}),
   });
 

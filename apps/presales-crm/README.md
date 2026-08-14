@@ -1,13 +1,13 @@
 # Калькулятор ПК (офлайн)
 
-Настольная версия на базе **того же кода расчёта**, что и приложение замерщика `calc_v2`.
+Настольная версия на базе **того же кода расчёта**, что и приложение замерщика `../measurer`.
 
 ## Документация
 
-- Полная схема ценообразования: [`../calc_v2/docs/DESKTOP_CALCULATOR_PRICING_SCHEMA.md`](../calc_v2/docs/DESKTOP_CALCULATOR_PRICING_SCHEMA.md)
-- JSON Schema полей: `../calc_v2/docs/desktop-calculator-input.schema.json`
+- Полная схема ценообразования: [`../measurer/docs/DESKTOP_CALCULATOR_PRICING_SCHEMA.md`](../measurer/docs/DESKTOP_CALCULATOR_PRICING_SCHEMA.md)
+- JSON Schema полей: `../measurer/docs/desktop-calculator-input.schema.json`
 
-## Что используется из calc_v2
+## Что используется из measurer
 
 | Модуль | Назначение |
 |--------|------------|
@@ -19,16 +19,15 @@
 
 ## Обновление прайса
 
-В каталоге `calc_v2`:
+В каталоге `../measurer`:
 
 ```bash
 npm run export:desktop-prices
 ```
 
-Пересоберите ПК-калькулятор:
+Затем из `apps/presales-crm` пересоберите ПК-калькулятор:
 
 ```bash
-cd ../Calc_to_web
 npm run build
 ```
 
@@ -47,4 +46,18 @@ npm run dev
 - Корзина с монтажом, доставкой, скидкой, QR
 - **Экспорт КП** в `.txt`
 
-Firebase и Apps Script **не используются**.
+## Интеграции
+
+CRM читает и записывает рабочие данные через Firebase/Firestore. Кнопка
+«Записать на замер» создаёт или обновляет документ
+`upcoming_measurements/{submissionId}` и отдельно синхронизирует проекцию в
+Google Таблицу через dedicated measurement webhook.
+
+Для локального запуска задайте в `.env.local`:
+
+```text
+VITE_MEASUREMENT_SHEET_WEBHOOK_URL=
+```
+
+Реальный URL не хранится в репозитории. Production-order webhook
+`VITE_GOOGLE_SHEET_WEBHOOK_URL` остаётся отдельным от записи на замер.

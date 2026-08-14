@@ -11,6 +11,10 @@ import type { MeasurementActionPolicy } from '../domain/lead-readiness.js';
 import type { ConversationOrchestrator } from '../jarvis/conversation/index.js';
 import { createOrderMemory } from '../jarvis/memory/index.js';
 import {
+  buildMeasurementDraft,
+  decideMeasurementAction,
+} from '../jarvis/preliminary/index.js';
+import {
   DeepSeekProviderError,
   GeminiProviderError,
   OdiRouterProviderError,
@@ -22,6 +26,7 @@ import { ApplicationError } from './application-errors.js';
 import type { ConversationDto } from './dto/conversation-dto.js';
 import type { HandleCustomerMessageResultDto } from './dto/handle-message-result-dto.js';
 import type { MeasurementActionDto } from './dto/measurement-action-dto.js';
+import type { MeasurementSubmitResultDto } from './dto/measurement-submit-result-dto.js';
 import type { MessageDto } from './dto/message-dto.js';
 import type { ConversationOrderStateDto } from './dto/order-state-dto.js';
 import {
@@ -32,6 +37,11 @@ import {
 } from './dto/mappers.js';
 import type { IdGenerator } from './id-generator.js';
 import { UuidIdGenerator } from './id-generator.js';
+import {
+  buildTrustedJarvisMeasurementSubmission,
+  MeasurementPersistenceError,
+  type MeasurementSubmissionService,
+} from './measurement-submission/index.js';
 
 export interface CreateConversationInput {
   channel?: string;
@@ -51,6 +61,7 @@ export interface JarvisApplicationDeps {
   orchestrator: ConversationOrchestrator;
   idGenerator?: IdGenerator;
   measurementActionPolicy?: MeasurementActionPolicy;
+  measurementSubmissionService?: MeasurementSubmissionService;
   now?: () => string;
 }
 
@@ -108,6 +119,7 @@ export class JarvisApplication {
   private readonly orchestrator: ConversationOrchestrator;
   private readonly idGenerator: IdGenerator;
   private readonly measurementActionPolicy: MeasurementActionPolicy | undefined;
+  private readonly measurementSubmissionService: MeasurementSubmissionService | undefined;
   private readonly now: () => string;
   private readonly inFlight = new Map<string, InFlightMessage>();
 
@@ -117,6 +129,7 @@ export class JarvisApplication {
     this.orchestrator = deps.orchestrator;
     this.idGenerator = deps.idGenerator ?? new UuidIdGenerator();
     this.measurementActionPolicy = deps.measurementActionPolicy;
+    this.measurementSubmissionService = deps.measurementSubmissionService;
     this.now = deps.now ?? (() => new Date().toISOString());
   }
 
@@ -344,6 +357,75 @@ export class JarvisApplication {
         now: this.now(),
       });
     return toMeasurementActionDto(memory, this.measurementActionPolicy);
+  }
+
+  async submitReadyMeasurement(conversationId: string): Promise<MeasurementSubmitResultDto> {
+    await this.requireConversation(conversationId);
+    const captured = await this.orderMemoryStore.get(conversationId);
+    if (!captured) {
+      throw ApplicationError.measurementNotReady();
+    }
+
+    const action = decideMeasurementAction(captured, this.measurementActionPolicy);
+    if (action === 'NOT_READY') {
+      throw ApplicationError.measurementNotReady();
+    }
+    if (action === 'AWAITING_OWNER_APPROVAL') {
+      throw ApplicationError.measurementOwnerApprovalRequired();
+    }
+
+    // Materialize the trusted draft before the second read. This keeps the stale
+    // protection explicit and makes no HTTP request data part of the submission.
+    buildMeasurementDraft(captured);
+    const current = await this.orderMemoryStore.get(conversationId);
+    if (
+      !current ||
+      captured.revision !== current.revision ||
+      captured.preliminaryQuote?.quoteId !== current.preliminaryQuote?.quoteId
+    ) {
+      throw ApplicationError.measurementSubmissionStale();
+    }
+
+    const service = this.measurementSubmissionService;
+    if (!service) {
+      throw ApplicationError.measurementPersistenceFailed();
+    }
+
+    const submission = buildTrustedJarvisMeasurementSubmission(current);
+    try {
+      const result = await service.submit(submission);
+      if (result.status === 'PARTIAL') {
+        const details: Record<string, unknown> = {
+          conversationId,
+          submissionId: result.submissionId,
+          status: 'PARTIAL',
+          firestore: 'UPSERTED',
+          sheet: 'ERROR',
+        };
+        if (result.errorCode === 'MEASUREMENT_SHEET_NOT_CONFIGURED') {
+          throw ApplicationError.measurementSheetNotConfigured(details);
+        }
+        throw ApplicationError.measurementSheetFailed(details);
+      }
+      return {
+        conversationId,
+        submissionId: result.submissionId,
+        status: 'SUBMITTED',
+        firestore: 'UPSERTED',
+        sheet: 'SENT',
+      };
+    } catch (error) {
+      if (error instanceof ApplicationError) {
+        throw error;
+      }
+      if (error instanceof MeasurementPersistenceError) {
+        throw ApplicationError.measurementPersistenceFailed({
+          conversationId,
+          firestore: error.firestoreUpserted ? 'UPSERTED' : 'ERROR',
+        });
+      }
+      throw error;
+    }
   }
 
   private async requireConversation(conversationId: string) {

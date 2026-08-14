@@ -8,6 +8,12 @@ export type ApplicationErrorCode =
   | 'MODE_INVALID'
   | 'PERSISTENCE_CONFLICT'
   | 'PROVIDER_UNAVAILABLE'
+  | 'MEASUREMENT_NOT_READY'
+  | 'MEASUREMENT_OWNER_APPROVAL_REQUIRED'
+  | 'MEASUREMENT_SUBMISSION_STALE'
+  | 'MEASUREMENT_SHEET_NOT_CONFIGURED'
+  | 'MEASUREMENT_SHEET_FAILED'
+  | 'MEASUREMENT_PERSISTENCE_FAILED'
   | 'INTERNAL_ERROR';
 
 export class ApplicationError extends Error {
@@ -50,6 +56,53 @@ export class ApplicationError extends Error {
 
   static providerUnavailable(message = 'Provider unavailable'): ApplicationError {
     return new ApplicationError('PROVIDER_UNAVAILABLE', message, 502);
+  }
+
+  static measurementNotReady(message = 'Measurement is not ready'): ApplicationError {
+    return new ApplicationError('MEASUREMENT_NOT_READY', message, 422);
+  }
+
+  static measurementOwnerApprovalRequired(
+    message = 'Measurement requires owner approval',
+  ): ApplicationError {
+    return new ApplicationError('MEASUREMENT_OWNER_APPROVAL_REQUIRED', message, 409);
+  }
+
+  static measurementSubmissionStale(
+    message = 'Measurement submission is stale',
+  ): ApplicationError {
+    return new ApplicationError('MEASUREMENT_SUBMISSION_STALE', message, 409);
+  }
+
+  static measurementSheetNotConfigured(
+    details?: Record<string, unknown>,
+  ): ApplicationError {
+    return new ApplicationError(
+      'MEASUREMENT_SHEET_NOT_CONFIGURED',
+      'Measurement Sheet webhook is not configured',
+      503,
+      details,
+    );
+  }
+
+  static measurementSheetFailed(details?: Record<string, unknown>): ApplicationError {
+    return new ApplicationError(
+      'MEASUREMENT_SHEET_FAILED',
+      'Measurement Sheet synchronization failed',
+      502,
+      details,
+    );
+  }
+
+  static measurementPersistenceFailed(
+    details?: Record<string, unknown>,
+  ): ApplicationError {
+    return new ApplicationError(
+      'MEASUREMENT_PERSISTENCE_FAILED',
+      'Measurement persistence failed',
+      502,
+      details,
+    );
   }
 
   static internal(message = 'Internal error'): ApplicationError {

@@ -29,6 +29,16 @@ Env:
 JARVIS_INTERNAL_API_KEY
 ```
 
+Measurement Sheet projection (used only by the explicit submit endpoint):
+
+```text
+MEASUREMENT_SHEET_WEBHOOK_URL
+```
+
+If this URL is absent, existing internal read/message routes remain available.
+An explicit measurement submit still preserves the Firestore document and
+returns `MEASUREMENT_SHEET_NOT_CONFIGURED`.
+
 Request header:
 
 ```text
@@ -54,6 +64,7 @@ Missing `JARVIS_INTERNAL_API_KEY` **or** incomplete production runtime (Firestor
 ```text
 JARVIS_INTERNAL_API_KEY
 + Firestore (jarvis_v1_conversations / jarvis_v1_order_memories)
++ narrow Admin adapter (upcoming_measurements only)
 + OdiRouter LLM
 + Knowledge / FactExtractor / Calculation Tool
 → JarvisApplication → createApp
@@ -75,6 +86,7 @@ Shared wiring helper: `composeJarvisApplication` / `tryCreateProductionJarvisApp
 | `POST` | `/internal/v1/conversations/:conversationId/mode` | bearer |
 | `GET` | `/internal/v1/conversations/:conversationId/order-state` | bearer |
 | `GET` | `/internal/v1/conversations/:conversationId/measurement-action` | bearer |
+| `POST` | `/internal/v1/conversations/:conversationId/measurement-submit` | bearer |
 
 Machine-readable contract: `docs/openapi.internal.v1.yaml`.
 
@@ -208,27 +220,98 @@ AWAITING_OWNER_APPROVAL
 
 When ready, may include a safe draft (customer/items/fulfillment/public quote). No internal economics in the draft.
 
-## CRM / production writes
+Reading this endpoint never writes operational data.
 
-Task 12 does **not** implement:
+## Explicit measurement submission
 
-```text
-submitMeasurement
-writeMeasurement
-sendToCrm
-createPresalesLead
+`POST /internal/v1/conversations/:conversationId/measurement-submit`
+
+This is the only Jarvis Task 14 operational execution entry point. It:
+
+1. reads the current `MeasurementAction`;
+2. requires `AUTO_ALLOWED`;
+3. rebuilds customer data and total from current Order Memory and the current
+   trusted preliminary quote;
+4. rereads memory and rejects a changed revision/quote as
+   `MEASUREMENT_SUBMISSION_STALE`;
+5. upserts `upcoming_measurements/{submissionId}`;
+6. projects the same submission to the dedicated measurement Sheet webhook.
+
+The HTTP request body is not an authority. Caller-provided phone, address,
+items, quote ID, or total overrides are ignored.
+
+Success `200`:
+
+```json
+{
+  "conversationId": "...",
+  "submissionId": "jarvis_<sha256-prefix>",
+  "status": "SUBMITTED",
+  "firestore": "UPSERTED",
+  "sheet": "SENT"
+}
 ```
 
-Operational collections remain untouched:
+Jarvis IDs are deterministic:
+
+```text
+jarvis_ + first 32 lowercase hex characters of SHA-256(UTF-8 conversationId)
+```
+
+The ID contains no raw phone or address. Retry and explicit update of the same
+conversation use the same Firestore document and Sheet row.
+
+Jarvis V1 uses `payerType=CUSTOMER` because payer choice is not yet a trusted
+Order Memory fact. The manual CRM confirmation remains editable and explicit.
+
+### Partial failure
+
+Firestore is written first with `sheetSyncStatus=pending`. Sheet success marks
+it `sent`; Sheet failure marks it `error` and does not delete the measurement.
+
+Sheet failure returns controlled `502` (or `503` when unconfigured) with safe
+details:
+
+```json
+{
+  "error": {
+    "code": "MEASUREMENT_SHEET_FAILED",
+    "message": "Measurement Sheet synchronization failed",
+    "requestId": "...",
+    "details": {
+      "conversationId": "...",
+      "submissionId": "jarvis_<sha256-prefix>",
+      "status": "PARTIAL",
+      "firestore": "UPSERTED",
+      "sheet": "ERROR"
+    }
+  }
+}
+```
+
+Retry is safe and uses the same `submissionId`.
+
+## Operational write boundary
+
+Task 14 permits only:
+
+```text
+upcoming_measurements/{submissionId}
+dedicated measurement Sheet projection
+```
+
+Still forbidden:
 
 ```text
 measurements
-upcoming_measurements
 ready_orders
 config/prices
+production status
 ```
 
-`AUTO_ALLOWED` is an internal decision signal only.
+The existing “Отправить в работу” contract is unchanged. `AUTO_ALLOWED` after
+an ordinary customer message still performs zero operational writes; execution
+requires the explicit POST above.
 
 ## Error contract
 
@@ -253,6 +336,12 @@ MESSAGE_ID_CONFLICT
 MODE_INVALID
 PERSISTENCE_CONFLICT
 PROVIDER_UNAVAILABLE
+MEASUREMENT_NOT_READY
+MEASUREMENT_OWNER_APPROVAL_REQUIRED
+MEASUREMENT_SUBMISSION_STALE
+MEASUREMENT_SHEET_NOT_CONFIGURED
+MEASUREMENT_SHEET_FAILED
+MEASUREMENT_PERSISTENCE_FAILED
 INTERNAL_ERROR
 ```
 

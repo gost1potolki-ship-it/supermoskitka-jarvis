@@ -1,5 +1,8 @@
 import type { MeasurementActionPolicy } from '../../src/domain/lead-readiness.js';
-import { JarvisApplication } from '../../src/application/index.js';
+import {
+  JarvisApplication,
+  type MeasurementSubmissionService,
+} from '../../src/application/index.js';
 import { createApp } from '../../src/app/server.js';
 import { createLogger } from '../../src/app/logger.js';
 import { ConversationOrchestrator } from '../../src/jarvis/conversation/index.js';
@@ -33,6 +36,7 @@ export function createTestJarvisHarness(options?: {
   measurementActionPolicy?: MeasurementActionPolicy;
   factExtractor?: FactExtractor;
   includeFactExtractor?: boolean;
+  measurementSubmissionService?: MeasurementSubmissionService;
 }): TestJarvisHarness {
   const conversationStore = new InMemoryConversationStore();
   const orderMemoryStore = new InMemoryOrderMemoryStore();
@@ -58,6 +62,9 @@ export function createTestJarvisHarness(options?: {
     orchestrator,
     ...(options?.measurementActionPolicy
       ? { measurementActionPolicy: options.measurementActionPolicy }
+      : {}),
+    ...(options?.measurementSubmissionService
+      ? { measurementSubmissionService: options.measurementSubmissionService }
       : {}),
   });
   const apiKey = options?.apiKey === undefined ? TEST_INTERNAL_API_KEY : options.apiKey;

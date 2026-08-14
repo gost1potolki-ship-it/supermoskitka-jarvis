@@ -9,13 +9,17 @@ Jarvis runtime state is persisted with **Firebase Admin → Firestore** in **Jar
 | `jarvis_v1_conversations` | `conversationId` | Conversation aggregate + messages |
 | `jarvis_v1_order_memories` | `conversationId` | Canonical `OrderMemory` |
 
-Operational CRM collections are **read-only** for future CRM Watcher and must **not** be written by Task 10:
+Task 14 permits one explicit operational write through a dedicated adapter:
 
-- `measurements`
-- `upcoming_measurements`
-- `ready_orders`
-- `config` / `prices`
-- dealer / Sheets integrations
+| Collection | Permission | Boundary |
+| --- | --- | --- |
+| `upcoming_measurements` | explicit upsert only | Measurement Submission Executor |
+| `measurements` | no write | operational lifecycle remains unchanged |
+| `ready_orders` | no write | operational lifecycle remains unchanged |
+| `config` / `prices` | no write | pricing source remains unchanged |
+
+The `upcoming_measurements` adapter is intentionally separate from
+`JarvisFirestoreGateway`, whose `jarvis_v1_*` allowlist remains unchanged.
 
 ## Architecture
 
@@ -27,6 +31,15 @@ ConversationOrchestrator
 ```
 
 Domain and Jarvis core **do not** import `firebase-admin`.
+
+Measurement intake uses a separate application port:
+
+```text
+explicit measurement-submit use case
+  → UpcomingMeasurementStore (Admin adapter in production)
+  → upcoming_measurements/{submissionId}
+  → MeasurementSheetGateway (projection)
+```
 
 ## Composition
 
@@ -103,6 +116,16 @@ Compact memory context is rebuilt from persistent `OrderMemory` each turn.
 | OrderMemory save fails after CUSTOMER saved | Mark extraction failed; continue LLM with **pre-apply** memory; do not pretend memory updated |
 
 No distributed transaction between Conversation and OrderMemory in this stage.
+
+Measurement intake also does not pretend Firestore and Google Sheets are one
+transaction:
+
+1. upsert Firestore with `sheetSyncStatus=pending`;
+2. upsert the Sheet row using the same `submissionId`;
+3. mark Firestore `sent` on success or `error` on failure.
+
+Sheet failure never deletes the Firestore measurement. A retry is safe and uses
+the same document ID and Sheet `submission_id`.
 
 ## Live smoke
 

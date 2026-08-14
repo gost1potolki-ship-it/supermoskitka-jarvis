@@ -7,7 +7,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const roots = [path.join(root, 'apps/presales-crm'), path.join(root, 'apps/measurer')];
+const roots = [
+  path.join(root, 'apps/presales-crm'),
+  path.join(root, 'apps/measurer'),
+  path.join(root, 'integrations'),
+];
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage', '.gradle', '__pycache__']);
 
@@ -40,7 +44,7 @@ function walk(dir) {
       findings.push({ category: 'private_key_material', path: rel });
     }
 
-    if (!/\.(ts|tsx|js|jsx|json|md|env|txt|yml|yaml)$/i.test(base)) continue;
+    if (!/\.(ts|tsx|js|jsx|gs|json|md|env|txt|yml|yaml)$/i.test(base)) continue;
     if (base === '.env.example') continue;
 
     let text = '';

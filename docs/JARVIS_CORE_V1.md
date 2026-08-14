@@ -49,7 +49,11 @@ WHITE != GRAY_7016
 ### 2.3 Measurement automation boundary
 
 - Политика по умолчанию: `AUTO_WHEN_READY` → внутреннее решение `AUTO_ALLOWED` при `READY_FOR_MEASUREMENT`.
-- **`AUTO_ALLOWED` ≠ запись в CRM.** Jarvis V1 не пишет в `measurements`, `ready_orders` и другие операционные коллекции.
+- **`AUTO_ALLOWED` сам по себе ≠ запись в CRM.** Task 14 добавляет только
+  явный защищённый executor: отдельный internal POST может upsert
+  `upcoming_measurements`; обычный клиентский turn ничего не записывает.
+  Записи в `measurements`, `ready_orders` и другие operational namespaces
+  по-прежнему запрещены.
 
 На первом этапе не разрабатываем как основную задачу:
 
@@ -120,8 +124,8 @@ External / Internal caller
 │ Readiness / Quote    │
 └──────────────────────┘
 
-CRM write permission = NOT IMPLEMENTED
-Measurement submission executor = NOT IMPLEMENTED
+General CRM write permission = NOT IMPLEMENTED
+Measurement submission executor = explicit Task 14 endpoint only
 ```
 
 Каналы и CRM:

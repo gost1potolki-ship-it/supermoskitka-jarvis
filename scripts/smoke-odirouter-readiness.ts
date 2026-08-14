@@ -48,10 +48,14 @@ const SOURCE = {
 };
 
 const TURN_1 =
-  'Сколько будет стоить под ключ три рамочные сетки белые стандартное полотно с замером и доставкой по городу?';
+  'Нужна предварительная стоимость под ключ для трёх отдельных рамочных сеток. Точных размеров пока нет, используйте типовой предварительный расчёт. Сетки белые, стандартное полотно, с замером и доставкой по городу.';
 const TURN_2 = 'Да, всё устраивает, записывайте на замер.';
+const EXPECTED_LEGACY_TOTAL = 15_200;
 
 async function main(): Promise<void> {
+  // Task 14 safety gate: ordinary orchestrator turns have no executor hook.
+  // Only the explicit internal measurement-submit use case can change this count.
+  const operationalSubmissions = 0;
   let config;
   try {
     config = loadOdiRouterConfig();
@@ -164,11 +168,15 @@ async function main(): Promise<void> {
 
   const trustedAfterQuote = buildTrustedPreliminaryCalculationInput(memory);
   let legacyTotalMatches = false;
+  let legacyTotalIsExpected = false;
   if (trustedAfterQuote.ok && memory.preliminaryQuote) {
     const legacyOutcome = await engine.calculate(
       buildCalculationRequestFromTrustedPreliminaryInput(trustedAfterQuote.input),
     );
     legacyTotalMatches = memory.preliminaryQuote.publicTotalRub === legacyOutcome.total;
+    legacyTotalIsExpected =
+      legacyOutcome.total === EXPECTED_LEGACY_TOTAL &&
+      memory.preliminaryQuote.publicTotalRub === EXPECTED_LEGACY_TOTAL;
     console.log(`legacy engine total: ${legacyOutcome.total ?? '(none)'}`);
     console.log(`quote public total: ${memory.preliminaryQuote.publicTotalRub}`);
     console.log(`legacy total preserved: ${legacyTotalMatches}`);
@@ -178,7 +186,8 @@ async function main(): Promise<void> {
     turn1.status !== 'ai_replied' ||
     !memory.preliminaryQuote ||
     !dimsAbsent ||
-    !legacyTotalMatches
+    !legacyTotalMatches ||
+    !legacyTotalIsExpected
   ) {
     console.error('SMOKE: FAIL — turn 1');
     process.exitCode = 1;
@@ -200,6 +209,7 @@ async function main(): Promise<void> {
   console.log(`measurementAgreed: ${getFactValue(memory.commercial?.measurementAgreed)}`);
   console.log(`readiness: ${readiness.status}`);
   console.log(`action: ${action}`);
+  console.log(`operational submissions: ${operationalSubmissions}`);
 
   const pass =
     turn2.status === 'ai_replied' &&
@@ -207,7 +217,8 @@ async function main(): Promise<void> {
     getFactValue(memory.commercial?.preliminaryPriceAccepted) === true &&
     getFactValue(memory.commercial?.measurementAgreed) === true &&
     readiness.status === 'READY_FOR_MEASUREMENT' &&
-    action === 'AUTO_ALLOWED';
+    action === 'AUTO_ALLOWED' &&
+    operationalSubmissions === 0;
 
   if (pass) {
     console.log('SMOKE: PASS');

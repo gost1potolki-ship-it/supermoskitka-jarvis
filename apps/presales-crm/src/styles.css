@@ -2059,3 +2059,106 @@ html[data-theme="dark"] .login-card {
 .btn-send-work:hover {
   background: #30b350;
 }
+
+.btn-measurement {
+  color: #fff;
+  background: #7c3aed;
+}
+
+.btn-measurement:hover {
+  background: #6d28d9;
+}
+
+.measurement-submit-status {
+  margin: 2px 0 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.measurement-submit-status.status-success {
+  color: #187a32;
+  background: rgb(52 199 89 / 10%);
+}
+
+.measurement-submit-status.status-warning {
+  color: #9a5b00;
+  background: rgb(255 149 0 / 12%);
+}
+
+.measurement-submit-status.status-error {
+  color: #b42318;
+  background: var(--danger-soft);
+}
+
+.measurement-dialog {
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  padding: 0;
+  overflow: auto;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 20%);
+}
+
+.measurement-dialog::backdrop {
+  background: rgb(0 0 0 / 42%);
+}
+
+.measurement-dialog-form {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.measurement-dialog-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.measurement-dialog-summary {
+  margin: 0;
+  padding: 9px 10px;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+.measurement-dialog-field {
+  display: grid;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.measurement-dialog-field textarea {
+  resize: vertical;
+}
+
+.measurement-dialog-total {
+  padding: 9px 10px;
+  color: var(--text-primary);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.measurement-dialog-error {
+  display: none;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
+.measurement-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}

@@ -77,3 +77,11 @@ export type {
   MeasurementActionDecision,
   MeasurementActionPolicy,
 } from './lead-readiness.js';
+
+export type {
+  MeasurementPayerType,
+  MeasurementSheetSyncStatus,
+  MeasurementSubmissionSource,
+  MeasurementSubmissionV1,
+  UpcomingMeasurementRecord,
+} from './measurement-submission.js';

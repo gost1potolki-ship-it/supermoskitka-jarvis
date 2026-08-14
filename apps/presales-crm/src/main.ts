@@ -69,6 +69,19 @@ import { renderLoginScreen } from './screens/login';
 import { initTheme, toggleTheme } from './theme';
 import type { ArchivedOrder } from '@calc/types';
 import type { ArchiveOrderView } from './lib/archive';
+import { db } from './firebase';
+import {
+  buildCompactItemSummary,
+  buildMeasurementSubmission,
+  createFirestoreMeasurementStore,
+  createMeasurementSheetGateway,
+  createMeasurementSubmissionId,
+  measurementFingerprint,
+  submitMeasurement,
+  type MeasurementPayerType,
+  type MeasurementSheetStatus,
+  type MeasurementSubmissionInput,
+} from './lib/measurement-submission';
 
 /** Прайс из `calc_v2`: npm run export:desktop-prices */
 const PRICES = { price_settings: (pricesExport as PricesExport).price_settings } as typeof DEFAULT_PRICES;
@@ -139,9 +152,21 @@ interface AppState {
   comment: string;
   editingId: string | null;
   editingArchiveId: string | null;
+  measurementSubmissionId?: string;
+  measurementSubmittedFingerprint?: string;
+  measurementSheetStatus?: MeasurementSheetStatus;
+  measurementSheetErrorCode?: string;
+  measurementApartment: string;
+  measurementPreferredTime: string;
+  measurementPayerType: MeasurementPayerType;
 }
 
 let sendingToWorkId: string | null = null;
+let measurementRequestInProgress = false;
+const measurementAdapters = {
+  store: createFirestoreMeasurementStore(db),
+  sheet: createMeasurementSheetGateway(),
+};
 
 let state: AppState = loadState();
 
@@ -171,6 +196,13 @@ function loadState(): AppState {
         comment: p.comment ?? '',
         editingId: null,
         editingArchiveId: getEditingArchiveId(),
+        measurementSubmissionId: p.measurementSubmissionId,
+        measurementSubmittedFingerprint: p.measurementSubmittedFingerprint,
+        measurementSheetStatus: p.measurementSheetStatus,
+        measurementSheetErrorCode: p.measurementSheetErrorCode,
+        measurementApartment: p.measurementApartment ?? '',
+        measurementPreferredTime: p.measurementPreferredTime ?? '',
+        measurementPayerType: p.measurementPayerType === 'COMPANY' ? 'COMPANY' : 'CUSTOMER',
       };
     }
   } catch {
@@ -191,6 +223,9 @@ function loadState(): AppState {
     comment: '',
     editingId: null,
     editingArchiveId: getEditingArchiveId(),
+    measurementApartment: '',
+    measurementPreferredTime: '',
+    measurementPayerType: 'CUSTOMER',
   };
 }
 
@@ -201,10 +236,22 @@ function normalizeLoadedScreen(screen: Screen | undefined): Screen {
 }
 
 function persistState(): void {
-  const { screen, cart, customer, globalInstall, deliveryType, deliveryKm, orderDiscountPercent, paymentMethod, includeMeasurementFee, retailMarkupPercent, comment } = state;
+  const {
+    screen, cart, customer, globalInstall, deliveryType, deliveryKm, orderDiscountPercent,
+    paymentMethod, includeMeasurementFee, retailMarkupPercent, comment,
+    measurementSubmissionId, measurementSubmittedFingerprint, measurementSheetStatus,
+    measurementSheetErrorCode, measurementApartment, measurementPreferredTime,
+    measurementPayerType,
+  } = state;
   localStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ screen: screen === 'calc' ? 'cart' : screen, cart, customer, globalInstall, deliveryType, deliveryKm, orderDiscountPercent, paymentMethod, includeMeasurementFee, retailMarkupPercent, comment })
+    JSON.stringify({
+      screen: screen === 'calc' ? 'cart' : screen, cart, customer, globalInstall, deliveryType,
+      deliveryKm, orderDiscountPercent, paymentMethod, includeMeasurementFee,
+      retailMarkupPercent, comment, measurementSubmissionId, measurementSubmittedFingerprint,
+      measurementSheetStatus, measurementSheetErrorCode, measurementApartment,
+      measurementPreferredTime, measurementPayerType,
+    })
   );
 }
 
@@ -458,7 +505,7 @@ function render(): void {
       onMeasurements: () => navigateTo('measurements'),
       onOrders: () => navigateTo('orders'),
       onCalculator: () => navigateTo('products'),
-      onNewOrder: () => navigateTo('products'),
+      onNewOrder: startNewOrder,
       onThemeToggle: () => {
         toggleTheme();
         render();
@@ -499,6 +546,30 @@ function render(): void {
 
 function navigateTo(screen: Screen): void {
   state.screen = screen;
+  persistState();
+  render();
+}
+
+function resetMeasurementSubmissionContext(): void {
+  state.measurementSubmissionId = undefined;
+  state.measurementSubmittedFingerprint = undefined;
+  state.measurementSheetStatus = undefined;
+  state.measurementSheetErrorCode = undefined;
+  state.measurementApartment = '';
+  state.measurementPreferredTime = '';
+  state.measurementPayerType = 'CUSTOMER';
+}
+
+function startNewOrder(): void {
+  if (hasDraftChanges() && !confirm('Начать новый заказ? Текущий черновик будет очищен.')) return;
+  state.cart = [];
+  state.customer = { name: '', phone: '', address: '' };
+  state.comment = '';
+  state.editingId = null;
+  state.editingArchiveId = null;
+  clearEditingArchiveContext();
+  resetMeasurementSubmissionContext();
+  state.screen = 'products';
   persistState();
   render();
 }
@@ -553,6 +624,7 @@ function saveOrder(): void {
   state.editingArchiveId = null;
   state.editingId = null;
   clearEditingArchiveContext();
+  resetMeasurementSubmissionContext();
   persistState();
   showToast('Заказ сохранён в облако');
   state.screen = wasEditing ? 'orders' : 'menu';
@@ -655,6 +727,7 @@ async function handleSendOrderToWork(order: ArchiveOrderView, fromCart = false):
       state.comment = '';
       state.editingArchiveId = null;
       clearEditingArchiveContext();
+      resetMeasurementSubmissionContext();
       persistState();
       state.screen = 'orders';
     }
@@ -1222,11 +1295,164 @@ function clearOrder(): void {
   state.comment = '';
   state.editingArchiveId = null;
   clearEditingArchiveContext();
+  resetMeasurementSubmissionContext();
   persistState();
   if (wasEditing) {
     state.screen = 'orders';
   }
   render();
+}
+
+function getMeasurementInput(
+  totals: ReturnType<typeof calculateOrderTotals>,
+): MeasurementSubmissionInput {
+  if (!state.measurementSubmissionId) {
+    state.measurementSubmissionId = createMeasurementSubmissionId();
+    persistState();
+  }
+  return {
+    submissionId: state.measurementSubmissionId,
+    name: state.customer.name,
+    phone: state.customer.phone,
+    address: state.customer.address,
+    apartment: state.measurementApartment,
+    comment: state.comment,
+    preferredTime: state.measurementPreferredTime,
+    preliminaryTotalRub: totals.grandTotal,
+    payerType: state.measurementPayerType,
+    items: state.cart,
+  };
+}
+
+function currentMeasurementFingerprint(
+  totals: ReturnType<typeof calculateOrderTotals>,
+): string | null {
+  if (!state.measurementSubmissionId) return null;
+  try {
+    return measurementFingerprint(buildMeasurementSubmission(getMeasurementInput(totals)));
+  } catch {
+    return null;
+  }
+}
+
+async function executeMeasurementSubmission(
+  inputData: MeasurementSubmissionInput,
+  controls: HTMLButtonElement[] = [],
+): Promise<void> {
+  if (measurementRequestInProgress) return;
+  measurementRequestInProgress = true;
+  controls.forEach((control) => { control.disabled = true; });
+  render();
+  try {
+    const result = await submitMeasurement(inputData, measurementAdapters);
+    const fingerprint = measurementFingerprint(buildMeasurementSubmission(inputData));
+    state.measurementSubmittedFingerprint = fingerprint;
+    state.measurementSheetStatus = result.sheet === 'SENT' ? 'sent' : 'error';
+    state.measurementSheetErrorCode = result.status === 'PARTIAL' ? result.errorCode : undefined;
+    persistState();
+    if (result.status === 'SUBMITTED') {
+      showToast('Заявка записана на замер');
+    }
+  } catch (error) {
+    state.measurementSheetStatus = undefined;
+    state.measurementSheetErrorCode =
+      error instanceof Error && 'code' in error ? String(error.code) : 'MEASUREMENT_PERSISTENCE_FAILED';
+    persistState();
+    alert(error instanceof Error ? error.message : 'Не удалось записать на замер');
+  } finally {
+    measurementRequestInProgress = false;
+    controls.forEach((control) => { control.disabled = false; });
+    render();
+  }
+}
+
+function openMeasurementConfirmation(totals: ReturnType<typeof calculateOrderTotals>): void {
+  const draft = getMeasurementInput(totals);
+  const dialog = document.createElement('dialog');
+  dialog.className = 'measurement-dialog';
+  const form = el('form', 'measurement-dialog-form');
+  form.onsubmit = (event) => event.preventDefault();
+  form.appendChild(el('h2', 'measurement-dialog-title', 'Запись на замер'));
+  form.appendChild(
+    el('p', 'measurement-dialog-summary', buildCompactItemSummary(state.cart) || 'Нет позиций'),
+  );
+
+  const makeField = (
+    title: string,
+    value: string,
+    onInput: (value: string) => void,
+    multiline = false,
+  ): HTMLElement => {
+    const labelNode = el('label', 'measurement-dialog-field');
+    labelNode.appendChild(el('span', '', title));
+    const control = multiline ? document.createElement('textarea') : document.createElement('input');
+    control.className = 'input';
+    control.value = value;
+    if (control instanceof HTMLTextAreaElement) control.rows = 2;
+    control.oninput = () => onInput(control.value);
+    labelNode.appendChild(control);
+    return labelNode;
+  };
+
+  form.appendChild(makeField('Имя', draft.name ?? '', (value) => { draft.name = value; }));
+  form.appendChild(makeField('Телефон *', draft.phone, (value) => { draft.phone = value; }));
+  form.appendChild(makeField('Адрес *', draft.address, (value) => { draft.address = value; }));
+  form.appendChild(makeField('Квартира', draft.apartment ?? '', (value) => { draft.apartment = value; }));
+  const total = el(
+    'div',
+    'measurement-dialog-total',
+    `Предварительная сумма: ${draft.preliminaryTotalRub.toLocaleString('ru-RU')} ₽`,
+  );
+  form.appendChild(total);
+  form.appendChild(makeField('Комментарий', draft.comment ?? '', (value) => { draft.comment = value; }, true));
+  form.appendChild(
+    makeField('Желаемое время', draft.preferredTime ?? '', (value) => { draft.preferredTime = value; }),
+  );
+
+  const payerLabel = el('label', 'measurement-dialog-field');
+  payerLabel.appendChild(el('span', '', 'Замер оплачивает'));
+  const payerSelect = document.createElement('select');
+  payerSelect.className = 'input';
+  payerSelect.appendChild(new Option('Клиент', 'CUSTOMER'));
+  payerSelect.appendChild(new Option('Фирма', 'COMPANY'));
+  payerSelect.value = draft.payerType;
+  payerSelect.onchange = () => { draft.payerType = payerSelect.value as MeasurementPayerType; };
+  payerLabel.appendChild(payerSelect);
+  form.appendChild(payerLabel);
+
+  const errorNode = el('p', 'measurement-dialog-error');
+  form.appendChild(errorNode);
+  const actions = el('div', 'measurement-dialog-actions');
+  const cancelButton = btn('Отмена', () => dialog.close(), 'btn-secondary');
+  const submitButton = btn(
+    state.measurementSubmittedFingerprint ? 'Обновить заявку' : 'Записать на замер',
+    () => {
+      state.customer = {
+        name: draft.name ?? '',
+        phone: draft.phone,
+        address: draft.address,
+      };
+      state.comment = draft.comment ?? '';
+      state.measurementApartment = draft.apartment ?? '';
+      state.measurementPreferredTime = draft.preferredTime ?? '';
+      state.measurementPayerType = draft.payerType;
+      persistState();
+      void executeMeasurementSubmission(draft, [submitButton, cancelButton]).then(() => dialog.close());
+    },
+    'btn-primary',
+  );
+  actions.appendChild(cancelButton);
+  actions.appendChild(submitButton);
+  form.appendChild(actions);
+  dialog.appendChild(form);
+  dialog.onclose = () => dialog.remove();
+  document.body.appendChild(dialog);
+  dialog.showModal();
+}
+
+function retryMeasurementSubmission(totals: ReturnType<typeof calculateOrderTotals>): void {
+  const draft = getMeasurementInput(totals);
+  void executeMeasurementSubmission(draft);
 }
 
 function renderOrderSidebar(totals: ReturnType<typeof calculateOrderTotals>): HTMLElement {
@@ -1317,6 +1543,57 @@ function renderOrderSidebar(totals: ReturnType<typeof calculateOrderTotals>): HT
   panel.appendChild(body);
 
   const actions = el('div', 'order-panel-actions');
+  const currentFingerprint = currentMeasurementFingerprint(totals);
+  const alreadySubmitted =
+    state.measurementSheetStatus === 'sent'
+    && currentFingerprint != null
+    && currentFingerprint === state.measurementSubmittedFingerprint;
+  const measurementLabel = alreadySubmitted
+    ? 'Заявка уже записана'
+    : state.measurementSubmittedFingerprint
+      ? 'Обновить заявку на замер'
+      : 'Записать на замер';
+  actions.appendChild(
+    btn(
+      measurementLabel,
+      () => openMeasurementConfirmation(totals),
+      'btn-measurement btn-block',
+      measurementRequestInProgress || alreadySubmitted,
+    ),
+  );
+  if (state.measurementSheetStatus === 'sent' && alreadySubmitted) {
+    actions.appendChild(el('p', 'measurement-submit-status status-success', '✅ Записан на замер'));
+  } else if (state.measurementSheetStatus === 'sent') {
+    actions.appendChild(
+      el(
+        'p',
+        'measurement-submit-status status-warning',
+        'Данные расчёта изменены — обновите заявку на замер',
+      ),
+    );
+  } else if (state.measurementSheetStatus === 'error') {
+    actions.appendChild(
+      el(
+        'p',
+        'measurement-submit-status status-warning',
+        '⚠ Заявка у замерщика создана, таблица не синхронизирована',
+      ),
+    );
+    if (currentFingerprint === state.measurementSubmittedFingerprint) {
+      actions.appendChild(
+        btn(
+          'Повторить отправку в таблицу',
+          () => retryMeasurementSubmission(totals),
+          'btn-secondary btn-block',
+          measurementRequestInProgress,
+        ),
+      );
+    }
+  } else if (state.measurementSheetErrorCode) {
+    actions.appendChild(
+      el('p', 'measurement-submit-status status-error', '❌ Не удалось записать на замер'),
+    );
+  }
   actions.appendChild(btn('Сохранить заказ', saveOrder, 'btn-primary btn-block'));
   const existingOrder = state.editingArchiveId ? findOrderByArchiveId(state.editingArchiveId) : null;
   const canSendToWork = (existingOrder?.workStatus ?? 'waiting') === 'waiting' || !state.editingArchiveId;

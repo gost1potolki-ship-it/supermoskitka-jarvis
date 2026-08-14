@@ -10,6 +10,7 @@ export interface ErrorBody {
     code: ApplicationErrorCode;
     message: string;
     requestId: string;
+    details?: Record<string, unknown>;
   };
 }
 
@@ -20,6 +21,7 @@ export function sendApplicationError(
     message: string;
     httpStatus: number;
     requestId: string;
+    details?: Record<string, unknown>;
   },
 ): void {
   const body: ErrorBody = {
@@ -27,6 +29,7 @@ export function sendApplicationError(
       code: input.code,
       message: input.message,
       requestId: input.requestId,
+      ...(input.details ? { details: input.details } : {}),
     },
   };
   res.status(input.httpStatus).json(body);
@@ -42,5 +45,6 @@ export function sendFromApplicationError(
     message: error.message,
     httpStatus: error.httpStatus,
     requestId,
+    ...(error.details ? { details: error.details } : {}),
   });
 }

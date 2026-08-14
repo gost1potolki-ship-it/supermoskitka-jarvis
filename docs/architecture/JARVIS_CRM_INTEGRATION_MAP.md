@@ -1,6 +1,7 @@
-# Jarvis ↔ CRM Integration Map (documentation only)
+# Jarvis ↔ CRM Integration Map
 
-Current map — **no implementation in Task 13**.
+Task 14 implements only controlled measurement intake. Conversation/lead UI and
+automatic execution remain future work.
 
 ## Conversation / lead
 
@@ -16,7 +17,11 @@ Jarvis already owns AI/HUMAN conversation control and trusted preliminary quote 
 
 ```text
 Jarvis READY_FOR_MEASUREMENT / AUTO_ALLOWED
-        ↓ (future controlled measurement executor)
+        ↓ (explicit internal POST only)
+Measurement Submission Executor
+        ├── Firestore Admin upsert
+        └── dedicated measurement Sheet webhook
+                    ↓
 upcoming_measurements
         ↓
 Presales / Measurer operational flow
@@ -24,7 +29,24 @@ Presales / Measurer operational flow
 measurements
 ```
 
-`AUTO_ALLOWED` is an internal Jarvis decision signal only. It is **not** an automatic CRM write today.
+`AUTO_ALLOWED` remains a decision signal after an ordinary customer turn. It
+does **not** write operational data automatically. Task 14 permits execution
+only through:
+
+```text
+POST /internal/v1/conversations/:conversationId/measurement-submit
+```
+
+The manual owner path is separate:
+
+```text
+Presales CRM “Записать на замер”
+        ├── upcoming_measurements/{submissionId}
+        └── dedicated measurement Sheet webhook
+```
+
+Both paths use one semantic contract, the same Firestore field mapping, and the
+same `submissionId` idempotency key.
 
 ## Existing production “Отправить в работу”
 
@@ -34,7 +56,8 @@ Presales CRM send-to-work
 current Google Apps Script / Sheets production flow
 ```
 
-This path remains the existing production workflow. It is **not** triggered automatically from Jarvis readiness in Task 13.
+This path remains unchanged. Measurement intake never calls the production
+order webhook and never changes production status.
 
 ## Future channels (not implemented)
 
@@ -57,10 +80,10 @@ Structured lead channel that should:
 - be able to set `priceAccepted` + `measurementAgreed`;
 - still create a Jarvis-known lead/conversation/order memory.
 
-## Explicit non-goals of Task 13
+## Explicit non-goals of Task 14
 
 - No Jarvis UI embedded in CRM
-- No measurement executor
-- No `upcoming_measurements` writes from Jarvis
+- No automatic measurement executor trigger after a customer message
+- No writes to `measurements`, `ready_orders`, `config/prices`, or production status
 - No channel adapters
 - No shared Calculation Engine merge

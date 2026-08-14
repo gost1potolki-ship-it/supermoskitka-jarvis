@@ -126,6 +126,16 @@ export function createInternalApiRouter(options: CreateInternalApiRouterOptions)
     }),
   );
 
+  router.post(
+    '/conversations/:conversationId/measurement-submit',
+    asyncRoute(async (req, res) => {
+      // Intentionally no body mapping: all operational values are rebuilt from
+      // the current trusted server-side MeasurementAction/draft/quote.
+      const dto = await application!.submitReadyMeasurement(req.params.conversationId!);
+      res.status(200).json(dto);
+    }),
+  );
+
   router.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
     const requestId = requestIdOf(res);
     if (error instanceof ApplicationError) {
