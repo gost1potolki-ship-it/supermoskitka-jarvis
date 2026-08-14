@@ -1,7 +1,8 @@
 # Jarvis ↔ CRM Integration Map
 
-Task 14 implements only controlled measurement intake. Conversation/lead UI and
-automatic execution remain future work.
+Task 14.1 hardens controlled measurement intake for coexistence with the live
+Sheet and legacy Sheet → Firestore sync. Conversation/lead UI and automatic
+execution remain future work.
 
 ## Conversation / lead
 
@@ -20,8 +21,8 @@ Jarvis READY_FOR_MEASUREMENT / AUTO_ALLOWED
         ↓ (explicit internal POST only)
 Measurement Submission Executor
         ├── Firestore Admin upsert
-        └── dedicated measurement Sheet webhook
-                    ↓
+        └── dedicated webhook action: upsert_measurement_sheet
+                    ↓ (Sheet only)
 upcoming_measurements
         ↓
 Presales / Measurer operational flow
@@ -41,12 +42,26 @@ The manual owner path is separate:
 
 ```text
 Presales CRM “Записать на замер”
-        ├── upcoming_measurements/{submissionId}
-        └── dedicated measurement Sheet webhook
+        ↓ one browser request; no Firestore browser write
+Measurement Intake Apps Script: upsert_measurement
+        ├── Firestore REST merge upcoming_measurements/{submissionId}
+        └── Google Sheet “Замеры” upsert by submission_id
 ```
 
 Both paths use one semantic contract, the same Firestore field mapping, and the
-same `submissionId` idempotency key.
+same `submissionId` idempotency key. The visible Sheet columns remain:
+
+```text
+Имя | Телефон | Адрес | Изделия | Заказчик | сумма
+```
+
+The compatibility adapter intentionally maps Sheet `Изделия` / canonical
+`itemSummary` to Firestore `comment`. A separate free customer comment does not
+replace that product summary.
+
+The legacy Sheet → Firestore sync prefers `submission_id` for Task 14 rows and
+keeps `m_<hash(phone|address)>` only for old rows. Its masked updates preserve
+measurer-owned metadata, and cleanup is limited to legacy `m_` documents.
 
 ## Existing production “Отправить в работу”
 
@@ -80,7 +95,7 @@ Structured lead channel that should:
 - be able to set `priceAccepted` + `measurementAgreed`;
 - still create a Jarvis-known lead/conversation/order memory.
 
-## Explicit non-goals of Task 14
+## Explicit non-goals of Task 14.1
 
 - No Jarvis UI embedded in CRM
 - No automatic measurement executor trigger after a customer message

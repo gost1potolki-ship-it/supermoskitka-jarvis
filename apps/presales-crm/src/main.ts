@@ -69,12 +69,10 @@ import { renderLoginScreen } from './screens/login';
 import { initTheme, toggleTheme } from './theme';
 import type { ArchivedOrder } from '@calc/types';
 import type { ArchiveOrderView } from './lib/archive';
-import { db } from './firebase';
 import {
   buildCompactItemSummary,
   buildMeasurementSubmission,
-  createFirestoreMeasurementStore,
-  createMeasurementSheetGateway,
+  createMeasurementIntakeGateway,
   createMeasurementSubmissionId,
   measurementFingerprint,
   submitMeasurement,
@@ -163,10 +161,7 @@ interface AppState {
 
 let sendingToWorkId: string | null = null;
 let measurementRequestInProgress = false;
-const measurementAdapters = {
-  store: createFirestoreMeasurementStore(db),
-  sheet: createMeasurementSheetGateway(),
-};
+const measurementIntakeGateway = createMeasurementIntakeGateway();
 
 let state: AppState = loadState();
 
@@ -1344,7 +1339,7 @@ async function executeMeasurementSubmission(
   controls.forEach((control) => { control.disabled = true; });
   render();
   try {
-    const result = await submitMeasurement(inputData, measurementAdapters);
+    const result = await submitMeasurement(inputData, measurementIntakeGateway);
     const fingerprint = measurementFingerprint(buildMeasurementSubmission(inputData));
     state.measurementSubmittedFingerprint = fingerprint;
     state.measurementSheetStatus = result.sheet === 'SENT' ? 'sent' : 'error';

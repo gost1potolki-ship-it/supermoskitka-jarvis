@@ -16,12 +16,12 @@ export function encodeMeasurementSheetRequest(
   submission: MeasurementSubmissionV1,
 ): Record<string, unknown> {
   return omitUndefinedDeep({
-    action: 'upsert_measurement',
+    action: 'upsert_measurement_sheet',
     submissionId: submission.submissionId,
     address: submission.customer.address,
     name: submission.customer.name,
     phone: submission.customer.phone,
-    comment: submission.comment,
+    itemSummary: submission.itemSummary,
     amount_rub: submission.preliminaryTotalRub,
     payer_text: submission.payerType === 'COMPANY' ? 'Фирма' : 'Клиент',
     apt: submission.customer.apartment,

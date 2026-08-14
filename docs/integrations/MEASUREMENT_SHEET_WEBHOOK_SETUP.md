@@ -1,6 +1,6 @@
 # Measurement Sheet Webhook setup
 
-Task 14 adds a dedicated Google Apps Script source for measurement intake:
+Task 14.1 hardens the dedicated Google Apps Script source for measurement intake:
 
 ```text
 integrations/google-apps-script/measurement-intake.gs
@@ -13,30 +13,31 @@ modify the “Отправить в работу” deployment with this script.
 
 1. Open Apps Script for the spreadsheet that contains the `Замеры` sheet.
 2. Add the contents of `measurement-intake.gs`.
-3. If the script is standalone, set the `SPREADSHEET_ID` Script Property.
-4. Optionally set `MEASUREMENT_SHEET_NAME`; the default is `Замеры`.
-5. Deploy the script as a Web App using the account that can edit the sheet.
-6. Store the Web App URL outside Git:
+3. Set the `MEASUREMENT_FIREBASE_PROJECT_ID` Script Property.
+4. If the script is standalone, set the `SPREADSHEET_ID` Script Property.
+5. Optionally set `MEASUREMENT_SHEET_NAME`; the default is `Замеры`.
+6. Deploy the script as a Web App using the account that can edit the sheet and
+   access the configured Firebase project.
+7. Store the Web App URL outside Git:
    - Jarvis backend: `MEASUREMENT_SHEET_WEBHOOK_URL`
    - Presales CRM: `VITE_MEASUREMENT_SHEET_WEBHOOK_URL`
 
 Never commit the deployed URL, OAuth data, API keys, or spreadsheet content.
 
-Task 14 creates source and configuration contracts only. It does not deploy the
-script.
+Task 14.1 changes source and configuration contracts only. It does not deploy
+the script, Firestore rules, CRM, or Jarvis.
 
-## Firestore rules prerequisite
+## Firestore boundary
 
-The manual Presales path writes `upcoming_measurements/{submissionId}` with the
-Firebase browser SDK. The imported rules source currently denies document
-creation and limits updates to measurer reservation fields. Task 14 intentionally
-does not modify `apps/measurer/firestore.rules` and does not deploy rules.
+The Presales browser does not write `upcoming_measurements` directly and does
+not require Firestore create permission. It sends one request to the intake Web
+App. For `upsert_measurement`, Apps Script uses its OAuth token and Firestore
+REST to merge `upcoming_measurements/{submissionId}` before writing the Sheet.
+No service-account key or private key is stored in the script.
 
-Before enabling the CRM button in a live environment, review and deploy a
-least-privilege rule (or move the browser write behind an authenticated backend)
-that permits the exact Task 14 intake fields. Without that separate operational
-approval, the UI will fail closed before the Sheet call and show its retry state.
-The Jarvis Admin adapter is not governed by browser Firestore rules.
+Jarvis keeps its trusted Admin SDK Firestore upsert. It calls the same Web App
+with `upsert_measurement_sheet`, which performs only the Sheet projection.
+Firestore rules are neither weakened nor deployed by this task.
 
 ## Request contract
 
@@ -47,9 +48,10 @@ The Jarvis Admin adapter is not governed by browser Firestore rules.
   "address": "Customer-visible address",
   "name": "Customer name",
   "phone": "Customer phone",
-  "comment": "Public measurement note",
+  "itemSummary": "2 × Рамочная — Антимошка",
+  "customerComment": "Позвонить заранее",
   "amount_rub": 8970,
-  "payer_text": "Клиент",
+  "payer_text": "Заказчик",
   "apt": "12",
   "time": "После 18:00",
   "source": "PRESALES_CRM"
@@ -59,16 +61,38 @@ The Jarvis Admin adapter is not governed by browser Firestore rules.
 `submissionId` is the idempotency key shared with
 `upcoming_measurements/{submissionId}`.
 
+`itemSummary` is the product summary. It is projected to Sheet column D
+`Изделия` and, for legacy measurer compatibility, to Firestore `comment`.
+`customerComment` is separate and never replaces column D.
+
+Jarvis sends the same fields with `"action": "upsert_measurement_sheet"` after
+its Admin Firestore upsert.
+
 ## Sheet behavior
 
-- Existing headers are matched case-insensitively using the operational aliases.
-- Existing A–F columns are not renamed or reordered.
+- The production-visible layout is exactly:
+  `Имя | Телефон | Адрес | Изделия | Заказчик | сумма`.
+- Existing A–F columns are never renamed, reordered, or shifted.
+- Supported payer headers are `Заказчик`, `Платит`, and `Плательщик`.
+- If A–F are all blank, the same positional layout is used as a legacy fallback.
+- Partial, reordered, or ambiguous headers fail closed with
+  `SHEET_SCHEMA_MISMATCH`.
 - If `submission_id` is absent, it is appended as a technical column.
 - A new `submission_id` appends one row.
 - An existing `submission_id` updates that row.
 - `LockService` serializes concurrent requests.
 - A missing `Замеры` sheet returns `SHEET_NOT_FOUND`; the script does not create
   another sheet silently.
+
+## Firestore and failure behavior
+
+- REST writes use update masks, so reservation, status, coordinates, completion,
+  and other measurer-owned fields are preserved.
+- New documents receive `createdAt`; updates preserve the existing value.
+- Firestore failure prevents any Sheet write and returns `FAILED`.
+- Sheet failure after Firestore returns `PARTIAL`; the document remains with
+  `sheetSyncStatus=error`.
+- Retrying the same `submissionId` updates the same document and Sheet row.
 
 ## Controlled errors
 
@@ -78,7 +102,9 @@ The Web App returns JSON with one of:
 INVALID_ACTION
 VALIDATION_ERROR
 SHEET_NOT_FOUND
+SHEET_SCHEMA_MISMATCH
 DUPLICATE_CONFLICT
+FIRESTORE_NOT_CONFIGURED
 INTERNAL_ERROR
 ```
 

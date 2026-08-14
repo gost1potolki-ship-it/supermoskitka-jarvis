@@ -1,12 +1,3 @@
-import {
-  deleteField,
-  doc,
-  getDoc,
-  serverTimestamp,
-  setDoc,
-  type Firestore,
-} from 'firebase/firestore';
-
 export type MeasurementPayerType = 'CUSTOMER' | 'COMPANY';
 export type MeasurementSheetStatus = 'pending' | 'sent' | 'error';
 
@@ -47,41 +38,8 @@ export interface MeasurementSummaryItem {
   mesh?: unknown;
 }
 
-export interface UpcomingMeasurementDocument {
-  submissionId: string;
-  source: 'PRESALES_CRM';
-  address: string;
-  name?: string;
-  phone: string;
-  comment?: string;
-  amount_rub: number;
-  payer_text: 'Клиент' | 'Фирма';
-  apt?: string;
-  time?: string;
-  itemSummary: string;
-  createdAt: unknown;
-  updatedAt: unknown;
-  sheetSyncStatus: MeasurementSheetStatus;
-  sheetSyncUpdatedAt: unknown;
-  sheetSyncErrorCode?: string;
-}
-
-export interface MeasurementStore {
-  upsertPending(submission: MeasurementSubmissionV1): Promise<void>;
-  updateSheetStatus(
-    submissionId: string,
-    status: Exclude<MeasurementSheetStatus, 'pending'>,
-    errorCode?: string,
-  ): Promise<void>;
-}
-
-export interface MeasurementSheetGateway {
-  upsert(submission: MeasurementSubmissionV1): Promise<void>;
-}
-
-export interface MeasurementSubmissionAdapters {
-  store: MeasurementStore;
-  sheet: MeasurementSheetGateway;
+export interface MeasurementIntakeGateway {
+  upsert(submission: MeasurementSubmissionV1): Promise<MeasurementSubmissionResult>;
 }
 
 export type MeasurementSubmissionResult =
@@ -197,37 +155,6 @@ export const buildMeasurementSubmission = (
   };
 };
 
-const commentWithSummary = (submission: MeasurementSubmissionV1): string => {
-  const summary = submission.itemSummary
-    ? `${submission.itemSummary}. Предварительный расчёт ${submission.preliminaryTotalRub.toLocaleString('ru-RU')} ₽.`
-    : '';
-  return [submission.comment, summary].filter(Boolean).join('\n');
-};
-
-export const toUpcomingMeasurementDocument = (
-  submission: MeasurementSubmissionV1,
-  status: MeasurementSheetStatus,
-  timestamps: { createdAt: unknown; updatedAt: unknown },
-  errorCode?: string,
-): UpcomingMeasurementDocument => stripUndefined({
-  submissionId: submission.submissionId,
-  source: submission.source,
-  address: submission.customer.address,
-  name: submission.customer.name,
-  phone: submission.customer.phone,
-  comment: commentWithSummary(submission) || undefined,
-  amount_rub: submission.preliminaryTotalRub,
-  payer_text: submission.payerType === 'COMPANY' ? 'Фирма' : 'Клиент',
-  apt: submission.customer.apartment,
-  time: submission.preferredTime,
-  itemSummary: submission.itemSummary,
-  createdAt: timestamps.createdAt,
-  updatedAt: timestamps.updatedAt,
-  sheetSyncStatus: status,
-  sheetSyncUpdatedAt: timestamps.updatedAt,
-  sheetSyncErrorCode: errorCode,
-}) as UpcomingMeasurementDocument;
-
 export const buildMeasurementSheetPayload = (
   submission: MeasurementSubmissionV1,
 ): Record<string, unknown> => ({
@@ -236,7 +163,8 @@ export const buildMeasurementSheetPayload = (
   address: submission.customer.address,
   name: submission.customer.name ?? '',
   phone: submission.customer.phone,
-  comment: commentWithSummary(submission),
+  itemSummary: submission.itemSummary,
+  customerComment: submission.comment ?? '',
   amount_rub: submission.preliminaryTotalRub,
   payer_text: submission.payerType === 'COMPANY' ? 'Фирма' : 'Клиент',
   apt: submission.customer.apartment ?? '',
@@ -272,79 +200,18 @@ export const createMeasurementSubmissionId = (): string => {
 
 export const submitMeasurement = async (
   input: MeasurementSubmissionInput,
-  adapters: MeasurementSubmissionAdapters,
+  gateway: MeasurementIntakeGateway,
 ): Promise<MeasurementSubmissionResult> => {
   const submission = buildMeasurementSubmission(input);
-  try {
-    await adapters.store.upsertPending(submission);
-  } catch (cause) {
-    throw new MeasurementSubmissionError(
-      'MEASUREMENT_PERSISTENCE_FAILED',
-      'Не удалось создать заявку для замерщика. Повторите попытку.',
-      { cause },
-    );
-  }
-
-  try {
-    await adapters.sheet.upsert(submission);
-    await adapters.store.updateSheetStatus(submission.submissionId, 'sent');
-    return {
-      status: 'SUBMITTED',
-      submissionId: submission.submissionId,
-      firestore: 'UPSERTED',
-      sheet: 'SENT',
-    };
-  } catch (cause) {
-    const code =
-      cause instanceof MeasurementSubmissionError ? cause.code : 'MEASUREMENT_SHEET_FAILED';
-    try {
-      await adapters.store.updateSheetStatus(submission.submissionId, 'error', code);
-    } catch {
-      // The operational document already exists. Preserve the original sheet failure for safe retry.
-    }
-    return {
-      status: 'PARTIAL',
-      submissionId: submission.submissionId,
-      firestore: 'UPSERTED',
-      sheet: 'ERROR',
-      errorCode: code,
-    };
-  }
+  return gateway.upsert(submission);
 };
-
-const stripUndefined = <T extends Record<string, unknown>>(value: T): T =>
-  Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
-
-export const createFirestoreMeasurementStore = (firestore: Firestore): MeasurementStore => ({
-  async upsertPending(submission) {
-    const ref = doc(firestore, 'upcoming_measurements', submission.submissionId);
-    const existing = await getDoc(ref);
-    const now = serverTimestamp();
-    const payload = toUpcomingMeasurementDocument(
-      submission,
-      'pending',
-      { createdAt: existing.exists() ? existing.data().createdAt ?? now : now, updatedAt: now },
-    );
-    await setDoc(ref, { ...payload, sheetSyncErrorCode: deleteField() }, { merge: true });
-  },
-  async updateSheetStatus(submissionId, status, errorCode) {
-    const now = serverTimestamp();
-    await setDoc(
-      doc(firestore, 'upcoming_measurements', submissionId),
-      stripUndefined({
-        sheetSyncStatus: status,
-        sheetSyncUpdatedAt: now,
-        updatedAt: now,
-        sheetSyncErrorCode: errorCode ?? deleteField(),
-      }),
-      { merge: true },
-    );
-  },
-});
 
 type MeasurementWebhookResponse = {
   ok?: boolean;
+  status?: string;
   submissionId?: string;
+  firestore?: string;
+  sheet?: string;
   error?: { code?: string; message?: string };
 };
 
@@ -359,32 +226,61 @@ export const getMeasurementSheetWebhookUrl = (): string => {
   return url;
 };
 
-export const createMeasurementSheetGateway = (
+const persistenceFailure = (cause?: unknown): MeasurementSubmissionError =>
+  new MeasurementSubmissionError(
+    'MEASUREMENT_PERSISTENCE_FAILED',
+    'Не удалось создать заявку для замерщика. Повторите попытку.',
+    { cause },
+  );
+
+export const createMeasurementIntakeGateway = (
   fetchImpl: typeof fetch = fetch,
-): MeasurementSheetGateway => ({
+): MeasurementIntakeGateway => ({
   async upsert(submission) {
-    const response = await fetchImpl(getMeasurementSheetWebhookUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(buildMeasurementSheetPayload(submission)),
-    });
-    const text = await response.text();
-    let parsed: MeasurementWebhookResponse | null = null;
     try {
-      parsed = JSON.parse(text) as MeasurementWebhookResponse;
-    } catch {
-      // Controlled generic error below; never expose the raw body.
-    }
-    if (
-      !response.ok ||
-      parsed?.ok !== true ||
-      parsed.submissionId !== submission.submissionId
-    ) {
-      const remoteCode = parsed?.error?.code;
-      throw new MeasurementSubmissionError(
-        'MEASUREMENT_SHEET_FAILED',
-        remoteCode ? `Таблица замеров отклонила запрос (${remoteCode}).` : 'Не удалось синхронизировать таблицу замеров.',
-      );
+      const response = await fetchImpl(getMeasurementSheetWebhookUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(buildMeasurementSheetPayload(submission)),
+      });
+      const parsed = JSON.parse(await response.text()) as MeasurementWebhookResponse;
+      if (!response.ok || parsed.submissionId !== submission.submissionId) {
+        throw persistenceFailure();
+      }
+      if (
+        parsed.status === 'SUBMITTED' &&
+        parsed.firestore === 'UPSERTED' &&
+        parsed.sheet === 'SENT'
+      ) {
+        return {
+          status: 'SUBMITTED',
+          submissionId: submission.submissionId,
+          firestore: 'UPSERTED',
+          sheet: 'SENT',
+        };
+      }
+      if (
+        parsed.status === 'PARTIAL' &&
+        parsed.firestore === 'UPSERTED' &&
+        parsed.sheet === 'ERROR'
+      ) {
+        return {
+          status: 'PARTIAL',
+          submissionId: submission.submissionId,
+          firestore: 'UPSERTED',
+          sheet: 'ERROR',
+          errorCode: parsed.error?.code || 'MEASUREMENT_SHEET_FAILED',
+        };
+      }
+      throw persistenceFailure();
+    } catch (cause) {
+      if (
+        cause instanceof MeasurementSubmissionError &&
+        cause.code === 'MEASUREMENT_PERSISTENCE_FAILED'
+      ) {
+        throw cause;
+      }
+      throw persistenceFailure(cause);
     }
   },
 });

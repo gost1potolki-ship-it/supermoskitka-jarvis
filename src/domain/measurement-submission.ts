@@ -15,6 +15,7 @@ export interface MeasurementSubmissionV1 {
     address: string;
     apartment?: string;
   };
+  itemSummary: string;
   comment?: string;
   preferredTime?: string;
   preliminaryTotalRub?: number;

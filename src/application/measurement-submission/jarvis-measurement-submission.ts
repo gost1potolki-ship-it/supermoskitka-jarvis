@@ -11,9 +11,9 @@ export function createJarvisMeasurementSubmissionId(conversationId: string): str
   return `jarvis_${digest.slice(0, HASH_PREFIX_LENGTH)}`;
 }
 
-function compactItemSummary(memory: OrderMemory): string | undefined {
+function compactItemSummary(memory: OrderMemory): string {
   if (memory.items.length === 0) {
-    return undefined;
+    throw new TypeError('Current measurement draft requires at least one item');
   }
   const draft = buildMeasurementDraft(memory);
   const parts = draft.items.map((item) => {
@@ -42,9 +42,6 @@ export function buildTrustedJarvisMeasurementSubmission(
   }
 
   const itemSummary = compactItemSummary(memory);
-  const comment = itemSummary
-    ? `${itemSummary}. Предварительный расчёт ${quote.publicTotalRub.toLocaleString('ru-RU')} ₽.`
-    : undefined;
   return {
     submissionId: createJarvisMeasurementSubmissionId(memory.conversationId),
     source: 'JARVIS',
@@ -53,7 +50,7 @@ export function buildTrustedJarvisMeasurementSubmission(
       phone: draft.customer.phone.trim(),
       address: draft.customer.address.trim(),
     },
-    ...(comment ? { comment } : {}),
+    itemSummary,
     preliminaryTotalRub: quote.publicTotalRub,
     payerType: 'CUSTOMER',
     jarvis: {

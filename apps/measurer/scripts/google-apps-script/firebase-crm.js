@@ -159,7 +159,7 @@ function planSyncMeasurements_() {
   }
   for (var fId in firestoreByDocId) {
     if (!firestoreByDocId.hasOwnProperty(fId)) continue;
-    if (!tableByDocId[fId]) {
+    if (!tableByDocId[fId] && isLegacyMeasurementDocId_(fId)) {
       deletedDocIds.push(fId);
       writes.push({ delete: firestoreByDocId[fId].docName });
       stats.deleted++;
@@ -226,6 +226,10 @@ function buildMeasurementDocId_(phone, address) {
   return MEASUREMENT_DOC_ID_PREFIX + sha256Hex_(buildMeasurementSourceKey_(phone, address)).substring(0, MEASUREMENT_DOC_ID_HEX_LEN);
 }
 
+function isLegacyMeasurementDocId_(docId) {
+  return safeString_(docId).indexOf(MEASUREMENT_DOC_ID_PREFIX) === 0;
+}
+
 function buildMeasurementSourceHash_(row) {
   var payload = [
     safeString_(row.name),
@@ -233,7 +237,8 @@ function buildMeasurementSourceHash_(row) {
     safeString_(row.address).toLowerCase(),
     safeString_(row.comment),
     safeString_(row.payer_text),
-    String(parseAmountToInt_(row.amount_rub))
+    String(parseAmountToInt_(row.amount_rub)),
+    safeString_(row.submission_id)
   ].join('|');
   return sha256Hex_(payload);
 }
@@ -244,7 +249,7 @@ function buildTableDocMap_(rows, duplicateCount) {
     var r = rows[i];
     r.source_key = buildMeasurementSourceKey_(r.phone, r.address);
     r.source_hash = buildMeasurementSourceHash_(r);
-    r.docId = buildMeasurementDocId_(r.phone, r.address);
+    r.docId = safeString_(r.submission_id) || buildMeasurementDocId_(r.phone, r.address);
     map[r.docId] = r;
   }
   return map;
@@ -266,8 +271,31 @@ function buildMeasurementWrite_(docId, row) {
         source_key: { stringValue: row.source_key },
         updated_at: { stringValue: new Date().toISOString() }
       }
+    },
+    updateMask: {
+      fieldPaths: [
+        'name',
+        'phone',
+        'address',
+        'comment',
+        'payer_text',
+        'amount_rub',
+        'source_hash',
+        'source_key',
+        'updated_at'
+      ]
     }
   };
+}
+
+function findMeasurementSubmissionIdColumn_(sheet) {
+  var lastColumn = sheet.getLastColumn();
+  if (lastColumn <= 6) return -1;
+  var headers = sheet.getRange(1, 7, 1, lastColumn - 6).getValues()[0];
+  for (var i = 0; i < headers.length; i++) {
+    if (safeString_(headers[i]).toLowerCase() === 'submission_id') return i + 6;
+  }
+  return -1;
 }
 
 function readMeasurementsSheetWithStats_() {
@@ -280,7 +308,9 @@ function readMeasurementsSheetWithStats_() {
   if (!sh) return { rows: [], duplicateCount: 0, skippedNoAddress: 0 };
   var lastRow = sh.getLastRow();
   if (lastRow < 2) return { rows: [], duplicateCount: 0, skippedNoAddress: 0 };
-  var values = sh.getRange(2, 1, lastRow - 1, 6).getValues();
+  var submissionIdColumn = findMeasurementSubmissionIdColumn_(sh);
+  var columnCount = submissionIdColumn >= 0 ? submissionIdColumn + 1 : 6;
+  var values = sh.getRange(2, 1, lastRow - 1, columnCount).getValues();
   for (var i = 0; i < values.length; i++) {
     var row = values[i];
     var address = safeString_(row[2]);
@@ -294,7 +324,8 @@ function readMeasurementsSheetWithStats_() {
       address: address,
       comment: safeString_(row[3]),
       payer_text: safeString_(row[4]),
-      amount_rub: parseAmountToInt_(row[5])
+      amount_rub: parseAmountToInt_(row[5]),
+      submission_id: submissionIdColumn >= 0 ? safeString_(row[submissionIdColumn]) : ''
     };
     var key = buildMeasurementSourceKey_(item.phone, item.address);
     if (seenKeys[key]) duplicateCount++;

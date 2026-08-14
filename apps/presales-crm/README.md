@@ -48,10 +48,21 @@ npm run dev
 
 ## Интеграции
 
-CRM читает и записывает рабочие данные через Firebase/Firestore. Кнопка
-«Записать на замер» создаёт или обновляет документ
-`upcoming_measurements/{submissionId}` и отдельно синхронизирует проекцию в
-Google Таблицу через dedicated measurement webhook.
+CRM продолжает читать рабочие данные из Firebase/Firestore. Кнопка «Записать
+на замер» не пишет operational Firestore из браузера: она делает один вызов
+dedicated measurement webhook. Measurement Intake Apps Script сначала
+merge-safe обновляет `upcoming_measurements/{submissionId}` через Firestore
+REST, затем upsert-ит строку листа `Замеры`.
+
+Production-visible layout листа не меняется:
+
+```text
+Имя | Телефон | Адрес | Изделия | Заказчик | сумма
+```
+
+`submission_id` добавляется только справа как техническая колонка. Значение
+`Изделия` также попадает в legacy Firestore field `comment`; отдельный свободный
+комментарий не заменяет список изделий.
 
 Для локального запуска задайте в `.env.local`:
 
